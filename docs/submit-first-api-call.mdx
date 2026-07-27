@@ -1,0 +1,74 @@
+---
+title: "Make Your First Unauthenticated Zero Hash API Call"
+sidebarTitle: "First API Call"
+description: "Verify your Zero Hash integration with the unauthenticated GET /time health check, then learn how to progress to signed authenticated API requests."
+---
+
+The fastest way to confirm your Zero Hash integration is wired up correctly is to hit the `GET /time` endpoint. It returns the server's current Unix timestamp and requires no authentication — no signing, no API key headers. This makes it the ideal health check to verify that your base URL is correct, TLS is working, and your network can reach Zero Hash before you start signing requests.
+
+## Prerequisites
+
+- A Zero Hash Cert or Prod platform. See [Get Platform Access](/docs/get-platform-access) if you have not yet been provisioned.
+- `curl` or any HTTP client (Postman, Insomnia, your language's HTTP library, etc.).
+
+## Base URLs by Environment
+
+| Environment | Base URL |
+|---|---|
+| US Cert | `https://api.cert.zerohash.com` |
+| US Prod | `https://api.zerohash.com` |
+| EU Cert | `https://api.cert.zerohash.eu` |
+| EU Prod | `https://api.zerohash.eu` |
+
+## Send the Health Check Request
+
+Run the following `curl` command against the US Cert environment. Swap the base URL for any other environment using the table above.
+
+```bash
+curl --request GET \
+  --url https://api.cert.zerohash.com/time \
+  --header 'accept: application/json'
+```
+
+## Expected Response
+
+A successful request returns HTTP `200` with a JSON body containing the server time in both Unix milliseconds and ISO 8601 format:
+
+```json
+{
+  "message": {
+    "epoch": 1715459200000,
+    "epoch_units": "milliseconds",
+    "iso_8601": "2024-05-11T20:26:40.000Z"
+  }
+}
+```
+
+If you receive a `200` with a timestamp roughly equal to the current time, you are successfully reaching Zero Hash and your TLS handshake is valid.
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="401 Unauthorized on /time">
+    `GET /time` requires no authentication. A `401` response means either your base URL is wrong or your Platform has not been provisioned yet. Double-check the environment table above and confirm you have completed [Platform setup](/docs/get-platform-access).
+  </Accordion>
+  <Accordion title="Connection refused or DNS error">
+    Confirm that outbound HTTPS traffic to `*.zerohash.com` (or `*.zerohash.eu`) is not blocked by a corporate proxy or firewall. Check with your network or security team if you are working from a corporate environment.
+  </Accordion>
+  <Accordion title="TLS errors in corporate networks">
+    Some corporate networks (Netskope, Zscaler, etc.) perform TLS inspection and require their own CA certificate to be trusted. Set the `REQUESTS_CA_BUNDLE` environment variable (Python) or configure the equivalent CA bundle setting in your HTTP client to include your organization's internal CA.
+  </Accordion>
+</AccordionGroup>
+
+## Next: Authenticated Calls
+
+`GET /time` is the **only** Zero Hash endpoint that does not require authentication. Every other endpoint requires four additional request headers derived from your API key, passphrase, private key, and the request payload:
+
+| Header | Description |
+|---|---|
+| `X-SCX-API-KEY` | Your public API key |
+| `X-SCX-SIGNED` | HMAC-SHA256 signature of the request |
+| `X-SCX-TIMESTAMP` | Current Unix timestamp (seconds since epoch) |
+| `X-SCX-PASSPHRASE` | The passphrase you set when creating the key |
+
+See [Authentication](/docs/authentication) for the full request-signing recipe with working code examples in `curl`, Python, and Node.js.

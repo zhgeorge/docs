@@ -1,0 +1,83 @@
+---
+title: "Getting Started with Zero Hash: Developer Overview"
+sidebarTitle: "Getting Started"
+description: "A step-by-step onboarding guide for developers at fintechs, brokerages, and payment companies integrating crypto trading, stablecoins, and settlement."
+---
+
+Zero Hash is a regulated B2B crypto-as-a-service platform built for developers at fintechs, brokerages, banks, and payment companies. Whether you are adding crypto trading, stablecoin payments, tokenized assets, or cross-border settlement to your product, this guide walks you through everything you need to make your first authenticated API call and choose your integration path.
+
+## Before You Start
+
+To follow this guide, you need two things:
+
+- **Access to a Zero Hash Cert environment** — the sandbox where you can develop and test without touching real funds. Contact the Zero Hash team at [sales@zerohash.com](mailto:sales@zerohash.com) to get provisioned.
+- **An HTTP client** — `curl`, Postman, or your language's native HTTP library all work.
+
+By the end of this guide you will have a working authenticated API call against the Cert environment and a clear path forward for the integration shape you are building.
+
+## Environments
+
+Zero Hash provides two environments. You should complete all development and testing in Cert before requesting Prod access.
+
+| Environment | Purpose | US Base URL | EU Base URL |
+|---|---|---|---|
+| **Cert** | Development and integration testing. Uses mock balances — no real funds. | `api.cert.zerohash.com` | `api.cert.zerohash.eu` |
+| **Prod** | Live transactions subject to regulatory requirements. | `api.zerohash.com` | `api.zerohash.eu` |
+
+## Integration Paths
+
+Once you are authenticated, Zero Hash supports three ways to build your integration:
+
+<CardGroup cols={3}>
+  <Card title="SDK" icon="puzzle-piece" href="/docs/sdk">
+    Drop-in front-end SDK for client-side flows — KYC widgets, trading interfaces, and onboarding screens with minimal custom UI work.
+  </Card>
+  <Card title="REST API + Recipes" icon="code" href="/docs/getting-started">
+    Server-side integration using the Zero Hash REST API. Start with recipes for common end-to-end flows: onboarding, deposit, trade, and settlement.
+  </Card>
+  <Card title="API Reference" icon="book-open" href="/docs/core-resources">
+    The full endpoint catalog with request parameters, response schemas, and interactive examples for every available operation.
+  </Card>
+</CardGroup>
+
+## The Four-Step Setup Flow
+
+<Steps>
+  <Step title="Get Platform Access">
+    Contact the Zero Hash team to have a Cert Platform created for your business. You will receive an email invitation to set up your username, password, and two-factor authentication device, then log in to the Client Portal.
+
+    See [Get Platform Access](/docs/get-platform-access) for the full walkthrough, including Prod self-service sign-up instructions.
+  </Step>
+  <Step title="Generate API Keys">
+    Once logged in to the Client Portal, navigate to **Administration → API Keys** and create your first key. Assign it a nickname, passphrase, and optional expiration date. Newly created keys require two approvals before they go live.
+
+    See [Generate API Keys](/docs/generate-api-keys) for the step-by-step process and key security best practices.
+  </Step>
+  <Step title="Submit Your First API Call">
+    Verify your setup with the unauthenticated `GET /time` health check endpoint. It returns the server's current Unix timestamp and requires no signing — it is the fastest way to confirm that TLS and your base URL are correct.
+
+    See [Submit First API Call](/docs/submit-first-api-call) for a runnable `curl` example and expected response.
+  </Step>
+  <Step title="Build Your Integration">
+    With a confirmed connection, move on to authenticated requests. Every endpoint beyond `GET /time` requires four signed headers derived from your API key, passphrase, and secret using HMAC-SHA256.
+
+    See [Authentication](/docs/authentication) for the full signing recipe, then explore the [Core Resources](/docs/core-resources) guide to understand the API's main building blocks.
+  </Step>
+</Steps>
+
+## Resources
+
+<CardGroup cols={2}>
+  <Card title="API Reference" icon="rectangle-terminal" href="/docs/core-resources">
+    Complete endpoint catalog with interactive examples.
+  </Card>
+  <Card title="Recipes" icon="flask" href="/docs/getting-started">
+    End-to-end integration walkthroughs for common use cases.
+  </Card>
+  <Card title="Platform Status" icon="signal" href="https://status.zerohash.com">
+    Live status and incident history for all Zero Hash services.
+  </Card>
+  <Card title="Support" icon="life-ring" href="https://zerohash.com/contact">
+    Reach out to the Zero Hash support team with questions or issues.
+  </Card>
+</CardGroup>

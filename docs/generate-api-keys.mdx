@@ -1,0 +1,96 @@
+---
+title: "Generate and Manage Your Zero Hash API Keys Safely"
+sidebarTitle: "API Keys"
+description: "Self-service guide to creating API keys in the Client Portal, understanding the two-approval workflow, and best practices for securing your credentials."
+---
+
+Zero Hash Platforms generate API keys self-service through the Client Portal. Keys are scoped to your Platform and carry the credentials you use to sign every authenticated request. Because the private key and passphrase are shown only once during creation, you must record them securely before closing the modal.
+
+## Before You Start
+
+You need an active Platform account with access to the Client Portal. If you have not yet set up your Platform, see [Get Platform Access](/docs/get-platform-access).
+
+## Creating a New API Key
+
+<Steps>
+  <Step title="Open the API Keys Page">
+    Log in to the Client Portal and navigate to **Administration → API Keys**. You will see a list of all existing keys for your Platform.
+  </Step>
+  <Step title="Click Add API Key">
+    Find the **Add API Key** button in the top-right corner of the screen and click it to open the key creation modal.
+  </Step>
+  <Step title="Fill In Key Details">
+    Complete the fields in the modal:
+
+    <ParamField body="Nickname" type="string" required>
+      A human-readable label for this key. Used only for display purposes in the portal UI — it has no effect on API behavior.
+    </ParamField>
+
+    <ParamField body="Passphrase" type="string" required>
+      A secret string you define. This value is sent as the `X-SCX-PASSPHRASE` header on every authenticated request. Zero Hash does not store it — save it somewhere secure before closing the modal.
+    </ParamField>
+
+    <ParamField body="Expiration Date" type="date">
+      Optional. If set, the key stops working after this date. Leave blank for a key that never expires. Setting an expiration date enforces a regular key-rotation cadence for improved security.
+    </ParamField>
+
+    <ParamField body="Allowed IPs" type="string[]">
+      Optional. A list of up to 10 IP addresses (IPv4 or IPv6) that are allowed to use this specific key. Requests from any other IP will be rejected for this key. If left blank, no per-key IP validation is applied (though the global platform-level IP allowlist still applies).
+    </ParamField>
+
+    <ParamField body="API Permissions" type="enum">
+      Optional. Restrict this key to specific products or mark it as read-only. Use read-only keys for monitoring, alerting, or dashboarding use cases where write access is not needed.
+    </ParamField>
+  </Step>
+  <Step title="Save Your Credentials Immediately">
+    After clicking **Create**, the portal displays your **public key**, **private key**, and **passphrase**. 
+
+    <Warning>
+      The private key and passphrase are shown **only once** and are not stored by Zero Hash. Copy them to a secrets manager or secure vault before closing the modal. If you lose them, you must create a new key.
+    </Warning>
+  </Step>
+</Steps>
+
+## Key Approval Workflow
+
+All newly created API keys start in a **Created** status and are not active yet. Zero Hash requires two additional approvals from authorized users on your Platform before the key can be used to call the API.
+
+The approval states are:
+
+| Status | Meaning |
+|---|---|
+| **Created** | Key has been generated but is awaiting approvals. Not usable yet. |
+| **Pending Approval** | One approval has been received. A second is still required. |
+| **Approved** | Both approvals received. The key is active and can sign requests. |
+| **Rejected** | Approvals were denied. The key cannot be used. |
+
+<Note>
+  You can configure the number of required approvals for your Platform. Contact a Zero Hash representative if you want to adjust this setting.
+</Note>
+
+An audit trail of all approval actions is visible by clicking the **Details** button next to any key in the portal.
+
+## IP Allowlisting
+
+Zero Hash uses a two-layer IP allowlisting system to restrict which servers can reach the API.
+
+**Layer 1 — Global platform allowlist:** Zero Hash must know every IP address your Platform will interact with the API from. Communicate this list to Zero Hash via your assigned Slack channel or by contacting support. Static IPv4 or IPv6 addresses are accepted. Public VPNs and individual/personal IPs are not permitted.
+
+**Layer 2 — Per-key IP allowlist:** Within your global allowlist, you can further restrict individual keys to a subset of IPs using the **Allowed IPs** field when creating a key. This is useful for limiting blast radius if a key is compromised.
+
+<Tip>
+  Always pair a limited-scope IP allowlist with a limited-scope API Permissions setting to follow the principle of least privilege.
+</Tip>
+
+## Best Practices
+
+- **Store credentials in a secrets manager.** Never commit API keys, private keys, or passphrases to source control. Use a vault such as AWS Secrets Manager, HashiCorp Vault, or an equivalent.
+- **Set expiration dates.** Enforce a regular rotation cadence (e.g., 90 or 180 days) to limit exposure from leaked credentials.
+- **Use per-key IP restrictions.** Bind each key to only the IP addresses that need it.
+- **Create separate keys per environment and service.** A key used by your trading service should be different from one used by your reporting service.
+- **Use read-only keys for non-mutating workloads.** Dashboards, monitors, and alerting tools do not need write access.
+- **Rotate keys immediately** if you suspect a credential has been exposed.
+
+## Next Steps
+
+Once your key is approved and your IP addresses are allowlisted, you are ready to sign your first authenticated request. See [Authentication](/docs/authentication) for the HMAC-SHA256 signing scheme and code examples in multiple languages.

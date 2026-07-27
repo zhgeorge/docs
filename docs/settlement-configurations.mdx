@@ -1,0 +1,113 @@
+---
+title: "Configuring Settlement Windows and Parameters on Zero Hash"
+sidebarTitle: "Settlement Config"
+description: "Configure settlement windows, cut-off times, and weekend trading rules for client platforms and liquidity providers on Zero Hash platform."
+---
+
+Zero Hash supports configurable settlement processes tailored for both client platforms and liquidity providers. The default configurations cover the most common trading schedules, and each can be adjusted to suit your specific operational needs — including changing the timing, enabling weekend settlement, or pre-funding customer accounts to avoid daily wire cycles entirely.
+
+## Default Configurations
+
+The default settlement parameters differ between client platforms and liquidity providers, reflecting the distinct trading patterns and counterparty obligations of each participant type.
+
+<Tabs>
+  <Tab title="Client Platforms">
+    ### Initial Settlement Window
+
+    Trades executed between **12:00:00 AM EST and 11:59:59 PM EST** are grouped together for next-day settlement. All trades that fall within a single calendar day (by this window) are netted into one settlement obligation.
+
+    ### Final Settlement Time
+
+    Settlement occurs at **12:00 PM EST the following business day**.
+
+    - **Net buy day:** Your platform must deliver the net USD amount to Zero Hash by 12:00 PM EST.
+    - **Net sell day:** Zero Hash wires the net proceeds to your platform by 12:00 PM EST.
+
+    ### Weekend Trading
+
+    Trades booked on Friday, Saturday, or Sunday are grouped together and settled on the following **Monday at 12:00 PM EST**. There is no separate settlement on Saturday or Sunday under the default configuration.
+
+    | Day of Trade | Settlement Date |
+    |---|---|
+    | Monday | Tuesday at 12:00 PM EST |
+    | Tuesday | Wednesday at 12:00 PM EST |
+    | Wednesday | Thursday at 12:00 PM EST |
+    | Thursday | Friday at 12:00 PM EST |
+    | Friday | Monday at 12:00 PM EST |
+    | Saturday | Monday at 12:00 PM EST |
+    | Sunday | Monday at 12:00 PM EST |
+  </Tab>
+  <Tab title="Liquidity Providers">
+    ### Initial Settlement Window
+
+    Trades executed between **4:00 PM EST** and **3:59:59 PM EST the following day** are grouped into the same settlement cycle. This rolling 24-hour window differs from the calendar-day window used for client platforms.
+
+    ### Final Settlement Time
+
+    Settlement occurs at **5:00 PM EST daily**. Liquidity providers must deliver or receive the net amount by this time based on their net trading position.
+
+    ### Weekend Trading
+
+    Trades booked on Friday at **4:00 PM EST or later**, or on Saturday or Sunday, are grouped together and settled on **Monday at 5:00 PM EST**.
+
+    | Trade Window Start | Settlement Date |
+    |---|---|
+    | Mon 4:00 PM EST | Tue 5:00 PM EST |
+    | Tue 4:00 PM EST | Wed 5:00 PM EST |
+    | Wed 4:00 PM EST | Thu 5:00 PM EST |
+    | Thu 4:00 PM EST | Fri 5:00 PM EST |
+    | Fri 4:00 PM EST onward | Mon 5:00 PM EST |
+    | Saturday / Sunday | Mon 5:00 PM EST |
+  </Tab>
+</Tabs>
+
+## Customization Options
+
+The defaults above are starting points. Zero Hash can accommodate custom configurations for platforms with unique settlement requirements. Common customizations include:
+
+<CardGroup cols={2}>
+  <Card title="Custom Cut-Off Time" icon="clock">
+    Change the daily session cut-off to a different time or timezone to match your platform's trading hours or regional market conventions.
+  </Card>
+  <Card title="Weekend Settlement" icon="calendar">
+    Enable daily settlement on Saturday and Sunday rather than batching weekend trades into Monday's cycle.
+  </Card>
+  <Card title="Pre-Funded Accounts" icon="wallet">
+    Pre-fund customer accounts directly to eliminate the daily wire settlement cycle entirely. Trades settle in real time against prefunded balances.
+  </Card>
+  <Card title="Custom Frequency" icon="rotate">
+    Adjust settlement from end-of-day to intraday, or from daily to weekly, depending on your volume, risk tolerance, and operational capacity.
+  </Card>
+</CardGroup>
+
+<Note>
+  To modify your settlement configuration, contact your Zero Hash solutions engineer. Changes to settlement timing, frequency, or prefunding model require a configuration update on Zero Hash's side and may affect your platform agreement terms.
+</Note>
+
+## Configuration Parameters
+
+When working with your solutions engineer to customize settlement, the following parameters are configurable:
+
+<ParamField body="session_start_time" type="string">
+  The timestamp (in EST or a specified timezone) at which each trading session begins. Trades at or after this time are assigned to the new session.
+</ParamField>
+
+<ParamField body="session_end_time" type="string">
+  The timestamp at which each trading session closes. Trades before this time are included in the current session's net calculation.
+</ParamField>
+
+<ParamField body="settlement_time" type="string">
+  The time by which the net settlement wire must be delivered on the settlement date. Defaults to 12:00 PM EST for client platforms and 5:00 PM EST for liquidity providers.
+</ParamField>
+
+<ParamField body="weekend_settlement_enabled" type="boolean">
+  When set to `true`, Saturday and Sunday trades are settled independently rather than batched into Monday. Defaults to `false`.
+</ParamField>
+
+<ParamField body="account_profile" type="string">
+  Set to `nonprefunded` for the default float-based settlement model, or `prefunded` to require end users to fund accounts before trading. Prefunded accounts settle in real time with no daily wire cycle.
+</ParamField>
+
+<Warning>
+  If your platform uses a float account and you miss the settlement wire deadline, your Net Delivery Obligation (NDO) will accrue over time. Persistent missed settlements may trigger a review of your trading privileges. Always ensure your treasury team is aligned on the daily wire deadline.
+</Warning>

@@ -1,0 +1,408 @@
+---
+title: "Remittance Integration Guide: Cross-Border Fiat Transfers"
+sidebarTitle: "Remittance"
+description: "Integrate Zero Hash Remittance: the stablecoin sandwich model, Sender tiers, API flow from conversion to on-chain withdrawal, and end-of-day settlement."
+---
+
+The Zero Hash Remittance product enables your platform to move fiat value across borders by routing through stablecoins — a model sometimes called the "stablecoin sandwich." A sender initiates a fiat payment in their local currency, Zero Hash converts the fiat to a stablecoin (the Remittance Token), and the stablecoin is transferred on-chain to a destination address where it is redeemed for the beneficiary's local currency. This guide covers the full end-to-end API integration.
+
+## Key Definitions
+
+| Term | Definition | Example |
+|------|-----------|---------|
+| **Platform** | Your company, under contract with Zero Hash. | Remittance Co. LLC |
+| **Sender** | The natural person initiating the remittance. Subject to Sender Tiers. | John Smith |
+| **Sender Currency** | The fiat currency the sender uses to fund the remittance. | USD |
+| **Remittance Token** | The stablecoin used to move value cross-border. | USDC |
+| **Remittance Conversion** | The trade converting sender currency to stablecoin. | Buy USDC/USD |
+| **Beneficiary** | The recipient of the remittance — subject to sanctions screening, not full KYC. | Hector Garcia |
+| **Beneficiary Currency** | The fiat currency in which the beneficiary ultimately receives value. | MXN |
+
+## High-Level Flow
+
+```
+Sender pays fiat  →  Zero Hash converts to stablecoin  →  Stablecoin transferred on-chain  →  Beneficiary receives funds
+```
+
+1. Fund Fiat Accounts
+2. Submit Sender
+3. Query Sender Limits
+4. Submit Beneficiary
+5. Query Beneficiary
+6. Update Beneficiary (if needed)
+7. Initiate Conversion (RFQ + Execute)
+8. Query Conversion
+9. Initiate Transfer
+10. Query Transfer
+11. Initiate Withdrawal
+12. Query Withdrawal
+13. Transition Sender from Tier 1 → Tier 2
+14. Transition Sender from Tier 2 → Tier 3
+15. End-of-Day Settlement
+
+---
+
+## Initial Setup
+
+Your platform must be onboarded to Zero Hash with API keys created and IP addresses whitelisted. Platforms typically also integrate a Payment Service Provider (PSP) to handle the fiat leg of the transaction — the PSP processes card or digital wallet payments, while Zero Hash handles the stablecoin side. See the [PSP integrations guide](https://docs.zerohash.com/docs/psp-integrations) for requirements if you are using a PSP.
+
+---
+
+## Step 1: Fund Fiat Accounts
+
+The Remittance flow requires three fiat accounts. Fund each by sending a wire to the Zero Hash settlement bank, tagging each with the appropriate memo:
+
+| Account | `account_label` | Wire Memo | Purpose |
+|---------|----------------|-----------|---------|
+| Float Account | `general` (under `00SCXM`) | `PLAT01 - FLOAT` | Funds real-time conversions. Transactions **fail** if this account is insufficient. |
+| Settlement Reserve Account | `settlement_reserve` | `PLAT01 - RESERVE` | Used to top up the settlement account once daily. |
+| Settlement Account | `general` (under your participant) | `PLAT01 - SETTLEMENT` | Credited once per day by the PSP to complete daily settlement. |
+
+<Note>
+  Some PSPs do not support a fixed wire memo. If this applies to your integration, contact your Zero Hash relationship manager to arrange an alternative reconciliation method.
+</Note>
+
+**Example starting balances after funding:**
+
+| Account | Asset | Balance |
+|---------|-------|---------|
+| Float Account | USD | $50,000 |
+| Settlement Reserve Account | USD | $25,000 |
+
+---
+
+## Step 2: Submit Sender
+
+Submit the sender via [POST /participants/customers/new](https://docs.zerohash.com/reference/post_participants-customers-new). The required fields depend on the sender's tier. Throughout this guide, the sender's participant code is **SENDR1**.
+
+### Sender Tiers
+
+Zero Hash enforces remittance volume limits per sender. Tier 1 covers most senders — additional data is required to unlock higher limits:
+
+| Limit window | Tier 1 max | Tier 2 max | Tier 3 max |
+|-------------|-----------|-----------|-----------|
+| 24 hours | $999 | $2,999 | $10,000 |
+| 30 days | $3,000 | $9,999 | $20,000 |
+| 180 days | — | — | $60,000 |
+| Lifetime | $9,000 | Unlimited | Unlimited |
+
+<Tabs>
+  <Tab title="Tier 1 Request">
+    ```json
+    {
+      "first_name": "John",
+      "last_name": "Smith",
+      "email": "jsmith@gmail.com",
+      "phone_number": "+12345834789",
+      "date_of_birth": "1985-09-02",
+      "ip_address": "999.168.252.199",
+      "address_one": "1 Main St.",
+      "city": "Chicago",
+      "zip": "12345",
+      "jurisdiction_code": "US-IL",
+      "partial": true,
+      "sanction_screening": "pass",
+      "sanction_screening_timestamp": 1603378501282,
+      "signed_agreements": [
+        {
+          "type": "user_agreement",
+          "region": "us",
+          "signed_timestamp": 1603378501286
+        }
+      ]
+    }
+    ```
+  </Tab>
+  <Tab title="Tier 2 Request">
+    Tier 2 adds identity verification fields:
+
+    ```json
+    {
+      "first_name": "John",
+      "last_name": "Smith",
+      "email": "jsmith@gmail.com",
+      "phone_number": "+12345838374",
+      "date_of_birth": "1985-09-02",
+      "ip_address": "66.249.73.192",
+      "address_one": "1 Main St.",
+      "id_number": "123456789",
+      "id_number_type": "ssn",
+      "liveness_check": "pass",
+      "city": "Chicago",
+      "zip": "12345",
+      "jurisdiction_code": "US-IL",
+      "partial": true,
+      "sanction_screening": "pass",
+      "sanction_screening_timestamp": 1603378501282,
+      "signed_agreements": [
+        {
+          "type": "user_agreement",
+          "region": "us",
+          "signed_timestamp": 1730906918901
+        }
+      ]
+    }
+    ```
+  </Tab>
+  <Tab title="Tier 3 Request">
+    Tier 3 adds employment and financial profile fields:
+
+    ```json
+    {
+      "first_name": "John",
+      "last_name": "Smith",
+      "email": "jsmith@gmail.com",
+      "phone_number": "+12345832133",
+      "date_of_birth": "1985-09-02",
+      "id_number": "123456789",
+      "id_number_type": "ssn",
+      "liveness_check": "pass",
+      "city": "Chicago",
+      "zip": "12345",
+      "jurisdiction_code": "US-IL",
+      "source_of_funds": "salary",
+      "employment_status": "full_time",
+      "industry": "food_beverages",
+      "partial": true,
+      "sanction_screening": "pass",
+      "sanction_screening_timestamp": 1603378501282,
+      "signed_agreements": [
+        {
+          "type": "user_agreement",
+          "region": "us",
+          "signed_timestamp": 1730907129144
+        }
+      ]
+    }
+    ```
+  </Tab>
+</Tabs>
+
+The response contains a `participant_code` (e.g., `SENDR1`) that permanently identifies this sender in all future API calls.
+
+---
+
+## Step 3: Query Sender Limits
+
+Check the sender's remaining limits via `GET /participant/SENDR1/limits`. The response shows how much the sender can still remit in each time window before hitting their tier ceiling.
+
+A `period` value of `0` represents a lifetime limit. The `period` unit is **hours**. When a transaction ages out of the window, its value is refunded back into the available limit.
+
+---
+
+## Step 4: Submit Beneficiary
+
+Submit the remittance beneficiary via [POST /participants/beneficiaries/new](https://docs.zerohash.com/reference/post_participants-beneficiaries-new). This guide uses **BENEF1** as the beneficiary participant code.
+
+```json
+{
+  "first_name": "Hector",
+  "last_name": "Garcias",
+  "jurisdiction_code": "MX-CMX",
+  "date_of_birth": "1985-09-02"
+}
+```
+
+<Tip>
+  Always include `date_of_birth` even though it is optional. Providing a date of birth significantly reduces the percentage of beneficiaries that enter a `pending_approval` state due to potential sanctions matches.
+</Tip>
+
+Zero Hash immediately runs a sanctions check on the beneficiary. Expect the status to transition from `submitted` to `approved`, `pending_approval`, or `rejected` nearly instantly.
+
+---
+
+## Step 5: Query Beneficiary
+
+Retrieve the beneficiary's current status and limits via `GET /participants?participant_code=BENEF1`.
+
+---
+
+## Step 6: Update Beneficiary
+
+If a beneficiary enters `pending_approval`, you can attempt to resolve it by submitting additional data via [PATCH /participants/beneficiaries/{participant_code}](https://docs.zerohash.com/reference/patch_participants-beneficiaries-participant-code):
+
+```json
+{
+  "address_one": "1 Main St.",
+  "address_two": "Suite 10001",
+  "date_of_birth": "1985-09-02",
+  "platform_updated_at": 1730113960212
+}
+```
+
+Adding previously omitted optional fields — especially `date_of_birth` — may allow a `pending_approval` beneficiary to transition to `approved`.
+
+---
+
+## Step 7: Initiate Conversion
+
+Convert the sender's fiat to the Remittance Token (stablecoin) using a two-step RFQ + Execute flow.
+
+### Request a Quote
+
+Call [POST /liquidity/rfq](https://docs.zerohash.com/reference/post_liquidity-rfq):
+
+```json
+{
+  "participant_code": "SENDR1",
+  "side": "buy",
+  "underlying": "USDC",
+  "quoted_currency": "USD",
+  "total": "500",
+  "payment_processor": {
+    "name": "checkout.com",
+    "id": "5cd07738b861c31e3bd61467BTC1Buy1568311644602"
+  }
+}
+```
+
+The response contains a `quote_id` valid for your configured window (5 or 30 seconds is recommended for remittances) and a `expire_ts` timestamp.
+
+### Execute the Quote
+
+Call [POST /liquidity/execute](https://docs.zerohash.com/reference/post_liquidity-execute) before the quote expires:
+
+```json
+{
+  "quote_id": "32ad471b-824e-4f04-94ff-45c4439b4fe9"
+}
+```
+
+After successful execution, the sender's USDC account is credited and the float account is debited:
+
+| Account | Asset | Change |
+|---------|-------|--------|
+| Float Account | USD | -$500 |
+| Sender Account | USDC | +500 |
+
+---
+
+## Step 8: Query Conversion
+
+Poll [GET /trades/{trade_id}](https://docs.zerohash.com/reference/get_trades-trade-id) until `trade_state` is `terminated` and `settlement_state` is `settled` before proceeding.
+
+<Warning>
+  Trades do not settle instantaneously. Do not assume settlement completes within a fixed window (such as 30 seconds). Always poll until you confirm the settled state before moving to the transfer step.
+</Warning>
+
+---
+
+## Step 9: Initiate Transfer
+
+Move the USDC from the sender's account to the platform's USDC account via an internal Zero Hash ledger transfer ([POST /transfers](https://docs.zerohash.com/reference/post_transfers)):
+
+```json
+{
+  "from_participant_code": "SENDR1",
+  "from_account_group": "PLAT01",
+  "to_participant_code": "PLAT01",
+  "to_account_group": "PLAT01",
+  "asset": "USDC",
+  "amount": "500"
+}
+```
+
+The transfer settles instantly. Account changes after successful transfer:
+
+| Account | Asset | Change |
+|---------|-------|--------|
+| Sender Account | USDC | -500 |
+| Platform USDC Account | USDC | +500 |
+
+---
+
+## Step 10: Query Transfer
+
+Confirm the transfer via [GET /transfers/{id}](https://docs.zerohash.com/reference/get_transfers-id). Ensure `status` is `settled` before initiating the withdrawal.
+
+---
+
+## Step 11: Initiate Withdrawal
+
+Send the USDC on-chain to the destination address via [POST /withdrawals/requests](https://docs.zerohash.com/reference/post_withdrawals-requests):
+
+```json
+{
+  "address": "0xcDA0D6adCD0f1CCeA6795F9b1F23a27ae643FE7C",
+  "participant_code": "PLAT01",
+  "amount": "500",
+  "asset": "USDC",
+  "account_group": "PLAT01",
+  "sender_participant_code": "SENDR1",
+  "beneficiary_participant_code": "BENEF1"
+}
+```
+
+<Note>
+  The `sender_participant_code` and `beneficiary_participant_code` fields are required for Zero Hash to meet Travel Rule compliance obligations. Do not omit them. The blockchain network fee is incurred by your platform and is payable in USD by default.
+</Note>
+
+The withdrawal initially returns an `APPROVED` status. See the [withdrawal status guide](https://docs.zerohash.com/docs/withdrawal-api-response-field-interpretation) for an explanation of how `status` and `on_chain_status` relate.
+
+---
+
+## Step 12: Query Withdrawal
+
+Monitor the withdrawal via [GET /withdrawals/requests/{id}](https://docs.zerohash.com/reference/get_withdrawals-requests-id) until `status: SETTLED` and `on_chain_status: CONFIRMED`.
+
+---
+
+## Step 13: Transition Sender from Tier 1 to Tier 2
+
+To allow the sender to exceed Tier 1 volume limits, complete both of these steps:
+
+<Steps>
+  <Step title="Upload an identity document">
+    Call [POST /participants/documents](https://docs.zerohash.com/reference/post_participants-documents) with the sender's government-issued ID:
+
+    ```json
+    {
+      "document": "{{base64_encoded_file}}",
+      "mime": "pdf",
+      "file_name": "john_smith_passport.pdf",
+      "participant_code": "SENDR1"
+    }
+    ```
+  </Step>
+  <Step title="Update the sender record">
+    Call [PATCH /participants/customers/{participant_code}](https://docs.zerohash.com/reference/patch_participants-customers-participant-code) with identity fields:
+
+    ```json
+    {
+      "id_number": "L12345678",
+      "id_number_type": "us_passport",
+      "liveness_check": "pass",
+      "tax_id": "123456789"
+    }
+    ```
+  </Step>
+</Steps>
+
+---
+
+## Step 14: Transition Sender from Tier 2 to Tier 3
+
+To allow the sender to exceed Tier 2 volume limits, update the sender's financial profile via [PATCH /participants/customers/{participant_code}](https://docs.zerohash.com/reference/patch_participants-customers-participant-code):
+
+```json
+{
+  "source_of_funds": "salary",
+  "industry": "food_beverages",
+  "employment_status": "full_time"
+}
+```
+
+---
+
+## Step 15: End-of-Day Settlement
+
+At the end of each trading day, Zero Hash reconciles with the PSP in one of two directions:
+
+<CardGroup cols={2}>
+  <Card title="Net Buy Session" icon="arrow-down-to-line">
+    There is more buy volume than sell volume. Zero Hash receives a settlement payment directly from the PSP. The funds are credited to your platform's float account.
+  </Card>
+  <Card title="Net Sell Session" icon="arrow-up-from-line">
+    There is more sell volume than buy volume. Zero Hash disburses a settlement to your platform. You can request a USD withdrawal via the Client Portal or via `POST /withdrawals/requests`.
+  </Card>
+</CardGroup>

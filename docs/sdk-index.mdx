@@ -1,0 +1,78 @@
+---
+title: "Zero Hash SDKs: Choose the Right SDK for Your Use Case"
+sidebarTitle: "SDK Index"
+description: "Browse every Zero Hash SDK — from KYC onboarding to crypto deposits and withdrawals — and learn which combination fits your use case."
+---
+
+The Zero Hash SDKs let you embed regulated stablecoins, crypto, payments, and onboarding flows directly into your product. Each SDK is a drop-in component that handles the regulated surface — KYC, custody disclosures, compliance copy, and signing — so your team can focus on the product wrapper around it.
+
+<Note>
+  All visuals and screenshots in the SDK documentation are conceptual only. The SDKs are constantly updated and visuals may not reflect the current experience.
+</Note>
+
+## Available SDKs
+
+<CardGroup cols={2}>
+  <Card title="Onboarding SDK" icon="id-card" href="/docs/onboarding-experience-sample">
+    KYC and identity verification widget. Collects and verifies customer identity data directly through a Zero Hash-managed flow, keeping sensitive PII off your servers.
+  </Card>
+  <Card title="Auth SDK" icon="link" href="/docs/sdk-index">
+    Link custodial wallets and popular exchanges (Coinbase, Robinhood, Kraken, Gemini, and more) to enable crypto and stablecoin deposits and withdrawals via the Auth network.
+  </Card>
+  <Card title="Account Funding Deposits SDK" icon="arrow-down-to-bracket" href="/docs/fund-overview">
+    Enable end customers to fund their platform account using crypto or stablecoins (USDC, PYUSD, RLUSD, USDT, and 50+ assets), with optional auto-conversion to fiat.
+  </Card>
+  <Card title="Account Funding Withdrawals SDK" icon="arrow-up-from-bracket" href="/docs/wallet-link-sdk-integration-guide">
+    Enable end customers to withdraw stablecoins and crypto from your platform to an external linked wallet. Includes the Account Link SDK and the Crypto Withdraw SDK.
+  </Card>
+  <Card title="Payins SDK" icon="money-bill-wave" href="https://docs.zerohash.com/docs/payins-integration-guide">
+    Accept payments via the Auth payins flow, letting users send crypto or stablecoins into your platform from connected exchange accounts.
+  </Card>
+  <Card title="Payouts SDK" icon="paper-plane" href="https://docs.zerohash.com/docs/payouts-sdk-integration-guide">
+    Disburse funds via the Auth payouts flow, sending crypto or stablecoins from your platform to users' connected exchange accounts or wallets.
+  </Card>
+  <Card title="Mobile SDKs" icon="mobile" href="/docs/mobile-sdks">
+    Native iOS (Swift) and Android (Kotlin) wrappers, plus a Capacitor plugin for hybrid apps. Present the Fund flow inside your mobile app with minimal platform-specific code.
+  </Card>
+</CardGroup>
+
+---
+
+## Choosing an SDK
+
+Start with the **Onboarding SDK** to satisfy KYC requirements for any new end customer. Once a customer is verified, you can layer on additional SDKs depending on your use case. All SDKs share a common authentication scheme and theming layer, so adding a second SDK after the first is a small incremental lift.
+
+<Steps>
+  <Step title="Onboard your customers first">
+    Every end customer must be a verified Zero Hash participant before they can transact. Use the **Onboarding SDK** for a low-code KYC flow, or use the REST API (Reliance or KYC as a Service) if you own your own front-end.
+  </Step>
+  <Step title="Choose your funding direction">
+    - **Deposits into your platform** → use the **Account Funding Deposits SDK** to accept crypto/stablecoin deposits, with optional auto-conversion to fiat.
+    - **Withdrawals from your platform** → use the **Account Funding Withdrawals SDK** (Account Link + Crypto Withdraw) to let customers pull funds out to an external wallet.
+    - **Exchange-linked deposits and withdrawals** → use the **Auth SDK** to connect users' accounts at Coinbase, Robinhood, Gemini, Kraken, and hundreds of non-custodial wallets.
+  </Step>
+  <Step title="Add payments if needed">
+    If your product involves paying customers or accepting payments, add the **Payins SDK** (inbound) or **Payouts SDK** (outbound) on top of your existing integration.
+  </Step>
+  <Step title="Go mobile">
+    If you ship an iOS or Android app, swap the web SDK for the native **Mobile SDKs** or the **Capacitor plugin**. The native SDKs expose the same callbacks and JWT-based auth as the web SDK.
+  </Step>
+</Steps>
+
+<Tip>
+  If your flow lives entirely server-side, or you need finer control than the embedded widgets provide, use the REST API directly. See the [API Reference](https://docs.zerohash.com/reference/overview) and [Recipes](https://docs.zerohash.com/recipes).
+</Tip>
+
+---
+
+## Prerequisites
+
+Before you integrate any SDK, you need:
+
+- **A Zero Hash Cert or Prod platform.** See [Getting Started](/docs/getting-started) and [Get Platform Access](/docs/get-platform-access) for provisioning steps.
+- **API credentials.** Your `organization_id`, `client_id`, and `client_secret` are issued during onboarding. You'll use these credentials to generate short-lived JWT tokens that authenticate each SDK session.
+- **A webhook endpoint.** Most SDK flows emit status webhooks (participant status, payment status, external account status). Register a valid callback URL with your Zero Hash representative before going live.
+
+<Info>
+  SDK visual customization — fonts, colors, and light/dark mode — is available across all SDKs. See the [Appearance & Branding](/docs/sdk) guide for implementation details.
+</Info>

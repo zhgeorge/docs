@@ -1,0 +1,262 @@
+---
+title: "Customer Account Types and Tenant Definitions Guide"
+sidebarTitle: "Account Types"
+description: "Explore individual, joint, trust, and UTMA account types, tenant roles, authorization levels, and how to create multi-tenant accounts via the API."
+---
+
+Zero Hash supports several customer account structures to accommodate a wide range of platform use cases — from a single individual holding crypto to a jointly-owned brokerage account with two co-owners and a financial advisor. Every account is associated with a primary participant identified by a `participant_code`, and complex account types may include one or more additional tenants. This guide walks you through every account type, how tenant authorizations work, and the API flows for creating and querying them.
+
+<Info>
+  All accounts returned by `GET /accounts` that contain balance information are **ledger accounts**. Customer accounts (identified by the `customer` subdomain in a ZRN) are the parent record that groups those ledger accounts together.
+</Info>
+
+---
+
+## Account Identifiers (ZRN)
+
+Zero Hash uses a **ZRN (Zero Hash URN)** schema to unambiguously identify accounts across geographies and account types. The format is:
+
+```
+zrn:zh:<geo>:<domain>:<subdomain>:<id>
+```
+
+| Segment | Values | Description |
+|---|---|---|
+| `geo` | `us`, `eu`, `uk`, `ww`, `bz`, `au` | The global entity to which the identifier belongs |
+| `domain` | `accounts` | The resource domain |
+| `subdomain` | `customer`, `ledger` | Whether the identifier references a customer account or a ledger account |
+| `id` | UUID | The unique account identifier |
+
+**Example ZRN:**
+```
+zrn:zh:us:accounts:customer:c761fc96-5c44-40d4-8eb2-3fcd5d06754e
+```
+
+For API convenience, you can omit the `zrn:zh:` prefix and supply only the `subdomain:id` portion in URL path parameters. Unqualified IDs are treated as `zrn:zh:us:accounts` for backwards compatibility.
+
+<Tip>
+  Store the full ZRN returned when you create an account. You will supply it when querying balances, placing trades, adding advisors, and managing account status.
+</Tip>
+
+---
+
+## Account Types
+
+<CardGroup cols={2}>
+  <Card title="Individual" icon="user">
+    Owned and controlled by one person with full access to funds and trading.
+  </Card>
+  <Card title="UTMA" icon="child">
+    Uniform Transfers to Minors Act custodial account — a custodian manages the account until the minor reaches the age of majority.
+  </Card>
+  <Card title="Trust" icon="scale-balanced">
+    Managed by a trustee on behalf of one or more beneficiaries.
+  </Card>
+  <Card title="JTIC" icon="users">
+    Joint Tenants in Common — multiple owners with potentially unequal shares; a deceased owner's share passes to their estate.
+  </Card>
+  <Card title="JTWROS" icon="handshake">
+    Joint Tenants with Right of Survivorship — equal ownership; a deceased owner's share passes automatically to surviving tenants.
+  </Card>
+</CardGroup>
+
+---
+
+## Tenant Types
+
+Joint and custodial accounts support multiple tenants. Each tenant has a designated role:
+
+| Tenant Type | Definition |
+|---|---|
+| **Individual** | A natural person granted authorizations to access the account |
+| **UTMA Beneficiary** | The minor for whom the custodial account is held; the legal owner of the funds but without account control until reaching the age of majority |
+| **UTMA Custodian** | The legally authorized adult managing the UTMA account on behalf of the minor |
+| **Trustee** | The person or institution responsible for managing the trust's assets |
+| **Trust Beneficiary** | The individual or entity entitled to receive distributions from the trust |
+
+### Tenant Designations
+
+Every multi-tenant account must have exactly one **Primary** participant and at least one **Secondary** participant.
+
+| Designation | Description |
+|---|---|
+| **Primary** | The participant associated with account creation; the account is ledgered under this participant's identity |
+| **Secondary** | Additional participants associated with the account, with their own authorization level |
+
+---
+
+## Tenant Authorizations
+
+Zero Hash enforces three authorization levels that control what each tenant can do on an account:
+
+| Authorization | Withdraw | Trade | Statements & Receipts |
+|---|---|---|---|
+| **Full Trading** | ✅ Yes | ✅ Yes | ✅ Yes |
+| **Limited Trading** | ❌ No | ✅ Yes | ✅ Yes |
+| **View Only** | ❌ No | ❌ No | ✅ Yes |
+
+Default authorizations are applied per account type and tenant role when the account is created. You can update tenant authorizations after account creation.
+
+<Note>
+  Financial Advisors are not tenants. They receive **Limited Trading** authorization automatically and cannot be promoted to Full or demoted to View Only. See [Adding a Financial Advisor](#adding-a-financial-advisor-to-an-account) below.
+</Note>
+
+---
+
+## Creating Multi-Tenant Accounts
+
+<Steps>
+  <Step title="Create the primary participant">
+    Call `POST /participants/customers/new` for the primary account holder. Capture their `participant_code` (for example, `CUST01`).
+  </Step>
+  <Step title="Create the secondary participant(s)">
+    Call `POST /participants/customers/new` for each additional tenant. Capture their `participant_code` values (for example, `CUST02`).
+  </Step>
+  <Step title="Create the account">
+    Call `POST /accounts` with the primary `participant_code`, the desired `type` (account type enum), and the `tenant` array listing secondary participant codes.
+  </Step>
+</Steps>
+
+### Example: Create a JTIC Account
+
+```json POST /accounts — Request
+{
+  "participant_code": "CUST01",
+  "prefunded": false,
+  "tier": "pro",
+  "type": "jtic",
+  "account_label": "my-label",
+  "tenant": ["CUST02"]
+}
+```
+
+```json POST /accounts — Response
+{
+  "zrn": "zrn:zh:us:accounts:customer:c761fc96-5c44-40d4-8eb2-3fcd5d06754e",
+  "participant_code": "CUST01",
+  "prefunded": false,
+  "tier": "pro",
+  "type": "jtic",
+  "account_label": "my-label",
+  "tenant": ["CUST02"],
+  "account_group": "PLAT01"
+}
+```
+
+For JTIC accounts, both the primary and secondary participants hold **Full Trading** authorization by default — either can place orders on behalf of the account. Trades are always ledgered against the **primary** participant's ledger account regardless of which tenant initiates the order.
+
+---
+
+## Querying Account Balances by ZRN
+
+Once an account exists, retrieve its associated ledger accounts (with balances) by passing the ZRN as a query parameter to `GET /accounts`:
+
+```
+GET /accounts?zrn=zh:us:accounts:customer:c761fc96-5c44-40d4-8eb2-3fcd5d06754e
+```
+
+```json Response
+{
+  "message": [
+    {
+      "zrn": "zrn:zh:us:accounts:ledger:ce819fe8-b1d7-43bb-961c-e09ede0988d3",
+      "asset": "USD",
+      "account_owner": "CUST01",
+      "account_type": "available",
+      "account_group": "PLAT01",
+      "account_label": "general",
+      "balance": "1.00",
+      "account_id": "ce819fe8-b1d7-43bb-961c-e09ede0988d3",
+      "last_update": 1554395972174
+    },
+    {
+      "zrn": "zrn:zh:us:accounts:ledger:ce819fe8-b1d7-43bb-961c-e09ede0988d4",
+      "asset": "BTC",
+      "account_owner": "CUST01",
+      "account_type": "available",
+      "account_group": "PLAT01",
+      "account_label": "general",
+      "balance": "0.00000001",
+      "account_id": "ce819fe8-b1d7-43bb-961c-e09ede0988d4",
+      "last_update": 1554395972174
+    }
+  ],
+  "page": 1,
+  "total_pages": 1
+}
+```
+
+To retrieve account metadata (type, tenants, tier) use:
+
+```
+GET /accounts/{zrn}/details
+```
+
+```json Response
+{
+  "zrn": "zrn:zh:us:accounts:customer:c761fc96-5c44-40d4-8eb2-3fcd5d06754e",
+  "participant_code": "CUST01",
+  "prefunded": true,
+  "account_label": "U12345678",
+  "tier": "pro",
+  "account_group": "PLAT01",
+  "type": "jtic",
+  "tenants": ["CUST02"]
+}
+```
+
+---
+
+## Adding a Financial Advisor to an Account
+
+A financial advisor is an authorized third party who can trade on behalf of an account but **cannot** deposit or withdraw. Advisors always receive **Limited Trading** authorization and this level cannot be changed.
+
+<Steps>
+  <Step title="Onboard the advisor as a participant">
+    The advisor must be a fully onboarded participant with a valid `participant_code` before being linked to any account. Call `POST /participants/customers/new` for the advisor.
+  </Step>
+  <Step title="Create or update the account with the advisor">
+    You can add the advisor at account creation time using the `financial_advisors` array, or add them post-creation using `POST /accounts/{zrn}/advisors`.
+  </Step>
+</Steps>
+
+### Add Advisor at Account Creation
+
+```json POST /accounts — Request
+{
+  "participant_code": "CUST01",
+  "prefunded": false,
+  "tier": "pro",
+  "type": "individual",
+  "account_label": "my-label",
+  "financial_advisors": ["ADVSR01"]
+}
+```
+
+### Add Advisor After Account Creation
+
+```json POST /accounts/{zrn}/advisors — Request
+{
+  "participant_code": "ADVSR01"
+}
+```
+
+To remove an advisor: `DELETE /accounts/{zrn}/advisors/{participant_code}`
+
+<Warning>
+  A participant cannot be both a **tenant** and a **financial advisor** on the same account. Attempting to do so returns a `409` conflict error. Duplicate advisors on the same account are also not permitted.
+</Warning>
+
+Financial advisors can be added to any account type: Individual, Business, JTIC, JTWROS, Trust, or UTMA.
+
+---
+
+## Participant Codes vs. Customer-Centric Identifiers
+
+| Identifier | Format | Purpose |
+|---|---|---|
+| `participant_code` | 6-char alphanumeric (e.g., `CUST01`) | References a participant (individual or business) across all Zero Hash APIs |
+| ZRN (`zrn:zh:...`) | URN string | References a specific customer account or ledger account, incorporating geo, domain, and subdomain |
+| `account_id` | UUID | Legacy ledger-level identifier; backwards-compatible with unqualified ZRN |
+
+Use `participant_code` when working with participant-level operations (onboarding, status, agreements). Use the ZRN when working with account-level operations (balances, locking, trading).

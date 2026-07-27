@@ -1,0 +1,121 @@
+---
+title: "Zero Hash SDK: Low-Code Crypto & Compliance Integration"
+sidebarTitle: "SDK Overview"
+description: "Embed KYC, crypto deposits, withdrawals, and buy/sell flows into your product using Zero Hash's compliance-first, low-code SDK suite."
+---
+
+The Zero Hash SDK is a suite of embeddable widgets designed for platforms that want a low-code path to getting customers transacting in crypto and stablecoins while remaining 100% compliant with Zero Hash regulatory requirements. Instead of building KYC flows, custody disclosures, and jurisdictional asset rules from scratch, you drop in a Zero Hash SDK and let it handle the regulated surface on your behalf.
+
+## Use Cases
+
+The SDK covers the full customer lifecycle from onboarding to transacting:
+
+<CardGroup cols={2}>
+  <Card title="Onboard Customers" icon="user-check">
+    End customers onboard through a Zero Hash-designed, compliance-approved KYC flow and are automatically verified and enabled to transact (if approved). Manual reviews are handled by the Zero Hash compliance team.
+  </Card>
+  <Card title="Withdraw Crypto" icon="wallet">
+    End customers can withdraw held assets to an external wallet, with all required disclosures and agreements embedded in the user interface.
+  </Card>
+  <Card title="Deposit and Withdraw USD via ACH" icon="building-columns">
+    After bank accounts are connected, end customers can deposit USD for crypto purchases and withdraw USD directly to and from bank accounts.
+  </Card>
+  <Card title="Buy and Sell Crypto" icon="arrows-rotate">
+    End customers can use their USD balance to buy and sell any asset supported by Zero Hash. Compliance requirements — including jurisdictional rules — are embedded in the flow.
+  </Card>
+</CardGroup>
+
+---
+
+## Key Features
+
+**Embedded user agreements.** Zero Hash has front-end requirements in every transactional flow. The SDK inherently embeds and updates these agreements automatically, removing the need for your team to schedule maintenance work as regulatory requirements evolve.
+
+**Regulatory requirements covered.** Asset availability varies jurisdiction by jurisdiction. The SDK intelligently surfaces only allowable assets and regions to create a seamless user experience — your engineers don't have to track geo-blocking rules.
+
+**Lowered risk exposure.** End customers interact directly with Zero Hash via the SDK. Your platform never handles sensitive customer information such as SSNs, passport numbers, or date of birth.
+
+**Customizable experience.** Fonts, colors, and light/dark mode are configurable so each SDK can match your existing product's look and feel. See [Appearance & Branding](/docs/sdk) for implementation details.
+
+**Notifications along the way.** Webhooks keep your platform updated about onboarding and transaction status changes at every stage, so your own interface can reflect the current state accurately.
+
+---
+
+## How KYC and Compliance Work in the SDK
+
+When a customer starts the Onboarding SDK, Zero Hash collects and verifies identity data (name, address, date of birth, SSN, and government ID when required) directly in the widget. Your platform never receives or stores this sensitive data. Zero Hash's compliance team handles manual review cases, and you receive a webhook when the participant's status changes — typically to `approved` or `rejected`.
+
+For transactional SDKs (deposits, withdrawals, buy/sell), required disclosures, user agreements, and jurisdictional asset restrictions are baked into every flow. If Zero Hash updates a disclosure or a jurisdiction restricts an asset, the SDK reflects the change automatically on your next render — no code change required on your end.
+
+---
+
+## Getting Started
+
+<Steps>
+  <Step title="Get platform access">
+    Contact Zero Hash to provision your Cert (sandbox) and Prod environments. You'll receive your `organization_id`, `client_id`, and `client_secret`. See [Get Platform Access](/docs/get-platform-access).
+  </Step>
+  <Step title="Install the npm package">
+    The web SDK is published as `zh-web-sdk` on npm.
+
+    ```bash
+    npm install zh-web-sdk
+    ```
+
+    The package is also available via a CDN script tag for non-bundled environments. See the [npm readme](https://www.npmjs.com/package/zh-web-sdk?activeTab=readme) for the script tag URL.
+  </Step>
+  <Step title="Mint a JWT for each session">
+    Your backend calls `POST /client_auth_token` (or `POST /api/v1/oauth/token` + `POST /api/v1/sessions` for the Auth SDK) to generate a short-lived JWT scoped to the specific SDK flow and participant. Never expose your `client_secret` in frontend code.
+  </Step>
+  <Step title="Initialize the SDK on your frontend">
+    Pass the JWT to the SDK constructor and call `openModal` (or render the React component) to launch the widget.
+
+    ```typescript
+    import ZeroHashSDK, { AppIdentifier } from 'zh-web-sdk';
+
+    const sdk = new ZeroHashSDK({
+      zeroHashAppsURL: "https://web-sdk.cert.zerohash.com", // use web-sdk.zerohash.com for production
+    });
+
+    sdk.openModal({
+      appIdentifier: AppIdentifier.FUND,
+      jwt: "<JWT_TOKEN_HERE>",
+      theme: "auto", // "light" | "dark" | "auto"
+    });
+    ```
+  </Step>
+  <Step title="Listen for webhooks">
+    Configure a webhook endpoint and register it with your Zero Hash representative. Webhooks deliver participant status updates, payment status changes, and external account events so your backend stays in sync.
+  </Step>
+</Steps>
+
+---
+
+## Available SDKs
+
+<CardGroup cols={2}>
+  <Card title="Onboarding SDK" icon="id-card" href="/docs/onboarding-experience-sample">
+    KYC and identity verification widget for new customer onboarding.
+  </Card>
+  <Card title="Auth SDK" icon="link" href="/docs/sdk-index">
+    Link custodial exchanges and non-custodial wallets for deposits and withdrawals.
+  </Card>
+  <Card title="Account Funding" icon="money-bill" href="/docs/fund-overview">
+    Deposits (crypto → platform) and withdrawals (platform → external wallet).
+  </Card>
+  <Card title="Mobile SDKs" icon="mobile" href="/docs/mobile-sdks">
+    Native iOS and Android wrappers, plus a Capacitor plugin.
+  </Card>
+  <Card title="Appearance & Branding" icon="palette" href="/docs/sdk">
+    Customize colors, fonts, and light/dark mode across all SDKs.
+  </Card>
+  <Card title="SDK Index" icon="list" href="/docs/sdk-index">
+    Full list of all available SDKs and how to choose between them.
+  </Card>
+</CardGroup>
+
+---
+
+## Why Choose Zero Hash?
+
+Zero Hash takes a compliance-first approach to protect both platforms and their end customers. The SDK offers a pre-approved user experience that adheres to all levels of regulatory requirements, letting you get to market quickly and securely without building or maintaining a compliance infrastructure in-house.

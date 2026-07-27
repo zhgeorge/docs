@@ -1,0 +1,215 @@
+---
+title: "Authenticate Zero Hash API Requests with HMAC-SHA256"
+sidebarTitle: "Authentication"
+description: "How to sign Zero Hash API requests using HMAC-SHA256: required headers, signature string construction, and working code examples in Python, Node, and curl."
+---
+
+Zero Hash uses HMAC-SHA256 request signing to authenticate every API call. Rather than sending your credentials directly, you produce a cryptographic signature from your private key and the specific details of each request. This approach ensures that requests cannot be replayed or tampered with in transit, and that the Zero Hash API can verify both your identity and the integrity of the payload it receives.
+
+## Required Headers
+
+Every authenticated request must include the following four headers:
+
+| Header | Description |
+|---|---|
+| `X-SCX-API-KEY` | Your public API key, obtained from the Client Portal |
+| `X-SCX-SIGNED` | The HMAC-SHA256 signature for this specific request (Base64-encoded) |
+| `X-SCX-TIMESTAMP` | The current Unix timestamp in **seconds** since the Unix epoch |
+| `X-SCX-PASSPHRASE` | The passphrase you set when you created the API key |
+
+### Example Headers
+
+```text
+"X-SCX-API-KEY": "h2yFu1uijCDEqkbdop4GAF",
+"X-SCX-SIGNED": "PFMlg+bMFVjjAiGPLR/zJCStmiiOIeyz5NIOZEmpfH0=",
+"X-SCX-TIMESTAMP": 1550175822,
+"X-SCX-PASSPHRASE": "passphrase"
+```
+
+## How to Construct the Signature
+
+Generating the `X-SCX-SIGNED` value is a three-step process:
+
+<Steps>
+  <Step title="Build the pre-signature string">
+    Concatenate the following four values in order, with no separator:
+
+    ```
+    timestamp + HTTP_METHOD + route_with_query_string + request_body
+    ```
+
+    - **timestamp** — the same Unix timestamp (seconds) you send in `X-SCX-TIMESTAMP`
+    - **HTTP_METHOD** — uppercase (`GET`, `POST`, etc.)
+    - **route_with_query_string** — the path and any query parameters (e.g., `/accounts?account_owner=00SCXM&asset=USD`)
+    - **request_body** — the raw JSON body for `POST` requests. For `GET` requests, use an empty JSON object: `{}`
+
+    **Example — GET request:**
+    ```
+    1714445421GET/accounts?account_owner=00SCXM&account_group=BBLGTW&account_label=general&account_type=available&asset=USD{}
+    ```
+
+    **Example — POST request:**
+    ```
+    1714445704POST/convert_withdraw/execute{"quote_id": "3fc51610-3dd9-409f-b531-38f78de8ca8a"}
+    ```
+
+    <Warning>
+      All parameters included in the request signature must be sent in the **same order** in the actual request. Parameter order mismatches will cause signature verification to fail.
+    </Warning>
+  </Step>
+  <Step title="Generate an HMAC-SHA256 digest">
+    Sign the pre-signature string using your **private key** as the HMAC secret and SHA-256 as the hash function.
+
+    - Private key example: `2mC4ZvVd4goRkuJm+rjr9byUiaUW1b6tVN4xy9QXNSE=`
+  </Step>
+  <Step title="Base64-encode the digest">
+    Encode the raw HMAC digest bytes as a Base64 string. This is the value you send in the `X-SCX-SIGNED` header.
+
+    - Result example: `+p94Yo3z33zvTmoA+BFtzQIW+qJz1X8IZcnuudpX6A8=`
+  </Step>
+</Steps>
+
+## Code Examples
+
+<Tabs>
+  <Tab title="Python">
+    ```python
+    import hmac
+    import hashlib
+    import base64
+    import time
+    import json
+    import requests
+
+    API_KEY = "your_public_api_key"
+    PRIVATE_KEY = "your_private_key"
+    PASSPHRASE = "your_passphrase"
+    BASE_URL = "https://api.cert.zerohash.com"
+
+    def sign_request(method: str, path: str, body: dict = None) -> dict:
+        timestamp = str(int(time.time()))
+        body_str = json.dumps(body) if body else "{}"
+
+        # Step 1: Build the pre-signature string
+        message = timestamp + method.upper() + path + body_str
+
+        # Step 2: Generate HMAC-SHA256 digest
+        hmac_digest = hmac.new(
+            PRIVATE_KEY.encode("utf-8"),
+            message.encode("utf-8"),
+            hashlib.sha256
+        ).digest()
+
+        # Step 3: Base64-encode the digest
+        signature = base64.b64encode(hmac_digest).decode("utf-8")
+
+        return {
+            "X-SCX-API-KEY": API_KEY,
+            "X-SCX-SIGNED": signature,
+            "X-SCX-TIMESTAMP": timestamp,
+            "X-SCX-PASSPHRASE": PASSPHRASE,
+            "Content-Type": "application/json",
+        }
+
+    # Example: GET /accounts
+    path = "/accounts?account_owner=YOUR_PARTICIPANT_CODE&asset=USD"
+    headers = sign_request("GET", path)
+    response = requests.get(BASE_URL + path, headers=headers)
+    print(response.json())
+    ```
+  </Tab>
+  <Tab title="Node.js">
+    ```javascript
+    const crypto = require("crypto");
+    const https = require("https");
+
+    const API_KEY = "your_public_api_key";
+    const PRIVATE_KEY = "your_private_key";
+    const PASSPHRASE = "your_passphrase";
+    const BASE_URL = "api.cert.zerohash.com";
+
+    function signRequest(method, path, body = null) {
+      const timestamp = Math.floor(Date.now() / 1000).toString();
+      const bodyStr = body ? JSON.stringify(body) : "{}";
+
+      // Step 1: Build the pre-signature string
+      const message = timestamp + method.toUpperCase() + path + bodyStr;
+
+      // Step 2 & 3: Generate HMAC-SHA256 and Base64-encode
+      const signature = crypto
+        .createHmac("sha256", PRIVATE_KEY)
+        .update(message)
+        .digest("base64");
+
+      return {
+        "X-SCX-API-KEY": API_KEY,
+        "X-SCX-SIGNED": signature,
+        "X-SCX-TIMESTAMP": timestamp,
+        "X-SCX-PASSPHRASE": PASSPHRASE,
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+      };
+    }
+
+    // Example: GET /accounts
+    const path = "/accounts?account_owner=YOUR_PARTICIPANT_CODE&asset=USD";
+    const headers = signRequest("GET", path);
+
+    const options = {
+      hostname: BASE_URL,
+      path: path,
+      method: "GET",
+      headers: headers,
+    };
+
+    const req = https.request(options, (res) => {
+      let data = "";
+      res.on("data", (chunk) => { data += chunk; });
+      res.on("end", () => { console.log(JSON.parse(data)); });
+    });
+
+    req.end();
+    ```
+  </Tab>
+  <Tab title="curl">
+    ```bash
+    #!/bin/bash
+    # Requires: openssl, date
+
+    API_KEY="your_public_api_key"
+    PRIVATE_KEY="your_private_key"
+    PASSPHRASE="your_passphrase"
+    BASE_URL="https://api.cert.zerohash.com"
+
+    METHOD="GET"
+    PATH_WITH_QUERY="/accounts?account_owner=YOUR_PARTICIPANT_CODE&asset=USD"
+    BODY="{}"
+
+    # Step 1: Build the pre-signature string
+    TIMESTAMP=$(date +%s)
+    MESSAGE="${TIMESTAMP}${METHOD}${PATH_WITH_QUERY}${BODY}"
+
+    # Steps 2 & 3: HMAC-SHA256 + Base64 encode
+    SIGNATURE=$(echo -n "$MESSAGE" | openssl dgst -sha256 -hmac "$PRIVATE_KEY" -binary | base64)
+
+    curl --request GET \
+      --url "${BASE_URL}${PATH_WITH_QUERY}" \
+      --header "X-SCX-API-KEY: ${API_KEY}" \
+      --header "X-SCX-SIGNED: ${SIGNATURE}" \
+      --header "X-SCX-TIMESTAMP: ${TIMESTAMP}" \
+      --header "X-SCX-PASSPHRASE: ${PASSPHRASE}" \
+      --header "Accept: application/json"
+    ```
+  </Tab>
+</Tabs>
+
+## Important Notes
+
+- The `X-SCX-TIMESTAMP` value must be in **seconds** (not milliseconds). Requests with a timestamp that is too far in the past or future will be rejected.
+- For `GET` requests, always use `{}` as the body component in the signature string — even though the request itself has no body.
+- Parameter order in the query string of the pre-signature string must exactly match the order in the outgoing request URL.
+- `GET /time` is the only endpoint that does not require any of these headers. See [Submit First API Call](/docs/submit-first-api-call).
+
+## Next Steps
+
+Once you can produce a valid signature, see [API Security](/docs/api-security) for rate limiting and IP allowlisting details, and [Error Handling](/docs/error-handling) for how to interpret authentication-related error responses (`401`, `403`).

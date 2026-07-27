@@ -1,0 +1,96 @@
+---
+title: "Get Platform Access: Zero Hash Cert and Prod Guide"
+sidebarTitle: "Platform Access"
+description: "How to create a Zero Hash Platform in Cert or Prod, including environment URLs, setup steps, and how every API interaction flows from your Platform."
+---
+
+A **Platform** is the master account for your business on Zero Hash. Every API call, webhook event, WebSocket subscription, and SDK interaction is associated with your Platform — it is the root entity from which you create customers, manage accounts, generate API keys, and configure your integration. Before you can do anything with the Zero Hash API, you need a Platform in at least the Cert environment.
+
+## Environments
+
+Zero Hash provides two fully isolated environments. The Cert environment is intended exclusively for development and testing — it uses fake funds, mock balances, and simulated participants with no regulatory consequences. The Prod environment handles real transactions and is governed by the full set of rules and regulations under which Zero Hash operates.
+
+| | Cert (Sandbox) | Prod (Live) |
+|---|---|---|
+| **Purpose** | Development and integration testing | Live transactions with real funds |
+| **US Client Portal** | [portal.cert.zerohash.com](https://portal.cert.zerohash.com) | [portal.zerohash.com](https://portal.zerohash.com) |
+| **EU Client Portal** | [portal.cert.zerohash.eu](https://portal.cert.zerohash.eu) | [portal.zerohash.eu](https://portal.zerohash.eu) |
+| **US API Base URL** | `https://api.cert.zerohash.com` | `https://api.zerohash.com` |
+| **EU API Base URL** | `https://api.cert.zerohash.eu` | `https://api.zerohash.eu` |
+| **Provisioned by** | Zero Hash team (on request) | Self-service signup + approval |
+
+## Setting Up Your Cert Platform
+
+Zero Hash provisions Cert Platforms directly. You initiate the process by contacting the team, after which your users receive email invitations to activate their accounts.
+
+<Steps>
+  <Step title="Contact the Zero Hash Team">
+    Reach out to [sales@zerohash.com](mailto:sales@zerohash.com) or your solutions engineering contact. Zero Hash will create your Platform and add the individuals from your business as users.
+  </Step>
+  <Step title="Confirm Your Account">
+    Each added user receives an email invitation. Click **Confirm my account** in the email body to verify your email address.
+  </Step>
+  <Step title="Set Up Credentials and 2FA">
+    You will be prompted to create a username and password, and to register a two-factor authentication device.
+  </Step>
+  <Step title="Log In to the Cert Client Portal">
+    Navigate to [portal.cert.zerohash.com](https://portal.cert.zerohash.com) (US) or [portal.cert.zerohash.eu](https://portal.cert.zerohash.eu) (EU) and log in with your new credentials.
+  </Step>
+  <Step title="Generate API Keys and Whitelist IPs">
+    You can now generate API keys and whitelist IP addresses. See [Generate API Keys](/docs/generate-api-keys) and [API Security](/docs/api-security) for the next steps.
+  </Step>
+</Steps>
+
+<Note>
+  Cert credentials and Prod credentials are completely separate. A username and password created in Cert will not work in Prod, and vice versa.
+</Note>
+
+## Setting Up Your Prod Platform
+
+Unlike Cert, you initiate the Prod Platform creation process yourself through self-service signup. Prod requires a compliance and flow-of-funds review before you can generate API keys.
+
+<Steps>
+  <Step title="Sign Up at the Prod Portal">
+    Go to [portal.zerohash.com](https://portal.zerohash.com) and click **Sign Up**. Create a username and password.
+  </Step>
+  <Step title="Verify Your Email">
+    Check your inbox for a verification email and click **Confirm my account**.
+  </Step>
+  <Step title="Register Your 2FA Device">
+    Complete the two-factor authentication device registration to secure your account.
+  </Step>
+  <Step title="Submit Your Business Application">
+    After logging in, complete the Platform application with your business information. Zero Hash receives a notification and begins the review process.
+  </Step>
+  <Step title="Receive Platform Approval">
+    When the review is complete, you receive an automated email confirming your Platform account is approved.
+  </Step>
+  <Step title="Complete Compliance and Flow-of-Funds Review">
+    Before you can generate API keys or whitelist IP addresses, your intended flow of funds must be reviewed and approved by Zero Hash Compliance and Solutions Engineering teams.
+  </Step>
+  <Step title="Generate API Keys and Whitelist IPs">
+    Once approved, generate your first API key and whitelist your IP addresses. See [Generate API Keys](/docs/generate-api-keys) and [API Security](/docs/api-security) for details.
+  </Step>
+</Steps>
+
+<Warning>
+  Do not use Prod for testing purposes. All Prod transactions involve real funds and are subject to regulatory reporting obligations. Conduct all development and QA in the Cert environment first.
+</Warning>
+
+## What the Client Portal Gives You
+
+The Client Portal is the web interface for Platform users (your employees). From the portal you can:
+
+- View balances and transaction activity
+- Generate and manage API keys
+- Whitelist IP addresses
+- Download compliance and financial reports
+- Add and manage user accounts
+
+## Get Support
+
+If you encounter any issues provisioning your Platform or have questions about your integration, reach out to the Zero Hash support team.
+
+<Card title="Contact Support" icon="headset" href="https://zerohash.com/contact">
+  Get help from the Zero Hash team with onboarding, technical questions, and integration guidance.
+</Card>

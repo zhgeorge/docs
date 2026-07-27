@@ -1,0 +1,168 @@
+---
+title: "Enterprise Settlements No-Code Integration Guide"
+sidebarTitle: "No-Code Settlements"
+description: "Use the Zero Hash no-code settlement path: onboard merchants via portal, fund floats, submit SFTP transaction files, and complete T+1 settlement — no code required."
+---
+
+The Zero Hash Enterprise Settlements No-Code Solution lets platforms convert fiat to stablecoins and settle funds on-chain to merchant-owned wallets without writing or maintaining any integration code. If you serve merchant customers — for example, as a PSP supporting merchants who want to receive stablecoin payments — this path gives you the same settlement capabilities as the API solution with zero engineering work. The end-to-end flow is file-driven: you upload a CSV via SFTP, and Zero Hash handles the conversion and on-chain disbursement automatically.
+
+## High-Level Flow of Funds
+
+1. Your platform deposits fiat into a Float Account held at Zero Hash in your name.
+2. You submit a transaction file via SFTP instructing Zero Hash to convert USD to stablecoin.
+3. Zero Hash converts USD to stablecoin and immediately disburses the stablecoin on-chain to each merchant's whitelisted external wallet.
+4. Merchants receive stablecoins directly in their wallets.
+5. You complete end-of-day T+1 settlement by wiring the settlement amount to Zero Hash.
+
+---
+
+## Step 1: Submit Merchant (KYB)
+
+All platforms using the No-Code solution must onboard their merchant customers through the [Zero Hash Client Portal](http://portal.zerohash.com/). No API calls are required for this step.
+
+<Steps>
+  <Step title="Sign in to the Client Portal">
+    Navigate to [portal.zerohash.com](http://portal.zerohash.com/) and complete two-factor authentication (2FA).
+  </Step>
+  <Step title="Create a new participant">
+    Click **New Participant** in the top-right corner of the portal. This opens the merchant onboarding form.
+  </Step>
+  <Step title="Enter merchant information">
+    Fill in the merchant's business information, control persons, beneficial owners, and all relevant supporting documents. This constitutes the Know Your Business (KYB) review.
+  </Step>
+  <Step title="Receive the participant code">
+    Once the merchant is submitted, Zero Hash assigns a `participant_code` that permanently identifies the merchant. Record this code — you will reference it in your transaction files.
+  </Step>
+</Steps>
+
+<Note>
+  Depending on your platform's integration configuration, merchants may be auto-approved (similar to a reliance model) or may be subject to manual review by the Zero Hash compliance team.
+</Note>
+
+---
+
+## Step 2: Fund the Float Account
+
+The Float Account funds instant USD-to-stablecoin conversions. Zero Hash does not extend credit, so the balance in your Float Account must cover all conversions you plan to initiate.
+
+Fund the Float Account by sending a wire transfer to the Zero Hash settlement bank account. Include your `participant_code` in the wire memo — this allows Zero Hash to auto-credit the correct account upon receipt.
+
+<Warning>
+  If your Float Account balance is insufficient at the time of a file drop, the conversion rows in that file will fail. Ensure your Float Account balance is at least equal to the sum of all `quoted_amount` values in your planned transaction file before uploading.
+</Warning>
+
+---
+
+## Step 3: Whitelist Merchant Destination Addresses
+
+Before you can include a merchant in a transaction file, you must whitelist their destination crypto wallet address in the Client Portal. The whitelisted address is where Zero Hash sends the stablecoin payout.
+
+<Steps>
+  <Step title="Select the correct merchant">
+    In the Client Portal, use the top-left dropdown to select the merchant whose address you want to whitelist. Make sure the right merchant is selected before proceeding.
+  </Step>
+  <Step title="Navigate to Withdrawals">
+    Go to **Participant → Withdrawals**.
+  </Step>
+  <Step title="Select the asset">
+    Choose the stablecoin asset for which you want to whitelist an address (e.g., `USDC`).
+  </Step>
+  <Step title="Create a new account">
+    Click **Create new account** and enter the destination wallet address details.
+  </Step>
+  <Step title="Get approvals">
+    One or two additional portal administrators must approve the whitelisted address before it reaches `approved` status, depending on your platform's security preferences. Only `approved` addresses can receive disbursements.
+  </Step>
+</Steps>
+
+Once approved, the address is assigned an `external_account_id` by Zero Hash. You use this ID in your transaction file to specify the destination for each merchant's payout.
+
+---
+
+## Step 4: Submit Transactions via SFTP
+
+Stablecoin conversions and disbursements are initiated by uploading a CSV file to your platform's dedicated SFTP server.
+
+### SFTP Directory Structure
+
+Each platform has its own dedicated SFTP folder:
+
+| Directory | Purpose |
+|-----------|---------|
+| `[platform]/sftp/in` | Upload transaction files here |
+| `[platform]/sftp/out` | Zero Hash writes result files here after processing |
+
+Server credentials and connection details are communicated to each platform securely by the Zero Hash team.
+
+### Upload Path
+
+Upload your CSV file to:
+
+```
+[platform]/sftp/in/settlement/{year}/{month}/{day}/{file_name}.csv
+```
+
+The `file_name` is determined by you. Zero Hash uses the same filename when writing the corresponding output file.
+
+<Warning>
+  The maximum number of rows (payouts) allowed per batch file is **1,000**. Files exceeding this limit will be rejected.
+</Warning>
+
+### CSV Input Format
+
+The following columns must appear in this exact order:
+
+| Column | Example | Requirement |
+|--------|---------|-------------|
+| `reference_id` | `16cbbdf1-cace-4591-8fe2-13c0b84fc21e` | Your internal ID. Must be unique per row. Used for idempotency — submitting the same `reference_id` twice will not result in a duplicate payout. |
+| `client_external_id` | `PO4007899055` | The merchant's ID as onboarded in your system, mapped to their Zero Hash participant code and whitelisted wallet. |
+| `quoted_amount` | `1000.00` | The fiat amount to convert and disburse. All rows in a file must not cumulatively exceed the current Float Account balance. |
+| `quoted_currency` | `USD` | The fiat asset being quoted. Only `USD` is currently supported. |
+| `conversion_currency` | `USDC.BASE` | The stablecoin to use for the payout. Must be a valid asset supported by Zero Hash. |
+| `external_account_id` | `3cc93b20-ee43-4877-8cdc-863e61829088` | The Zero Hash UUID of the whitelisted wallet address. Must be `approved` and associated with the correct merchant. |
+
+---
+
+## Step 5: Zero Hash Processes the File
+
+Once you successfully upload a file, Zero Hash automatically:
+
+1. **Validates** the file format and all field values.
+2. **Converts** USD to stablecoin for each row.
+3. **Disburses** the stablecoin on-chain to the specified destination address.
+4. **Writes** a result file to `[platform]/sftp/out/settlement/{year}/{month}/{day}/{batch_id}.csv`.
+
+The output file contains all columns from the input file, plus three additional columns:
+
+| Output Column | Description |
+|---------------|-------------|
+| `transaction_hash` | The blockchain transaction hash for the on-chain payout. |
+| `status` | The status of the payout. See the [payments status reference](https://docs.zerohash.com/reference/payments-status-changes#payments-statuses). |
+| `status_reason` | A description of any error or status reason, if applicable. |
+
+---
+
+## Step 6: Complete End-of-Day Settlement (T+1)
+
+Zero Hash requires you to complete settlement on a **T+1 basis**. For any payouts executed on a given business day, you must wire the equivalent fiat amount to Zero Hash by the following business day.
+
+For example: if you executed $1,000,000 in payouts on Monday, Zero Hash expects a $1,000,000 wire on Tuesday for Monday's settlement to be considered closed.
+
+<Warning>
+  Failure to complete T+1 settlement may result in restrictions on your ability to submit new transaction files. Maintain sufficient liquidity to cover your daily payout volume.
+</Warning>
+
+---
+
+## Step 7: View Transaction Activity
+
+You can review all transaction activity directly in the Client Portal without downloading report files.
+
+<Steps>
+  <Step title="Navigate to Withdrawals">
+    In the Client Portal, go to **Participant → Withdrawals**.
+  </Step>
+  <Step title="View the withdrawal activity table">
+    Scroll to the **[asset] Withdrawal Requests** section at the bottom of the page to see all payout records, their statuses, and blockchain transaction hashes.
+  </Step>
+</Steps>

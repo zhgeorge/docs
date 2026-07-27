@@ -1,0 +1,220 @@
+---
+title: "Participant and Account Status Lifecycle Reference"
+sidebarTitle: "Statuses & Locking"
+description: "Understand every participant and account status, what each allows for trading and transfers, and how to check or update status programmatically."
+---
+
+Zero Hash maintains two parallel status systems: one for **participants** (the identity layer) and one for **accounts** (the asset-holding layer). A participant's status governs whether that person or entity can transact at all. An account's status governs what specific activity — trading, withdrawals, or neither — is permitted on that account's funds. Understanding how these two systems interact is essential for building compliant, production-grade integrations on Zero Hash.
+
+---
+
+## Participant Statuses
+
+When you create a participant via `POST /participants/customers/new` or `POST /participants/entity/new`, the participant starts in a `submitted` state and moves through a defined lifecycle managed by Zero Hash compliance.
+
+| Status | Description |
+|---|---|
+| `submitted` | Successfully submitted to `POST /participants/customers/new` and given a participant code, but not yet approved to transact. |
+| `pending_approval` | Participant code and relationships created, but the participant requires further review by the Zero Hash compliance team before moving to `approved` or `rejected`. Most often triggered by KYC alerts. |
+| `approved` | Participant passes all necessary approvals and is fully active for trading, deposits, and withdrawals. |
+| `rejected` | Participant rejected from becoming an active user — most often due to KYC failures. |
+| `locked` | Investigative state managed by the Zero Hash compliance team. All activity is suspended during this state. |
+| `pending_unlock` | Investigations conclude the participant may remain active. Available only via `GET /participants`, not via webhook. |
+| `pending_disable` | Investigations conclude the participant should be indefinitely banned from Zero Hash. |
+| `disabled` | Indefinitely banned from Zero Hash. Balances may still exist; the Zero Hash settlement team will divest them. |
+| `divested` | Indefinitely banned and existing balances have been moved back to the platform float. |
+| `closed` | Indefinitely banned and no balances remained at the time of the ban. |
+
+### Standard Participant Status Flow
+
+<Steps>
+  <Step title="submitted">
+    Your `POST /participants/customers/new` call succeeds and the participant receives a `participant_code`. No transactions are possible yet.
+  </Step>
+  <Step title="approved (or pending_approval)">
+    Zero Hash compliance reviews the participant. For most customers, the transition to `approved` is immediate. Participants that trigger KYC alerts move to `pending_approval` for manual review.
+  </Step>
+  <Step title="approved — fully active">
+    The participant can trade, deposit, and withdraw. This is the steady-state for active customers.
+  </Step>
+</Steps>
+
+<Note>
+  Poll `GET /participants` or subscribe to participant status webhooks to detect when a participant transitions from `submitted` or `pending_approval` to `approved`. Only expose trading functionality in your UI once the participant is `approved`.
+</Note>
+
+### Reason Codes
+
+Certain status transitions carry a `reason_code` that explains why the transition occurred and what activity the participant is permitted during that state:
+
+| Reason Code | Status It Applies To | Activity Allowed |
+|---|---|---|
+| `compliance_issue` | `locked`, `pending_disable`, `disabled`, `closed`, `divested` | None |
+| `user_request` | `locked`, `pending_disable` | Closing only (sell / withdraw to close positions) |
+| `user_request` | `disabled`, `closed`, `divested` | None |
+| `risk_cleared` | `pending_unlock` | None — cleared risk still requires compliance approval |
+| `risk_cleared` | `approved` | All activity |
+
+---
+
+## Account Statuses
+
+While participant status controls the identity layer, account status controls activity at the individual account level. You can lock, divest, or close a specific account without affecting the participant's other accounts.
+
+| Status | Description |
+|---|---|
+| `Open` | Fully active — all trading, deposits, and withdrawals are permitted. |
+| `Locked` | All trading activity is suspended. Deposits may continue, but no trades or withdrawals. |
+| `Withdraw Lock` | Withdrawals are not permitted, but trading and deposits continue normally. |
+| `Divesting` | Pending closure — only sells and withdrawals are allowed to wind down the account. |
+| `Closed` | No further activity of any kind. The account is permanently closed. |
+
+### Account Status and Permitted Operations
+
+| Status | Deposits | Trades | Withdrawals |
+|---|---|---|---|
+| `Open` | ✅ | ✅ | ✅ |
+| `Locked` | ✅ | ❌ | ❌ |
+| `Withdraw Lock` | ✅ | ✅ | ❌ |
+| `Divesting` | ❌ | Sells only | ✅ |
+| `Closed` | ❌ | ❌ | ❌ |
+
+---
+
+## Checking Participant Status
+
+To retrieve the current status of a participant, call `GET /participants` and filter by `participant_code`. The response includes the `status` field and any applicable `reason_code`.
+
+```bash
+GET /participants?participant_code=CUST01
+```
+
+```json Response
+{
+  "message": [
+    {
+      "participant_code": "CUST01",
+      "status": "approved",
+      "reason_code": null,
+      "first_name": "John",
+      "last_name": "Smith",
+      "email": "jsmith@gmail.com"
+    }
+  ]
+}
+```
+
+---
+
+## Managing Account Status via API
+
+Zero Hash provides dedicated endpoints to transition an account between statuses. All endpoints use the account's ZRN (or the `urn` path parameter format) as the primary identifier.
+
+<CardGroup cols={2}>
+  <Card title="Lock an Account" icon="lock">
+    `POST /accounts/{urn}/lock`  
+    Suspends all trading on the account. Use when a compliance hold is required.
+  </Card>
+  <Card title="Unlock an Account" icon="lock-open">
+    `POST /accounts/{urn}/unlock`  
+    Returns a locked account to `Open` status.
+  </Card>
+  <Card title="Withdraw Lock" icon="ban">
+    `POST /accounts/{urn}/withdraw_lock`  
+    Prevents withdrawals while allowing continued trading.
+  </Card>
+  <Card title="Withdraw Unlock" icon="circle-check">
+    `POST /accounts/{urn}/withdraw_unlock`  
+    Removes the withdrawal restriction.
+  </Card>
+  <Card title="Divest an Account" icon="arrow-down-to-line">
+    `POST /accounts/{urn}/divest`  
+    Puts the account in `Divesting` status — only sells and withdrawals are permitted while the account is wound down.
+  </Card>
+  <Card title="Close an Account" icon="xmark">
+    `POST /accounts/{urn}/close`  
+    Permanently closes the account. No further activity is possible after closure.
+  </Card>
+</CardGroup>
+
+### Example: Lock a Customer Account
+
+```bash cURL
+curl -X POST https://api.zerohash.com/accounts/zrn:zh:us:accounts:customer:c761fc96-5c44-40d4-8eb2-3fcd5d06754e/lock \
+  -H "Authorization: Bearer <YOUR_TOKEN>" \
+  -H "Content-Type: application/json"
+```
+
+### Example: Apply a Withdraw Lock
+
+```bash cURL
+curl -X POST https://api.zerohash.com/accounts/zrn:zh:us:accounts:customer:c761fc96-5c44-40d4-8eb2-3fcd5d06754e/withdraw_lock \
+  -H "Authorization: Bearer <YOUR_TOKEN>" \
+  -H "Content-Type: application/json"
+```
+
+<Warning>
+  Closing an account is irreversible. Before calling `POST /accounts/{urn}/close`, confirm that all open trades have settled and the account balance is zero. If balances remain, place the account in `Divesting` status first to allow the customer to close all positions and withdraw funds.
+</Warning>
+
+---
+
+## Recommended Lifecycle Patterns
+
+<Tabs>
+  <Tab title="New Customer Onboarding">
+    <Steps>
+      <Step title="Create participant">
+        Call `POST /participants/customers/new`. Status begins as `submitted`.
+      </Step>
+      <Step title="Wait for approval">
+        Poll `GET /participants?participant_code={code}` or listen for a status webhook. Do not expose trading functionality until status is `approved`.
+      </Step>
+      <Step title="Enable trading in your UI">
+        Once `approved`, the participant's accounts are `Open` and all activity is permitted.
+      </Step>
+    </Steps>
+  </Tab>
+  <Tab title="Compliance Hold">
+    <Steps>
+      <Step title="Receive compliance alert">
+        Your compliance team or Zero Hash compliance flags the participant for review.
+      </Step>
+      <Step title="Lock the account">
+        Call `POST /accounts/{urn}/lock` to suspend trading while preserving deposit capability.
+      </Step>
+      <Step title="Investigate">
+        Zero Hash compliance sets the participant status to `locked` at the identity level if needed.
+      </Step>
+      <Step title="Resolve and unlock">
+        If cleared, call `POST /accounts/{urn}/unlock`. Zero Hash compliance transitions participant status to `pending_unlock` → `approved`.
+      </Step>
+    </Steps>
+  </Tab>
+  <Tab title="Account Closure">
+    <Steps>
+      <Step title="Initiate closure request">
+        Place the account in `Divesting` status via `POST /accounts/{urn}/divest`.
+      </Step>
+      <Step title="Wind down positions">
+        Only sell orders and withdrawals are permitted. The customer liquidates holdings and withdraws remaining funds.
+      </Step>
+      <Step title="Confirm zero balance">
+        Verify via `GET /accounts?participant_code={code}` that all balances are zero.
+      </Step>
+      <Step title="Close the account">
+        Call `POST /accounts/{urn}/close` to permanently close the account.
+      </Step>
+    </Steps>
+  </Tab>
+</Tabs>
+
+---
+
+## Relationship Between Participant and Account Status
+
+<Info>
+  A participant can be `approved` while one or more of their accounts is `Locked` or `Divesting`. Conversely, if the participant status is `locked` or `disabled`, none of their accounts will be active regardless of account-level status. Always check both layers when troubleshooting activity restrictions.
+</Info>
+
+The participant status operates at the identity level — it gates access to the Zero Hash platform entirely. Account status operates at the asset level — it controls what the participant can do with a specific pool of funds. Your platform should check both when presenting capabilities in your UI or processing API requests on behalf of a customer.

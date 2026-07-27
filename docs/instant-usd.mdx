@@ -1,0 +1,201 @@
+---
+title: "Instant USD: Make ACH Deposits Available Immediately"
+sidebarTitle: "Instant USD"
+description: "Give end customers immediate buying power from their ACH deposits without waiting the standard 3 to 5 business days for settlement."
+---
+
+Standard ACH deposits take 3–5 business days to settle, which means customers must wait before they can use deposited funds to trade or transact. Zero Hash Instant USD solves this by making deposited funds immediately available to end customers from your platform's float account — while the underlying ACH transaction completes in the background. Customers gain instant access to buying power, and your platform reconciles once the ACH clears.
+
+## How It Works
+
+When a customer initiates an Instant USD deposit, Zero Hash transfers funds immediately from your platform's pre-funded float account to the customer's available balance. The customer can then trade or transact right away. When the ACH deposit settles (3–5 days later), Zero Hash replenishes your float. If the ACH fails, Zero Hash recovers losses from your float or loss reserve account.
+
+<Info>
+  Platforms must maintain a funded float account and a loss reserve to use Instant USD. Contact your Zero Hash relationship manager to configure these accounts before going live.
+</Info>
+
+## Onboarding Requirements
+
+Before using Instant USD, your platform must:
+
+1. Complete bank account linking for each end customer using either [Zero Hash Powered Plaid Link](/docs/getting-started-with-fiat-payments) or [Self-Service Plaid Link](/docs/getting-started-with-fiat-payments).
+2. Ensure each customer has an active, `approved` external account with an associated `external_account_id`.
+3. Maintain a funded float account to backstop instant credit before ACH clears.
+
+## Requesting an Instant USD Deposit
+
+Call `POST /fund/deposit` with `"instant": true` to initiate an Instant USD deposit:
+
+<CodeGroup>
+```bash cURL
+curl --request POST \
+  --url https://api.zerohash.com/fund/deposit \
+  --header 'Authorization: Bearer <YOUR_API_KEY>' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "participant_code": "ABC123",
+    "external_account_id": "0f68333e-2114-469d-b505-c850d776e063",
+    "asset": "USD",
+    "amount": "150.00",
+    "description": "COMPANY0",
+    "network": "ach",
+    "instant": true
+  }'
+```
+
+```json Request Body
+{
+  "participant_code": "ABC123",
+  "external_account_id": "0f68333e-2114-469d-b505-c850d776e063",
+  "asset": "USD",
+  "amount": "150.00",
+  "description": "COMPANY0",
+  "network": "ach",
+  "instant": true
+}
+```
+</CodeGroup>
+
+### Request Fields
+
+<ParamField body="participant_code" type="string" required>
+  The unique code for the participant (end customer) initiating the deposit.
+</ParamField>
+
+<ParamField body="external_account_id" type="string" required>
+  The Zero Hash identifier for the customer's linked bank account.
+</ParamField>
+
+<ParamField body="asset" type="string" required>
+  The asset to deposit. Use `USD` for Instant USD.
+</ParamField>
+
+<ParamField body="amount" type="string" required>
+  The deposit amount as a decimal string (e.g., `"150.00"`).
+</ParamField>
+
+<ParamField body="description" type="string" required>
+  A description or memo for the deposit. Typically your company identifier.
+</ParamField>
+
+<ParamField body="network" type="string" required>
+  The payment network. Use `ach` for ACH-backed Instant USD deposits.
+</ParamField>
+
+<ParamField body="instant" type="boolean" required>
+  Set to `true` to enable instant availability of funds from the float account.
+</ParamField>
+
+**Response:**
+
+```json
+{
+  "message": {
+    "request_id": "0f65678e-2114-469d-b505-c850d776e078",
+    "participant_code": "ABC123",
+    "external_account_id": "0f68333e-2114-469d-b505-c850d776e063",
+    "asset": "USD",
+    "amount": "150.00",
+    "description": "COMPANY0",
+    "transaction_id": "0f34533e-2114-469d-b505-c850d776e061",
+    "status": "submitted",
+    "created_at": 1561996924964
+  }
+}
+```
+
+## Available Balance Webhook
+
+After the instant deposit is processed, Zero Hash transfers funds from the platform float to the customer's available balance. Your platform receives a transfer webhook:
+
+```json
+{
+  "account_group": "F12JE6",
+  "account_label": "general",
+  "account_type": "available",
+  "asset": "USD",
+  "balance": "5",
+  "movements": [
+    {
+      "account_id": "efeb40fe-aaf1-4132-8fbc-036e7612f7db",
+      "change": "5",
+      "movement_id": "b96daa8d-960a-4c50-acc1-af9c1c9c178b",
+      "movement_timestamp": 1746112183373,
+      "movement_type": "transfer",
+      "transfer_request_id": "339910",
+      "transfer_type": "trade_allocation"
+    }
+  ],
+  "participant_code": "45JM2Q",
+  "timestamp": 1746112183373
+}
+```
+
+## Buying Crypto Instantly
+
+End customers can purchase crypto immediately using their available USD balance via Zero Hash's [CLOB liquidity endpoints](https://docs.zerohash.com/reference/central-limit-order-book). Crypto buy orders settle immediately even if the underlying ACH deposit has not yet cleared.
+
+Your platform receives two separate webhooks for these events:
+
+<Tabs>
+  <Tab title="ACH Deposit Settlement">
+    Zero Hash sends a `status: settled` webhook when the ACH deposit fully clears (3–5 business days after initiation):
+
+    ```json
+    {
+      "participant_code": "ABC123",
+      "external_account_id": "0f68333e-2114-469d-b505-c850d776e063",
+      "asset": "USD",
+      "amount": "150.00",
+      "transaction_id": "0f34533e-2114-469d-b505-c850d776e061",
+      "status": "settled",
+      "created_at": 1561996924964
+    }
+    ```
+  </Tab>
+  <Tab title="Crypto Buy Settlement">
+    Zero Hash sends a `trade_state: terminated` webhook when a crypto purchase settles:
+
+    ```json
+    {
+      "trade_id": "26d68f16-f9d2-4ab3-847e-bccf6f03a35e",
+      "symbol": "ETH/USD",
+      "trade_price": "1747.15",
+      "trade_quantity": "0.0057236",
+      "trade_state": "terminated",
+      "total_notional": "10.00",
+      "timestamp": 1745554838289
+    }
+    ```
+  </Tab>
+</Tabs>
+
+## Payment Status Reference
+
+| Status | Description | Final? |
+|--------|-------------|--------|
+| `submitted` | Deposit request received. | — |
+| `pending_trade` | Request approved; associated trade has not yet terminated. | — |
+| `pending` | Trade terminated; fiat payment initiated. | — |
+| `posted` | Transaction settled and cleared any applicable hold days. | — |
+| `settled` | Complete. Funds credited to platform float. | ✅ |
+| `canceled` | On-demand ACH transactions cannot be canceled. | ✅ |
+| `failed` | Request failed. No payment was initiated. | ✅ |
+| `rejected` | Rejected due to velocity controls. No payment initiated. | ✅ |
+| `returned` | ACH returned before reaching `settled`. | ✅ |
+| `returned_settled` | ACH returned after reaching `settled`. | ✅ |
+
+<Note>
+  A transaction can move from `settled` → `returned_settled` if the ACH is disputed after initial settlement. Platforms must maintain a funded loss reserve to cover this scenario.
+</Note>
+
+## ACH Return Risk
+
+When an instant ACH deposit fails or is returned, Zero Hash recovers losses from your platform:
+
+- **If an ACH fails before settlement** and the customer has already purchased crypto with the instant balance, Zero Hash seizes the crypto from the participant account, liquidates it, and recovers any remaining losses from your platform's float account.
+- **If an ACH is returned after settlement** and sufficient funds cannot be recovered from the participant account, Zero Hash recovers losses from your platform's loss reserve account.
+
+<Warning>
+  Platforms must maintain both a funded float account and a loss reserve account to use Instant USD. Failure to maintain adequate balances may interrupt service and expose your platform to loss recovery actions.
+</Warning>

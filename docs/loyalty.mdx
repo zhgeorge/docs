@@ -1,0 +1,164 @@
+---
+title: "Crypto Rewards and Loyalty Programs on Zero Hash API"
+sidebarTitle: "Loyalty"
+description: "Offer crypto rewards for card spend and marketing campaigns using Zero Hash's POST /rewards and awards endpoints with instant settlement."
+---
+
+Zero Hash's Loyalty product gives you two distinct ways to put crypto in the hands of your users: the **Rewards** product for issuing crypto against card spend or other earn triggers, and the **Awards** product for distributing crypto as part of marketing campaigns or promotions. Both operate through simple API calls, support every asset listed on the Zero Hash platform, and settle instantly to the recipient's account. You do not need to manage a separate crypto inventory — Zero Hash handles asset delivery on your behalf.
+
+## Rewards
+
+The Rewards product lets you offer a crypto rewards program tied to credit or debit card spend, loyalty point conversions, or any other platform-defined earn trigger. Each reward transaction is a single API call.
+
+### How It Works
+
+When a qualifying event occurs on your platform (for example, a user makes a purchase with your rewards card), you call `POST /rewards` with the participant code and the reward amount. Zero Hash instantly credits the specified crypto amount to the user's Zero Hash account. The float model means your platform account must be pre-funded to cover the reward payouts.
+
+### Float Account Pre-Funding
+
+Before you can issue rewards, your Zero Hash platform account must hold sufficient inventory of the reward asset. The flow works as follows:
+
+1. Your platform pre-funds a float account at Zero Hash with the reward asset (or USD that Zero Hash converts on your behalf).
+2. When you call `POST /rewards`, Zero Hash debits the reward amount from your float and credits it to the recipient participant's account.
+3. Settlement is instant — the user's balance updates immediately.
+
+<Note>
+  Monitor your float balance regularly. If your float runs dry, reward calls will fail. Set up balance threshold alerts using the Balances WebSocket feed so your operations team is notified before the float reaches a critical low.
+</Note>
+
+### POST /rewards — Request
+
+```http
+POST /rewards
+```
+
+```json
+{
+  "participant_code": "CUST01",
+  "asset": "BTC",
+  "amount": "0.00005",
+  "client_reward_id": "reward-card-txn-98765",
+  "note": "1% BTC reward on $50 card purchase"
+}
+```
+
+<ParamField body="participant_code" type="string" required>
+  The Zero Hash participant code of the end user receiving the reward. The user must be a KYC-approved participant on your platform.
+</ParamField>
+
+<ParamField body="asset" type="string" required>
+  The crypto asset to award. Any instrument listed in the Zero Hash supported assets catalog is eligible.
+</ParamField>
+
+<ParamField body="amount" type="string" required>
+  The quantity of the asset to credit. Expressed as a decimal string (e.g., `"0.00005"` for BTC).
+</ParamField>
+
+<ParamField body="client_reward_id" type="string">
+  Your platform's own unique identifier for this reward event. Use this to map the reward back to the originating transaction in your system and to prevent duplicate submissions.
+</ParamField>
+
+<ParamField body="note" type="string">
+  A free-text description of the reward. Appears in the participant's transaction history.
+</ParamField>
+
+### POST /rewards — Response
+
+```json
+{
+  "reward_id": "rwd_a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "participant_code": "CUST01",
+  "asset": "BTC",
+  "amount": "0.00005",
+  "status": "settled",
+  "settled_at": "2025-08-18T14:23:01.000Z"
+}
+```
+
+<ResponseField name="reward_id" type="string">
+  Zero Hash's unique identifier for the reward transaction. Store this for reconciliation and audit purposes.
+</ResponseField>
+
+<ResponseField name="status" type="string">
+  The settlement status of the reward. A value of `settled` confirms the asset has been credited to the user's account.
+</ResponseField>
+
+<ResponseField name="settled_at" type="string">
+  ISO 8601 timestamp of when the reward was credited to the participant's available balance.
+</ResponseField>
+
+## Awards
+
+The Awards product lets you distribute crypto to users as part of marketing promotions, sign-up bonuses, referral campaigns, or other engagement initiatives. It uses a two-step model: fund first, distribute second.
+
+### How It Works
+
+<Steps>
+  <Step title="Fund Your Awards Account">
+    Call `POST /awards/fund` to deposit crypto into your platform's awards inventory. This funds the pool from which distributions are drawn.
+
+    ```http
+    POST /awards/fund
+    ```
+
+    ```json
+    {
+      "asset": "ETH",
+      "amount": "5.0",
+      "client_fund_id": "promo-q3-2025-fund"
+    }
+    ```
+  </Step>
+  <Step title="Distribute to Customers">
+    Call `POST /awards/distribute` for each user you want to award. Zero Hash debits from your funded awards pool and credits the user's account instantly.
+
+    ```http
+    POST /awards/distribute
+    ```
+
+    ```json
+    {
+      "participant_code": "CUST01",
+      "asset": "ETH",
+      "amount": "0.01",
+      "client_distribution_id": "promo-q3-2025-dist-CUST01",
+      "note": "New user sign-up bonus"
+    }
+    ```
+  </Step>
+</Steps>
+
+### Awards API Reference
+
+| Endpoint | Description |
+|---|---|
+| `POST /awards/fund` | Fund your platform's awards inventory with a specific asset |
+| `POST /awards/distribute` | Distribute a crypto award from your funded pool to a participant |
+
+## Use Cases
+
+<CardGroup cols={2}>
+  <Card title="Credit/Debit Card Rewards" icon="credit-card">
+    Replace or supplement traditional cashback programs with BTC, ETH, or other crypto rewards. Trigger `POST /rewards` on each qualifying card transaction.
+  </Card>
+  <Card title="Marketing Promotions" icon="bullhorn">
+    Launch sign-up bonuses, referral incentives, or seasonal campaigns. Pre-fund the awards pool and distribute to qualifying users programmatically.
+  </Card>
+  <Card title="Loyalty Point Conversion" icon="star">
+    Let users convert existing loyalty points into crypto. Calculate the equivalent asset amount and call `POST /rewards` to credit the converted value.
+  </Card>
+  <Card title="Engagement Incentives" icon="trophy">
+    Reward users for completing profile steps, making their first trade, or reaching spending milestones. Any platform-defined trigger can fire a reward call.
+  </Card>
+</CardGroup>
+
+## Key Features
+
+- **Full asset support:** Any instrument in the Zero Hash supported assets catalog is eligible for rewards and awards.
+- **Instant settlement:** Rewards and awards are credited to the user's available balance immediately — no pending state.
+- **Simple integration:** The Rewards product is a single endpoint. The Awards product requires only two endpoints.
+- **Idempotency:** Use `client_reward_id` and `client_distribution_id` to prevent duplicate payouts if your system retries a failed call.
+
+<Tip>
+  Always supply a `client_reward_id` or `client_distribution_id` unique to the originating event. If your platform retries the API call after a timeout, Zero Hash uses this field to detect and reject duplicates, protecting your float from double-paying the same reward.
+</Tip>

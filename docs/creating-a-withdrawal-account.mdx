@@ -1,0 +1,146 @@
+---
+title: "Create a Withdrawal Account in the Zero Hash Portal"
+sidebarTitle: "Withdrawal Accounts"
+description: "Set up a pre-approved bank account or crypto address as a Withdrawal Account via the Zero Hash portal or programmatically via the API."
+---
+
+A Withdrawal Account is a bank account or cryptocurrency address that has been reviewed and approved by your platform admins. You must have at least one Withdrawal Account set up before you can process a withdrawal through the Zero Hash portal. For programmatic withdrawals, you register the destination via the API. Every Withdrawal Account undergoes a two-admin approval process before it becomes active.
+
+## Portal Flow
+
+<Steps>
+  <Step title="Navigate to Withdrawals">
+    Log in to [portal.zerohash.com](https://portal.zerohash.com), find the **Participant** header in the navigation, and select the **Withdrawals** sub-header.
+  </Step>
+  <Step title="Select an asset and create a new account">
+    Choose the asset for which you want to create a withdrawal account, then click **Create New Account**.
+  </Step>
+  <Step title="Fill in the account details">
+    Complete the fields based on the account type:
+
+    <Tabs>
+      <Tab title="Crypto Account">
+        Enter the required fields for a cryptocurrency withdrawal destination. Double-check the wallet address before saving — an incorrect address can result in permanent loss of funds.
+      </Tab>
+      <Tab title="Fiat Account">
+        Select the transfer type most appropriate for your withdrawal (e.g., ACH, wire). If a memo is required by the receiving institution, include it in the **Recipient Instructions** field.
+      </Tab>
+    </Tabs>
+  </Step>
+  <Step title="Obtain two-admin approval">
+    After the Withdrawal Account is created, **two separate platform admins** must approve it. The account remains inactive until both approvals are received. Once approved, you can use it to initiate withdrawals.
+  </Step>
+</Steps>
+
+<Warning>
+  Two admin approvals are required before a Withdrawal Account can be used. Do not attempt to initiate a withdrawal until the account status shows as approved in the portal.
+</Warning>
+
+## API Approach
+
+For programmatic setup, you can create and manage Withdrawal Accounts through the Zero Hash payments API. Use `POST /payments/external_accounts` to register a bank account or cryptocurrency address as an external account tied to a participant.
+
+### Request
+
+<ParamField body="participant_code" type="string" required>
+  The unique code identifying the participant (platform or customer) that owns this withdrawal account.
+</ParamField>
+
+<ParamField body="type" type="string" required>
+  Account type. Accepted values: `crypto` or `fiat`.
+</ParamField>
+
+<ParamField body="details" type="object" required>
+  Account-specific details. The shape of this object varies by account type.
+
+  <Expandable title="Crypto account details">
+    <ParamField body="details.network" type="string" required>
+      The blockchain network (e.g., `ETH`, `SOL`, `BTC`).
+    </ParamField>
+    <ParamField body="details.address" type="string" required>
+      The cryptocurrency wallet address for withdrawals.
+    </ParamField>
+    <ParamField body="details.supported_assets" type="array" required>
+      Array of asset tickers supported by this address (e.g., `["USDC"]`).
+    </ParamField>
+  </Expandable>
+
+  <Expandable title="Fiat account details">
+    <ParamField body="details.network" type="string" required>
+      The payment network (e.g., `ach`, `wire`, `rtp`).
+    </ParamField>
+    <ParamField body="details.supported_assets" type="array" required>
+      Array of fiat asset tickers supported (e.g., `["USD"]`).
+    </ParamField>
+    <ParamField body="details.account_number" type="string" required>
+      The bank account number for the withdrawal destination.
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+### Example: Create a Crypto Withdrawal Account
+
+```json
+// POST /payments/external_accounts
+{
+  "participant_code": "CUST01",
+  "type": "crypto",
+  "details": {
+    "network": "ETH",
+    "supported_assets": ["USDC"],
+    "address": "0xAbCd1234..."
+  }
+}
+```
+
+**Response:**
+
+```json
+{
+  "request_id": "a9e2c6fb-f738-4ecb-986c-befd70678707",
+  "external_account_id": "107e8a2a-c835-4b76-b49d-a633d45727b9",
+  "participant_code": "CUST01",
+  "platform_code": "PLAT01",
+  "account_nickname": "",
+  "created_at": "2024-10-11T00:52:21.865Z",
+  "status": "pending",
+  "type": "crypto",
+  "details": {
+    "network": "ETH",
+    "supported_assets": ["USDC"],
+    "address": "0xAbCd1234..."
+  }
+}
+```
+
+### Response Fields
+
+<ResponseField name="external_account_id" type="string">
+  Zero Hash's unique identifier for this withdrawal account. Store this value — you reference it in all subsequent withdrawal requests.
+</ResponseField>
+
+<ResponseField name="status" type="string">
+  The current approval state of the account. Newly created accounts start as `pending`. After Zero Hash runs the required verification checks, the account transitions to `approved` or `rejected`.
+</ResponseField>
+
+<ResponseField name="created_at" type="string">
+  ISO 8601 timestamp of when the account was created.
+</ResponseField>
+
+## Account Status Lifecycle
+
+Withdrawal Accounts created via the API move through the following states automatically:
+
+| Status | Description |
+|--------|-------------|
+| `pending` | Account has been submitted and Zero Hash is running verification checks. |
+| `approved` | Checks passed. The account can now be used for withdrawals. |
+| `rejected` | Checks failed. The account cannot be used. Review the account details and resubmit if needed. |
+
+<Tip>
+  Subscribe to webhooks for `external_account_status` events so your platform receives real-time notifications when an account moves to `approved` or `rejected`.
+</Tip>
+
+<Note>
+  Each participant can have a maximum of 100 external accounts. Contact your Zero Hash account manager if you need to adjust this limit.
+</Note>

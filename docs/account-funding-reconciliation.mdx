@@ -1,0 +1,179 @@
+---
+title: "Account Funding Reconciliation on Zero Hash Platform"
+sidebarTitle: "Funding Recon"
+description: "Match deposits and withdrawals to trades, trace fund events via API, handle webhook events, and audit platform records against Zero Hash data."
+---
+
+Account funding reconciliation is the process of verifying that every deposit and withdrawal on your platform maps correctly to a Zero Hash trade record, and that the resulting net settlement obligation matches what your accounting system expects. This guide covers the two products that drive funding activity — **Account Funding** (deposits and withdrawals) and **Buy/Sell** trading — both of which generate independent trading activity but ultimately contribute to a **single net settlement wire** at end of day. Accurate reconciliation is critical for maintaining accounting integrity, passing audits, and catching discrepancies before settlement deadlines.
+
+## Core Data Objects
+
+Every funding reconciliation traces three types of records. Understanding how they relate to each other is the foundation of the reconciliation process.
+
+<CardGroup cols={3}>
+  <Card title="Trade" icon="arrows-left-right">
+    A conversion of two assets. Query via `GET /trades` or `GET /trades/{trade_id}`. Every deposit and withdrawal on your platform that involves an asset conversion produces a corresponding trade record.
+  </Card>
+  <Card title="Fund Event" icon="arrow-down-to-bracket">
+    A successful account funding (deposit) transaction. Query via `GET /fund/transactions`. Every successful fund event triggers an automatic conversion to fiat, which creates a trade.
+  </Card>
+  <Card title="Payment" icon="arrow-up-from-bracket">
+    An account funding (withdrawal) transaction — someone withdrawing an asset to an external wallet. Query via `GET /payments` or `GET /payments/{payment_id}`. Each withdrawal also creates an associated trade.
+  </Card>
+</CardGroup>
+
+## End-to-End Reconciliation Flow
+
+### Reconciling Deposits
+
+When an end customer makes a deposit, Zero Hash automatically and immediately converts the deposited asset to fiat, creating a trade. Trace a deposit through to its trade record in three steps.
+
+<Steps>
+  <Step title="Identify the Fund Event">
+    Consume the fund event webhook or query `GET /fund/transactions` to locate the deposit. Note the `fund_id` from the response — this is your anchor for the next step.
+
+    ```http
+    GET /fund/transactions?participant_code=CUST01
+    ```
+
+    **Webhook alternative:** Subscribe to the `fund_transaction.update` webhook to receive deposit events in real time without polling.
+
+    Look for these key fields in the fund event:
+
+    | Field | Description |
+    |---|---|
+    | `fund_id` | Unique identifier linking the deposit to its downstream trade |
+    | `status` | Current status of the fund event (e.g., `pending`, `completed`, `failed`) |
+    | `asset` | The asset deposited |
+    | `amount` | The quantity deposited |
+    | `participant_code` | The customer who made the deposit |
+  </Step>
+  <Step title="Find the Associated Trade via Movements">
+    Use the `fund_id` to query the movements endpoint. The response includes a `trade_id` that links the deposit to its conversion trade.
+
+    ```http
+    GET /movements?parent_link_id={fund_id}
+    ```
+
+    The movement record connects the fund event to the resulting trade. Extract the `trade_id` from this response.
+  </Step>
+  <Step title="Retrieve and Verify the Trade">
+    Query the trade directly using the `trade_id` from the previous step.
+
+    ```http
+    GET /trades/{trade_id}
+    ```
+
+    Verify that the trade's `total_notional`, `symbol`, `trade_state`, and `settlement_state` match your platform's expectations. A `trade_state` of `terminated` and a `settlement_state` of `settled` confirm the deposit has been fully processed and settled.
+  </Step>
+</Steps>
+
+### Reconciling Withdrawals
+
+When an end customer initiates a withdrawal, Zero Hash automatically converts fiat to the withdrawal asset via the payment object, creating a trade. Trace a withdrawal through to its trade record in three steps.
+
+<Steps>
+  <Step title="Identify the Payment">
+    Consume the payments webhook or query `GET /payments` to locate the withdrawal record. Note the `payment_id`.
+
+    ```http
+    GET /payments?participant_code=CUST01
+    ```
+
+    **Webhook alternative:** Subscribe to the `payments.status_changes` webhook to receive withdrawal status events in real time.
+
+    Key fields in the payment record:
+
+    | Field | Description |
+    |---|---|
+    | `payment_id` | Unique identifier linking the withdrawal to its downstream trade |
+    | `status` | Current withdrawal status (e.g., `pending`, `submitted`, `confirmed`, `failed`) |
+    | `asset` | The asset being withdrawn |
+    | `amount` | The withdrawal quantity |
+    | `participant_code` | The customer who initiated the withdrawal |
+  </Step>
+  <Step title="Find the Associated Trade via Movements">
+    Use the `payment_id` to query the movements endpoint. The response includes the `trade_id` for the associated fiat-to-asset conversion trade.
+
+    ```http
+    GET /movements?parent_link_id={payment_id}
+    ```
+  </Step>
+  <Step title="Retrieve and Verify the Trade">
+    Query the trade using the `trade_id` from the movements response.
+
+    ```http
+    GET /trades/{trade_id}
+    ```
+
+    Confirm the trade details match the withdrawal parameters. For withdrawals, the trade represents the fiat-to-crypto conversion executed before the on-chain transfer.
+  </Step>
+</Steps>
+
+## Webhook Events for the Funding Lifecycle
+
+Subscribe to these webhook events to track deposits and withdrawals in real time and trigger reconciliation steps automatically.
+
+| Event | Trigger |
+|---|---|
+| `fund_transaction.update` | Any status change on a fund (deposit) event |
+| `payments.status_changes` | Any status change on a payment (withdrawal) record |
+
+When you receive a webhook, cross-reference the `fund_id` or `payment_id` against your platform's records and initiate the three-step trace above to link the event to its trade.
+
+<Note>
+  Always return a `200 OK` immediately upon receiving a webhook to acknowledge delivery. Process the reconciliation logic asynchronously to avoid timeouts. Implement idempotency using `fund_id` or `payment_id` to handle duplicate deliveries safely.
+</Note>
+
+## Matching Platform Records to Zero Hash Records
+
+Use the following field mappings to join your internal records with Zero Hash API data.
+
+| Your System | Zero Hash Field | API Endpoint |
+|---|---|---|
+| Internal deposit ID | `fund_id` | `GET /fund/transactions` |
+| Internal withdrawal ID | `payment_id` | `GET /payments/{payment_id}` |
+| Internal trade reference | `client_trade_id` | `GET /trades` |
+| Zero Hash trade reference | `trade_id` | `GET /trades/{trade_id}` |
+| Net settlement amount | NDO amount | `GET /accounts/net_delivery_obligations` |
+
+## Key Status Fields
+
+These status fields determine whether a deposit or withdrawal is fully reconciled.
+
+<ResponseField name="status (fund event)" type="string">
+  The state of a deposit event. `completed` means the deposit has been received and processed. `pending` means it is awaiting on-chain confirmation. `failed` means the deposit did not succeed and no trade was created.
+</ResponseField>
+
+<ResponseField name="status (payment)" type="string">
+  The state of a withdrawal. `submitted` means it has been accepted. `confirmed` means the on-chain transaction is confirmed. `failed` means the withdrawal did not succeed.
+</ResponseField>
+
+<ResponseField name="trade_state" type="string">
+  The lifecycle state of the resulting trade. `terminated` confirms the trade and its settlement are complete. Any other value indicates the trade is still in progress.
+</ResponseField>
+
+<ResponseField name="settlement_state" type="string">
+  Per-party settlement confirmation within the trade. `settled` on both parties' entries confirms the trade has been fully settled on the Zero Hash ledger.
+</ResponseField>
+
+## Best Practices for Auditing
+
+<CardGroup cols={2}>
+  <Card title="Persist All IDs at Creation" icon="database">
+    Store `fund_id`, `payment_id`, and `trade_id` at the time each event occurs. These IDs are your audit trail and are essential for tracing records across systems without re-querying everything.
+  </Card>
+  <Card title="Reconcile Daily Before the Wire Deadline" icon="clock">
+    Run your deposit and withdrawal reconciliation before the 12:00 PM EST settlement deadline. Unmatched records may indicate a failed trade or missed movement that affects your net settlement obligation.
+  </Card>
+  <Card title="Use Webhooks as the Primary Signal" icon="bolt">
+    Trigger reconciliation logic from webhook events rather than scheduled polls. This reduces API load and ensures your records update as quickly as Zero Hash processes the event.
+  </Card>
+  <Card title="Implement Polling as a Fallback" icon="rotate">
+    If a webhook is missed or delayed, periodic polling of `GET /fund/transactions` and `GET /payments` ensures no records fall through the cracks. Run a catch-up query at least once before the daily settlement window closes.
+  </Card>
+</CardGroup>
+
+<Warning>
+  Deposits and withdrawals from the Account Funding product and trades from the Buy/Sell product both contribute to the same daily net settlement wire. Reconciling only one product in isolation will produce an inaccurate net. Always aggregate both product types when calculating your total settlement obligation.
+</Warning>

@@ -1,0 +1,117 @@
+---
+title: "Generate a Platform Cryptocurrency Deposit Address"
+sidebarTitle: "Deposit Addresses"
+description: "Request and retrieve a dedicated cryptocurrency deposit address for your platform account in Zero Hash using the portal or the deposits API."
+---
+
+Before you can accept cryptocurrency deposits into your platform account, you need a deposit address mapped to that account in Zero Hash. You can generate this address either through the Zero Hash portal at [portal.zerohash.com](https://portal.zerohash.com) or programmatically via the API. Both methods produce the same result: a verified address your platform can use to receive funds on a given network.
+
+## Portal Flow
+
+Use the following steps to retrieve your platform's deposit address in the Zero Hash portal:
+
+<Steps>
+  <Step title="Log in to the portal">
+    Navigate to [portal.zerohash.com](https://portal.zerohash.com) and sign in with your platform credentials.
+  </Step>
+  <Step title="Open the Deposits section">
+    In the black navigation ribbon across the top of the page, hover over **Participants** and select **Deposits** from the dropdown menu.
+  </Step>
+  <Step title="Select the asset">
+    Choose the digital asset you want to deposit to your platform account in Zero Hash.
+  </Step>
+  <Step title="Acknowledge the warning">
+    Read the on-screen warning about the risks associated with cryptocurrency deposits and tick the checkbox to confirm you understand.
+  </Step>
+  <Step title="Reveal the deposit address">
+    Click **Show Deposit Address** to display the address associated with your platform account for the selected asset.
+  </Step>
+  <Step title="Copy the address carefully">
+    Copy and paste the displayed address directly. Avoid manual transcription to eliminate the risk of keystroke errors that could result in permanent loss of funds.
+  </Step>
+</Steps>
+
+<Note>
+  If you run through this flow more than once for the same asset, you will see the same deposit address each time — unless your platform is explicitly configured to support multiple deposit addresses per asset. By default, the cap is **1 deposit address per asset**.
+</Note>
+
+## API Approach
+
+You can also generate a deposit address programmatically by calling `POST /deposits/digital_asset_addresses`. This is the same endpoint used when creating retail customer deposit addresses, and it works equally well for platform-level addresses.
+
+### Request
+
+<ParamField body="participant_code" type="string" required>
+  The participant code for the account that will receive deposits. Use your platform's participant code for platform-level addresses, or a customer `participant_code` for retail deposits.
+</ParamField>
+
+<ParamField body="asset" type="string" required>
+  The ticker symbol for the asset you want to deposit (e.g., `BTC`, `ETH`, `UNI`, `USDC`).
+</ParamField>
+
+### Worked Example
+
+The following example requests a deposit address for the `UNI` token on behalf of participant `CUST01`:
+
+<CodeGroup>
+```bash cURL
+curl --request POST \
+  --url https://api.zerohash.com/deposits/digital_asset_addresses \
+  --header 'Authorization: Bearer <YOUR_API_KEY>' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "participant_code": "CUST01",
+    "asset": "UNI"
+  }'
+```
+
+```json Request Body
+{
+  "participant_code": "CUST01",
+  "asset": "UNI"
+}
+```
+</CodeGroup>
+
+**Response:**
+
+```json
+{
+  "message": {
+    "created_at": 1647050013,
+    "address": "0x7f41A26C0CB9D5a1e57BE9cF10F8354b77CD8ab3",
+    "participant_code": "CUST01",
+    "asset": "UNI"
+  }
+}
+```
+
+### Response Fields
+
+<ResponseField name="created_at" type="integer">
+  Unix timestamp (in seconds) of when the deposit address was created.
+</ResponseField>
+
+<ResponseField name="address" type="string">
+  The generated cryptocurrency deposit address. Relay this value to the customer or use it for your platform's incoming transfers.
+</ResponseField>
+
+<ResponseField name="participant_code" type="string">
+  The participant code the address is mapped to.
+</ResponseField>
+
+<ResponseField name="asset" type="string">
+  The asset ticker for which the address was generated.
+</ResponseField>
+
+## EVM Networks and Forwarding Contracts
+
+For all supported EVM networks (Ethereum, Polygon, Arbitrum, Optimism, Base, Avalanche C-Chain), Zero Hash generates forwarding smart contract addresses. A single address on a given EVM network accepts all native and ERC-20 compatible tokens for that network.
+
+<Warning>
+  Only send Zero Hash-supported assets to forwarding contract addresses. Sending unsupported tokens may result in unrecoverable funds.
+</Warning>
+
+<Tip>
+  If you need to support multiple deposit addresses per asset (for example, to segregate customer flows), contact your Zero Hash account manager to adjust the default cap of 1 address per asset.
+</Tip>

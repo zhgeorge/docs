@@ -1,0 +1,302 @@
+---
+title: "API-Driven Account Management for Platforms and LPs"
+sidebarTitle: "Account Management"
+description: "Query balances, generate deposit addresses, initiate and track withdrawals, and monitor account activity via the Zero Hash API — no portal required."
+---
+
+The Zero Hash API gives you complete programmatic control over account management. Whether you are a Liquidity Provider (LP) transitioning away from portal-led workflows or a platform managing hundreds of customer accounts, every action you would previously take in the Client Portal — checking balances, creating deposit addresses, initiating withdrawals — is available as a dedicated API endpoint. This guide covers the full operational lifecycle so you can build a reliable, automated account management layer in your integration.
+
+<Info>
+  This guide is particularly useful for Liquidity Providers moving from a Client Portal-led process to an API-driven one, but the same patterns apply to any platform participant managing accounts programmatically.
+</Info>
+
+---
+
+## Understanding Account Structure
+
+Before querying or managing accounts, it helps to understand the key identifiers:
+
+- **`participant_code`** — A 6-character alphanumeric code identifying the participant (for example, `LPLP01`). This is the primary owner of the account.
+- **`account_group`** — Represents the platform to which the funds are allocated (for example, `00SCXM` for Zero Hash Liquidity Services). A participant can have multiple account groups.
+- **`account_label`** — A string (default: `general`) that further segregates balances within the same participant and account group. Use custom labels to create sub-accounts.
+- **`account_type`** — Describes how the funds are being utilized (`available`, `payable`, `receivable`, `collateral`, `collateral_payable`, or `staked`).
+- **`asset`** — The digital asset or currency held in this account row (for example, `BTC`, `ETH`, `USD`).
+
+Every unique combination of these five fields is a distinct account with its own balance.
+
+---
+
+## Query Current Balances
+
+Use `GET /accounts` to retrieve all account balances for your participant. You can optionally filter by `asset` to narrow the results.
+
+### Retrieve All Balances
+
+```
+GET /accounts
+```
+
+```json Response
+{
+  "message": [
+    {
+      "asset": "BTC",
+      "account_owner": "LPLP01",
+      "account_type": "available",
+      "account_group": "00SCXM",
+      "account_label": "general",
+      "balance": "1.5",
+      "account_id": "ce819fe8-b1d7-43bb-961c-e09ede0988d3",
+      "last_update": 1554395972174
+    },
+    {
+      "asset": "ETH",
+      "account_owner": "LPLP01",
+      "account_type": "available",
+      "account_group": "00SCXM",
+      "account_label": "general",
+      "balance": "14.2",
+      "account_id": "ce819fe8-b1d7-43bb-961c-e09ede0988d3",
+      "last_update": 1554395972174
+    }
+  ]
+}
+```
+
+### Filter by Asset
+
+```
+GET /accounts?asset=BTC
+```
+
+```json Response
+{
+  "message": [
+    {
+      "asset": "BTC",
+      "account_owner": "LPLP01",
+      "account_type": "available",
+      "account_group": "00SCXM",
+      "account_label": "general",
+      "balance": "1.5",
+      "account_id": "ce819fe8-b1d7-43bb-961c-e09ede0988d3",
+      "last_update": 1554395972174
+    }
+  ]
+}
+```
+
+<Warning>
+  If an account with `account_type` = `payable` shows a positive balance, there is an unsettled trade outstanding. No action is required — Zero Hash will settle it automatically.
+</Warning>
+
+### Account Type Reference
+
+| account_type | Description |
+|---|---|
+| `available` | Funds free for trading, settling, fee payments, or withdrawal |
+| `payable` | A settlement amount you owe, outstanding due to insufficient available balance |
+| `receivable` | A settlement amount owed to you, not yet paid due to counterparty balance |
+| `collateral` | Funds locked for open positions or pending staking/unstaking |
+| `collateral_payable` | Amount owed by you to cover collateral requirements |
+| `staked` | Assets actively staked and earning rewards; must be unstaked before selling or withdrawing |
+
+---
+
+## Generate Deposit Addresses
+
+Instead of creating deposit addresses through the portal, use `POST /deposits/digital_asset_addresses`. Provide your `participant_code` and the target `asset` in the request body.
+
+<Tabs>
+  <Tab title="Request">
+    ```json POST /deposits/digital_asset_addresses
+    {
+      "participant_code": "LPLP01",
+      "asset": "BTC"
+    }
+    ```
+  </Tab>
+  <Tab title="Response">
+    ```json Response
+    {
+      "message": {
+        "created_at": 1590663417000,
+        "address": "2NCgV7BXXafJZ86utcYFs5m3tCpkcpLafeG",
+        "participant_code": "LPLP01",
+        "platform_code": "00SCXM",
+        "asset": "BTC"
+      }
+    }
+    ```
+  </Tab>
+</Tabs>
+
+Once you (or your depositor) send funds to the generated address, Zero Hash detects the on-chain confirmation and updates the `available` balance for `LPLP01`.
+
+---
+
+## Query Existing Deposit Addresses
+
+To retrieve all currently active deposit addresses for your account, call `GET /deposits/digital_asset_addresses`:
+
+```json GET /deposits/digital_asset_addresses — Response
+{
+  "message": {
+    "created_at": 1590663417000,
+    "address": "2NCgV7BXXafJZ86utcYFs5m3tCpkcpLafeG",
+    "participant_code": "LPLP01",
+    "platform_code": "00SCXM",
+    "asset": "BTC"
+  }
+}
+```
+
+You can reuse existing addresses for multiple deposits. Zero Hash associates all incoming transactions on that address with your `participant_code`.
+
+---
+
+## Initiate a Withdrawal
+
+To rebalance your crypto holdings across external wallets or other exchanges, initiate a withdrawal via `POST /withdrawals/requests`. Provide your `participant_code`, the `account_group`, the `asset`, and the destination `address`.
+
+<Tabs>
+  <Tab title="Request">
+    ```json POST /withdrawals/requests
+    {
+      "participant_code": "LPLP01",
+      "account_group": "00SCXM",
+      "asset": "BTC",
+      "address": "5LCgV7BXXafJZ86utcYFs5m3tCpkcpLadrT"
+    }
+    ```
+  </Tab>
+  <Tab title="Response">
+    ```json Response
+    {
+      "message": {
+        "id": "78",
+        "withdrawal_account_id": 51,
+        "participant_code": "LPLP01",
+        "requestor_participant_code": "LPLP01",
+        "requested_amount": ".2",
+        "settled_amount": ".2",
+        "status": "APPROVED",
+        "asset": "BTC",
+        "account_group": "00SCXM",
+        "account_label": "general",
+        "transaction_id": null,
+        "requested_timestamp": 1554395972174,
+        "gas_price": null,
+        "client_withdrawal_request_id": null,
+        "on_chain_status": "PENDING",
+        "fee_amount": "0.00",
+        "withdrawal_fee": "0.00",
+        "quoted_fee_amount": "0.00",
+        "quoted_fee_notional": "0.00"
+      }
+    }
+    ```
+  </Tab>
+</Tabs>
+
+<Note>
+  For LP accounts, Zero Hash covers the network fee on withdrawals. The `fee_amount` and `withdrawal_fee` fields will reflect `0.00`.
+</Note>
+
+### Withdrawal Response Fields
+
+<ResponseField name="id" type="string">
+  Unique identifier for this withdrawal request.
+</ResponseField>
+
+<ResponseField name="status" type="string">
+  Current approval status: `APPROVED`, `PENDING`, or `REJECTED`.
+</ResponseField>
+
+<ResponseField name="on_chain_status" type="string">
+  On-chain broadcast status: `PENDING`, `CONFIRMED`, or `FAILED`.
+</ResponseField>
+
+<ResponseField name="requested_amount" type="string">
+  The amount requested for withdrawal.
+</ResponseField>
+
+<ResponseField name="settled_amount" type="string">
+  The final settled amount after any fee deductions.
+</ResponseField>
+
+<ResponseField name="transaction_id" type="string">
+  The on-chain transaction hash, populated once the transaction has been broadcast.
+</ResponseField>
+
+---
+
+## Track Withdrawal Status
+
+Query the status of a previously submitted withdrawal using `GET /withdrawals/requests`. The response includes both the Zero Hash `status` field and the `on_chain_status` from the blockchain.
+
+```json GET /withdrawals/requests — Response
+{
+  "message": {
+    "id": "78",
+    "withdrawal_account_id": 51,
+    "participant_code": "LPLP01",
+    "requestor_participant_code": "LPLP01",
+    "requested_amount": ".2",
+    "settled_amount": ".2",
+    "status": "SETTLED",
+    "asset": "BTC",
+    "account_group": "00SCXM",
+    "account_label": "general",
+    "transaction_id": null,
+    "requested_timestamp": 1554395972174,
+    "on_chain_status": "CONFIRMED",
+    "fee_amount": "0.00",
+    "withdrawal_fee": "0.00",
+    "quoted_fee_amount": "0.00",
+    "quoted_fee_notional": "0.00"
+  }
+}
+```
+
+A `status` of `SETTLED` combined with `on_chain_status` of `CONFIRMED` indicates the withdrawal has fully completed.
+
+---
+
+## Monitor Account Activity via Webhooks
+
+In addition to polling the REST API, you can subscribe to real-time webhook events to eliminate latency from polling loops.
+
+<CardGroup cols={2}>
+  <Card title="Account Balance Webhook" icon="bell">
+    Subscribe to the **Account Balance** webhook topic to receive a push notification whenever your account balance changes. See the [Account Balance webhook reference](https://docs.zerohash.com/reference/account-balance) for payload details.
+  </Card>
+  <Card title="Payments Status Changes" icon="arrows-rotate">
+    Subscribe to **Payments Status Changes** to receive real-time updates on withdrawal status transitions, including `on_chain_status` updates as the transaction confirms.
+  </Card>
+</CardGroup>
+
+---
+
+## Best Practices for Programmatic Account Management
+
+<Steps>
+  <Step title="Use webhooks as your primary update mechanism">
+    Rely on webhooks for balance changes and withdrawal status updates rather than frequent polling. This reduces API load and gives you near-real-time visibility.
+  </Step>
+  <Step title="Store deposit addresses rather than re-generating them">
+    Call `POST /deposits/digital_asset_addresses` once per asset and persist the address in your database. Use `GET /deposits/digital_asset_addresses` to retrieve existing addresses rather than generating duplicates.
+  </Step>
+  <Step title="Filter GET /accounts by asset">
+    Use the `?asset=` query parameter when you only need a single asset balance. This reduces response payload size and improves latency for high-frequency queries.
+  </Step>
+  <Step title="Monitor payable accounts">
+    Implement monitoring or alerting for accounts where `account_type = payable` and balance > 0. While Zero Hash handles settlement automatically, this is a useful operational signal.
+  </Step>
+  <Step title="Tag withdrawals with client IDs">
+    Include a `client_withdrawal_request_id` in your `POST /withdrawals/requests` payload. This idempotency key lets you safely retry failed requests and reconcile your internal records with Zero Hash withdrawal records.
+  </Step>
+  <Step title="Use account groups to segment platform activity">
+    If your participant interacts with multiple Zero Hash platforms or services, use `account_group` filters when querying balances to isolate activity per relationship.
+  </Step>
+</Steps>

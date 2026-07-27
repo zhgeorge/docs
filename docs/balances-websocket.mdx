@@ -1,0 +1,272 @@
+---
+title: "Balances and Prices WebSocket Feeds on Zero Hash API"
+sidebarTitle: "WebSocket Feeds"
+description: "Subscribe to real-time balance updates and live price quotes via Zero Hash WebSocket feeds — connection, authentication, and event formats."
+---
+
+Zero Hash offers two real-time WebSocket feeds that let your platform react instantly to events without polling REST endpoints: the **Balances WebSocket**, which pushes a message every time any account balance under your platform changes, and the **Prices WebSocket**, which delivers live bid/ask quotes for all supported trading pairs. Together, these feeds power customer-facing dashboards, internal operations monitors, deposit confirmation flows, and price display components without the latency and overhead of repeated REST calls.
+
+## Balances WebSocket
+
+The Balances WebSocket is a private feed that covers all accounts belonging to your platform participant and all customer accounts whose `account_group` matches your platform code.
+
+### Connection and Authentication
+
+Connect to the private WebSocket endpoint and authenticate using your API credentials before subscribing. Refer to the [Private Socket Feed reference](https://docs.zerohash.com/reference/private-websocket-api) for the full connection specification, including the authentication handshake.
+
+### Subscription
+
+Once connected, send the subscription message to begin receiving balance data. The server responds with an `initial-balance` snapshot, then streams `balance-updated` events as changes occur.
+
+### Maintaining the Connection
+
+Send a **ping** message every 20 seconds to keep the connection alive. If no ping is received within the interval, the server closes the connection.
+
+```json
+{
+  "messageType": "ping"
+}
+```
+
+### Message Types
+
+<Tabs>
+  <Tab title="initial-balance">
+    Immediately after subscribing, you receive a snapshot of all current non-zero account balances across your platform and customer accounts.
+
+    ```json
+    {
+      "messageType": "initial-balance",
+      "body": [
+        {
+          "account_id": "db5ea9f1-e864-4ec2-93cc-f56a0d9ad665",
+          "participant_code": "ABC123",
+          "account_group": "ABC123",
+          "account_label": "general",
+          "account_type": "available",
+          "asset": "BTC",
+          "balance": "12.5"
+        },
+        {
+          "account_id": "a5d09f5d-6638-46be-b0fd-1c5243660f2c",
+          "participant_code": "DEF456",
+          "account_group": "ABC123",
+          "account_label": "general",
+          "account_type": "available",
+          "asset": "USD",
+          "balance": "1360000"
+        }
+      ]
+    }
+    ```
+
+    The `initial-balance` message includes:
+    - All accounts with a non-zero balance
+    - Your platform's own balances (`participant_code` = your code)
+    - All customer balances (`account_group` = your platform code)
+  </Tab>
+  <Tab title="balance-updated">
+    Any time a balance changes — due to a deposit, withdrawal, trade settlement, staking event, or any other movement — you receive a `balance-updated` message for the affected account.
+
+    ```json
+    {
+      "messageType": "balance-updated",
+      "body": {
+        "account_id": "009bbe95-256b-423e-913f-139684017032",
+        "participant_code": "DEF456",
+        "account_group": "ABC123",
+        "account_label": "general",
+        "account_type": "available",
+        "asset": "BTC",
+        "balance": "0.00131",
+        "run_id": 85693,
+        "run_type": "withdrawal",
+        "movements": [
+          {
+            "movement_timestamp": "2021-11-22T21:37:14.546139Z",
+            "movement_id": "66f1bec3-7179-4517-9507-7dfc62965b70",
+            "movement_type": "withdrawal_confirmed",
+            "change": "0.1000"
+          },
+          {
+            "movement_timestamp": "2021-11-22T21:37:14.550721Z",
+            "movement_id": "80fc5b9f-e25f-4a3d-b36a-6148f04711e3",
+            "movement_type": "withdrawal",
+            "change": "-0.1000"
+          }
+        ],
+        "run_timestamp": "2021-11-22T21:37:14.441141Z"
+      }
+    }
+    ```
+  </Tab>
+</Tabs>
+
+### Balance Update Event Fields
+
+<ResponseField name="account_id" type="string">
+  The unique identifier for the account whose balance changed.
+</ResponseField>
+
+<ResponseField name="participant_code" type="string">
+  The participant who owns this account. For customer accounts, this is the customer's code; for platform accounts, this is your platform code.
+</ResponseField>
+
+<ResponseField name="account_group" type="string">
+  The platform group this account belongs to. For customer accounts, this matches your platform code, allowing you to identify which customers belong to your platform.
+</ResponseField>
+
+<ResponseField name="account_type" type="string">
+  The balance type: `available`, `collateral`, or `staked`. For standard trading accounts, this is `available`.
+</ResponseField>
+
+<ResponseField name="balance" type="string">
+  The updated account balance after all movements in this run have been applied.
+</ResponseField>
+
+<ResponseField name="run_id" type="integer">
+  A numeric identifier grouping one or more movements that occurred atomically. Runs are collections of potentially multiple movements.
+</ResponseField>
+
+<ResponseField name="run_type" type="string">
+  The category of activity that triggered this balance change: `deposit`, `withdrawal`, `trade`, etc.
+</ResponseField>
+
+<ResponseField name="movements" type="array">
+  The individual balance change entries within this run. Each movement is the most granular unit of a balance change and includes `movement_type` and `change` (signed decimal).
+</ResponseField>
+
+### Movement Types
+
+The `movement_type` field in each movement entry tells you what kind of event caused the change:
+
+| `movement_type` | Description |
+|---|---|
+| `deposit` | On-chain deposit confirmed |
+| `withdrawal_pending` | Withdrawal submitted, pending on-chain confirmation |
+| `withdrawal_confirmed` | Withdrawal confirmed on-chain |
+| `withdrawal` | Net withdrawal debit applied to available balance |
+| `trade` | Balance change due to trade settlement |
+| `staking` | Balance movement related to a staking event |
+
+### JavaScript Connection Example
+
+The following example connects to the Zero Hash Balances WebSocket, handles the initial snapshot, listens for live updates, and sends a ping every 20 seconds to maintain the connection.
+
+```javascript
+const WebSocket = require('ws');
+
+const WS_URL = 'wss://api.zerohash.com/ws/balances'; // confirm URL with your solutions engineer
+const API_KEY = process.env.ZH_API_KEY;
+const API_SECRET = process.env.ZH_API_SECRET;
+
+const ws = new WebSocket(WS_URL);
+
+ws.on('open', () => {
+  console.log('Connected to Zero Hash Balances WebSocket');
+
+  // Authenticate and subscribe
+  ws.send(JSON.stringify({
+    messageType: 'subscribe',
+    apiKey: API_KEY,
+    // Include HMAC signature per Zero Hash auth spec
+  }));
+
+  // Send ping every 20 seconds to keep connection alive
+  setInterval(() => {
+    if (ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ messageType: 'ping' }));
+    }
+  }, 20000);
+});
+
+ws.on('message', (data) => {
+  const message = JSON.parse(data);
+
+  if (message.messageType === 'initial-balance') {
+    console.log('Received initial balances:', message.body.length, 'accounts');
+    // Populate your balance store with the snapshot
+    message.body.forEach(account => {
+      updateBalanceStore(account);
+    });
+  }
+
+  if (message.messageType === 'balance-updated') {
+    const update = message.body;
+    console.log(`Balance update: ${update.participant_code} ${update.asset} → ${update.balance}`);
+
+    // Update your UI or internal state
+    updateBalanceStore(update);
+
+    // Trigger downstream actions based on run_type
+    if (update.run_type === 'deposit') {
+      notifyUserOfDeposit(update);
+    }
+  }
+});
+
+ws.on('close', () => {
+  console.log('WebSocket connection closed — reconnecting...');
+  // Implement reconnect logic with exponential backoff
+});
+
+ws.on('error', (err) => {
+  console.error('WebSocket error:', err.message);
+});
+
+function updateBalanceStore(account) {
+  // Your implementation: update in-memory store or database
+}
+
+function notifyUserOfDeposit(update) {
+  // Your implementation: send push notification or email
+}
+```
+
+### Use Cases
+
+<CardGroup cols={2}>
+  <Card title="Real-Time Portfolio Tracking" icon="chart-line">
+    Power customer-facing balance displays that update instantly when a trade settles or a deposit arrives, without polling `GET /accounts` on a timer.
+  </Card>
+  <Card title="Deposit Confirmation Notifications" icon="bell">
+    Trigger in-app notifications or emails the moment an on-chain deposit is confirmed, using the `run_type: "deposit"` field to filter deposit events.
+  </Card>
+  <Card title="Withdrawal Status Updates" icon="arrow-up-from-bracket">
+    Track the multi-step withdrawal lifecycle (`withdrawal_pending` → `withdrawal_confirmed`) and update your UI at each stage without polling.
+  </Card>
+  <Card title="Balance Threshold Alerts" icon="triangle-exclamation">
+    Watch your platform float or reserve account balance and trigger an internal alert when it drops below a threshold — enabling proactive top-ups before settlement.
+  </Card>
+</CardGroup>
+
+---
+
+## Prices WebSocket
+
+The Prices WebSocket delivers a real-time stream of quote prices for all supported trading symbols. Use this feed to power live price displays, quote widgets, or automated trading triggers in your platform.
+
+### Supported Symbols
+
+The set of available instruments varies by environment (sandbox vs. production). To discover which symbols are supported in your environment, query the list symbols topic:
+
+```
+List symbols topic: see the Zero Hash WebSocket API reference → Listing Available Symbols
+```
+
+### Subscribing to Price Updates
+
+To start a quote price subscription, send a subscription message with the `message_type` set to `price-update` and include the symbols you want to subscribe to.
+
+```json
+{
+  "messageType": "price-update",
+  "symbols": ["BTC/USD", "ETH/USD", "SOL/USD"]
+}
+```
+
+Each incoming message includes the current bid, ask, and mid-price for the subscribed symbol. Refer to the [Prices WebSocket API reference](https://docs.zerohash.com/reference/price-updates) for the full message format and field definitions.
+
+<Tip>
+  Use the Prices WebSocket for displaying indicative quotes in your UI. For executable quotes used to confirm trade amounts before order submission, always call the trade quote endpoint to get a firm, time-bound price.
+</Tip>

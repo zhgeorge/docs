@@ -1,0 +1,192 @@
+---
+title: "Onboarding SDK: Embed KYC and Identity Verification"
+sidebarTitle: "Onboarding SDK"
+description: "Embed Zero Hash's KYC widget to onboard and verify customers with full compliance automation — sensitive identity data never touches your servers."
+---
+
+The Zero Hash Onboarding SDK is a drop-in KYC and identity verification widget that you embed directly into your product. It collects, verifies, and routes all sensitive customer data — name, address, date of birth, SSN, and government-issued ID — through Zero Hash's compliance-approved flow. Your platform never touches that data. When the verification is complete (or requires manual review), Zero Hash notifies you via webhook and a frontend event so you can update your UI accordingly.
+
+## Use Cases
+
+- **Out-of-the-box KYC service.** Zero Hash embeds all compliance and regulatory requirements in the KYC flow so you can focus on acquiring new customers. Manual reviews are handled by the Zero Hash compliance team.
+- **Sensitive data handling.** Date of birth, address, SSN, and government ID are captured directly by Zero Hash — your platform does not need to custody that data.
+- **Faster time to live.** KYC is a low-code option that gets you live quickly and requires low maintenance, because new or evolving onboarding requirements are automatically added to the experience.
+
+## Key Features
+
+- **Required data collection only.** All required verification fields are collected, and Zero Hash never asks for more information than necessary.
+- **Intelligent fallback options.** Zero Hash first attempts to verify the customer with the minimum required information. If results are inconclusive, it automatically requests additional information to increase approval rates.
+- **Profile management.** Users who start the flow with the `update-participant` JWT permission can view and update their profile by clicking **Access Profile** on the Approved screen. The Profile module can also be invoked independently — see the [Profile module page](https://docs.zerohash.com/reference/sdk-modules-profile).
+- **Customizable screens.** Colors and fonts are configurable to match your existing user experience.
+
+---
+
+## Implementation
+
+<Steps>
+  <Step title="Acquire an onboarding access token">
+    Your backend calls `POST /client_auth_token` with the customer's `participant_code` and the `onboarding` permission to generate a short-lived JWT. This token is scoped to that specific customer's onboarding session.
+
+    ```json
+    {
+      "participant_code": "CUST01",
+      "permissions": ["onboarding"]
+    }
+    ```
+
+    See the full token spec in the [SDK modules — User Onboarding](https://docs.zerohash.com/reference/sdk-modules-user-onboarding) reference.
+  </Step>
+  <Step title="Install the SDK">
+    Install the `zh-web-sdk` npm package in your project:
+
+    ```bash
+    npm install zh-web-sdk
+    ```
+  </Step>
+  <Step title="Initialize and open the onboarding modal">
+    Pass the JWT from Step 1 to the SDK and call `openModal` with the `USER_ONBOARDING` app identifier. Use the Cert URL during development and switch to the Prod URL before going live.
+
+    ```typescript
+    import ZeroHashSDK, { AppIdentifier } from 'zh-web-sdk';
+
+    const sdk = new ZeroHashSDK({
+      zeroHashAppsURL: "https://web-sdk.cert.zerohash.com",
+      // For production: "https://web-sdk.zerohash.com"
+    });
+
+    sdk.openModal({
+      appIdentifier: AppIdentifier.USER_ONBOARDING,
+      jwt: "<ONBOARDING_JWT_HERE>",
+      theme: "light", // "light" | "dark" | "auto"
+    });
+    ```
+  </Step>
+  <Step title="Listen for the completion event">
+    The SDK emits a `postMessage` when the customer reaches a terminal KYC state. Listen for this event on `window` and update your UI (e.g., unlock the next step in your flow).
+
+    ```javascript
+    useEffect(() => {
+      const handler = (message) => {
+        if (message.data.type === 'ONBOARDING_COMPLETED') {
+          // Customer has completed the KYC flow — refresh their status
+          // and proceed to the next step in your onboarding experience.
+        }
+      };
+      window.addEventListener('message', handler);
+      return () => window.removeEventListener('message', handler);
+    }, []);
+    ```
+  </Step>
+  <Step title="Subscribe to participant status webhooks">
+    Configure a webhook endpoint and register it with your Zero Hash representative. Zero Hash sends a webhook whenever a participant's status changes (e.g., from `pending` to `approved` or `rejected`). See [Participant Status Updates](https://docs.zerohash.com/reference-link/participant-status-updates) for the full payload reference.
+  </Step>
+</Steps>
+
+---
+
+## React Integration Example
+
+The following example shows a complete React component that mints a JWT server-side, initializes the Onboarding SDK, and handles both the frontend completion event and cleanup:
+
+```tsx
+import React, { useEffect, useMemo } from 'react';
+import ZeroHashSDK, { AppIdentifier } from 'zh-web-sdk';
+
+interface OnboardingWidgetProps {
+  /** Short-lived JWT minted by your backend via POST /client_auth_token */
+  jwt: string;
+  /** Called when the customer reaches a terminal KYC state in the widget */
+  onCompleted: () => void;
+}
+
+const OnboardingWidget: React.FC<OnboardingWidgetProps> = ({ jwt, onCompleted }) => {
+  const sdk = useMemo(() => new ZeroHashSDK({
+    zeroHashAppsURL: "https://web-sdk.zerohash.com", // Cert: web-sdk.cert.zerohash.com
+  }), []);
+
+  useEffect(() => {
+    // Open the onboarding modal as soon as the JWT is available
+    sdk.openModal({
+      appIdentifier: AppIdentifier.USER_ONBOARDING,
+      jwt,
+      theme: "auto",
+    });
+
+    // Listen for the completion event emitted by the SDK iframe
+    const handler = (message: MessageEvent) => {
+      if (message.data.type === 'ONBOARDING_COMPLETED') {
+        onCompleted();
+      }
+    };
+    window.addEventListener('message', handler);
+
+    return () => {
+      window.removeEventListener('message', handler);
+    };
+  }, [sdk, jwt, onCompleted]);
+
+  return null; // The SDK renders its own modal overlay
+};
+
+export default OnboardingWidget;
+```
+
+<Note>
+  Never pass the JWT as a URL query parameter or store it in `localStorage`. Mint it server-side and pass it directly to the SDK constructor.
+</Note>
+
+---
+
+## Configuration Options
+
+<ParamField body="zeroHashAppsURL" type="string" required>
+  The base URL of the Zero Hash SDK host. Use `https://web-sdk.cert.zerohash.com` for the Cert (sandbox) environment and `https://web-sdk.zerohash.com` for production.
+</ParamField>
+
+<ParamField body="jwt" type="string" required>
+  The short-lived JWT generated by your backend via `POST /client_auth_token`. Scoped to the `onboarding` permission for this SDK module. The token is valid for the duration configured on your platform (default: 1 hour).
+</ParamField>
+
+<ParamField body="appIdentifier" type="AppIdentifier" required>
+  The SDK module to launch. Use `AppIdentifier.USER_ONBOARDING` (value: `"user-onboarding"`) for the KYC flow.
+</ParamField>
+
+<ParamField body="theme" type="string" default="light">
+  Controls the color scheme of the SDK modal. Accepted values: `"light"`, `"dark"`, or `"auto"`. When set to `"auto"`, the SDK respects the end user's OS-level preference.
+</ParamField>
+
+---
+
+## KYC Flow Stages
+
+The Onboarding SDK walks customers through these stages automatically:
+
+<Steps>
+  <Step title="Embedded user agreements">
+    The customer reviews and accepts the Zero Hash user agreement and any applicable regulatory disclosures before providing any personal data.
+  </Step>
+  <Step title="Information collection">
+    The SDK collects the minimum required identity data: name, contact details, residential address, and citizenship. Additional fields (e.g., SSN) are collected based on the customer's jurisdiction.
+  </Step>
+  <Step title="Document capture (when required)">
+    If the initial data is insufficient to verify identity automatically, the SDK prompts the customer to photograph a government-issued ID. Zero Hash handles liveness and authenticity checks.
+  </Step>
+  <Step title="Result">
+    The customer sees an **Approved**, **Pending** (manual review), or **Rejected** screen. Your backend receives the corresponding participant status webhook, and the frontend `postMessage` event fires.
+  </Step>
+</Steps>
+
+<Tip>
+  Customers who are approved can immediately proceed to transact using any other Zero Hash SDK — no additional onboarding step is required.
+</Tip>
+
+---
+
+## Webhooks
+
+Subscribe to participant status webhooks to track KYC outcomes in your backend:
+
+- `x-zh-hook-payload-type`: `participant_status_changed`
+- Key statuses: `pending`, `approved`, `rejected`
+
+See the full webhook reference at [Participant Status Updates](https://docs.zerohash.com/reference-link/participant-status-updates).

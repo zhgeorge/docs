@@ -1,0 +1,168 @@
+---
+title: "Rewards Integration Guide: Issue Crypto Rewards to Customers"
+sidebarTitle: "Rewards"
+description: "Learn how to pre-fund a rewards float account and issue crypto rewards to customers using POST /rewards, with worked examples for BTC quantity and total."
+---
+
+The Zero Hash Rewards product lets your platform credit crypto assets directly to your customers' Zero Hash accounts. You pre-fund a rewards float account with USD, then call a single API endpoint to issue a reward denominated either in a specific crypto quantity or in a fiat-equivalent total. Zero Hash executes the underlying buy trade instantly and credits the asset to the customer's account. This guide walks through the complete flow using Platform (`PLAT01`) and Customer (`CUST01`) as examples.
+
+## How It Works
+
+When you issue a reward, Zero Hash converts USD from your rewards float account into the specified crypto asset at the current market rate and credits the resulting quantity to the customer's account. Trades settle instantly — the customer's account balance updates in real time.
+
+```
+Your USD float account  →  Zero Hash buy trade  →  Customer's crypto account
+```
+
+---
+
+## Step 1: Pre-Fund the Rewards Float Account
+
+Before you can issue any rewards, you must fund your rewards float account by sending a wire transfer to Zero Hash. Include your platform code in the wire memo so Zero Hash can auto-credit the correct account.
+
+Your rewards float account details:
+
+| Field | Value |
+|-------|-------|
+| Participant | Zero Hash Liquidity Services (`00SCXM`) |
+| Asset | `USD` |
+| Account Type | `available` |
+| Account Group | Your platform code (e.g., `PLAT01`) |
+| Account Label | `rewards` |
+
+### Check Your Current Float Balance
+
+To view your current rewards float balance at any time, call [GET /accounts](https://docs.zerohash.com/reference/get_accounts) and filter for the account matching:
+
+- `account_owner`: `00SCXM`
+- `account_type`: `available`
+- `account_group`: your platform code
+- `account_label`: `rewards`
+
+---
+
+## Step 2: Issue a Reward
+
+Call `POST /rewards` to issue a reward to a customer. You must specify either `quantity` (a fixed crypto amount) or `total` (a fiat-equivalent value) — not both. All other fields are required.
+
+### Option A: Reward by Quantity
+
+Use this when you want to give your customer a specific amount of crypto — for example, "I want to give `CUST01` exactly 0.002 BTC."
+
+```json
+{
+  "participant_code": "CUST01",
+  "underlying_currency": "BTC",
+  "quoted_currency": "USD",
+  "quantity": ".002"
+}
+```
+
+### Option B: Reward by Fiat Total
+
+Use this when you want to give your customer a crypto amount equivalent to a fixed fiat value — for example, "I want to give `CUST01` $60 worth of BTC."
+
+```json
+{
+  "participant_code": "CUST01",
+  "underlying_currency": "BTC",
+  "quoted_currency": "USD",
+  "total": "60"
+}
+```
+
+A response status of `Completed` means the reward was successfully posted to the customer's account. For any HTTP errors, refer to the [Zero Hash error handling guide](https://docs.zerohash.com/docs/error-handling).
+
+<ParamField body="participant_code" type="string" required>
+  The participant code of the customer receiving the reward (e.g., `CUST01`).
+</ParamField>
+
+<ParamField body="underlying_currency" type="string" required>
+  The crypto asset to reward (e.g., `BTC`, `ETH`, `USDC`).
+</ParamField>
+
+<ParamField body="quoted_currency" type="string" required>
+  The fiat currency used to fund the reward from your float account. Currently `USD`.
+</ParamField>
+
+<ParamField body="quantity" type="string">
+  The exact crypto quantity to credit to the customer. Use either `quantity` or `total`, not both.
+</ParamField>
+
+<ParamField body="total" type="string">
+  The fiat-equivalent amount to convert and credit to the customer. Use either `quantity` or `total`, not both.
+</ParamField>
+
+---
+
+## Step 3: Verify the Customer's Account Balance
+
+After the reward is issued, query the customer's account to confirm the balance was updated. Call [GET /accounts](https://docs.zerohash.com/reference/get_accounts) as the platform (`PLAT01`):
+
+```json
+{
+  "asset": "BTC",
+  "account_owner": "CUST01",
+  "account_type": "available",
+  "account_group": "PLAT01",
+  "account_label": "general",
+  "balance": ".002",
+  "account_id": "14a147e8-6d71-42a2-832c-4d45d4b50d55",
+  "last_update": 1616428235111
+}
+```
+
+The `balance` field reflects the total accumulated balance for that asset in the customer's account. Since trades settle instantly, this balance should be updated immediately after a successful `POST /rewards` call.
+
+---
+
+## Worked Example
+
+The following end-to-end example shows how to reward `CUST01` with $60 worth of BTC.
+
+<Steps>
+  <Step title="Verify float balance">
+    Query your rewards float account to confirm you have at least $60 available.
+
+    `GET /accounts` filtered for `account_owner: 00SCXM`, `account_group: PLAT01`, `account_label: rewards`
+  </Step>
+  <Step title="Issue the reward">
+    Call `POST /rewards` with `total: "60"` and `underlying_currency: "BTC"`.
+
+    ```json
+    {
+      "participant_code": "CUST01",
+      "underlying_currency": "BTC",
+      "quoted_currency": "USD",
+      "total": "60"
+    }
+    ```
+
+    Zero Hash responds with `"status": "Completed"` if the reward was posted successfully.
+  </Step>
+  <Step title="Confirm the customer balance">
+    Query `GET /accounts` filtering for `account_owner: CUST01` and `asset: BTC`. The `balance` field reflects the newly credited BTC amount at the rate applied at the time of the trade.
+  </Step>
+</Steps>
+
+---
+
+## Handling the `Insufficient Credit` Error
+
+If your rewards float account does not have enough USD to cover the buy trade, the API returns:
+
+```json
+{
+  "error": "Insufficient credit: insufficient credit"
+}
+```
+
+This means your rewards float balance is lower than the fiat value of the reward you are trying to issue. To resolve the error:
+
+1. Query your current float balance via [GET /accounts](https://docs.zerohash.com/reference/get_accounts) using the account details listed in Step 1.
+2. Top up the float account by sending an additional wire transfer to Zero Hash.
+3. Retry the `POST /rewards` call once the new balance is reflected.
+
+<Warning>
+  Do not retry the `POST /rewards` call before topping up. The same error will be returned until sufficient float is available.
+</Warning>

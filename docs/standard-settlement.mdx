@@ -1,0 +1,201 @@
+---
+title: "Standard Settlement Process on the Zero Hash Platform"
+sidebarTitle: "Standard Settlement"
+description: "Learn Zero Hash's default end-of-day settlement cycle, timing, USD delivery mechanics, and how to query settlement status via the API."
+---
+
+When you use Zero Hash trading products that operate with a float account, an end-of-day (EOD) settlement amount is calculated at the close of each trading session to reflect your net trading activity. If the session was a net buy for your platform, you deliver USD to Zero Hash. If the session was a net sell, Zero Hash delivers USD to you. Understanding this cycle — including its timing, prerequisites, and the three methods for determining your net obligation — is essential for keeping your operations running smoothly.
+
+## Prerequisites
+
+Before you can run the settlement process, complete both of the following setup steps.
+
+<Steps>
+  <Step title="Fund Your Float Account">
+    To fund or top up your float account, wire funds to Zero Hash and include your platform code plus the word `FLOAT` in the memo field.
+
+    ```
+    Memo format: {platform_code}-FLOAT
+    Example:      ACME01-FLOAT
+    ```
+
+    Your solutions engineer will provide the wire instructions. The float covers the digital assets that Zero Hash pre-positions on behalf of your end users.
+  </Step>
+  <Step title="Confirm Your Trading Session Cut-Off Time">
+    Your trading session timezone and cut-off time are set with your solutions engineer. The default session runs **12:00:00 AM EST to 11:59:59 PM EST, Monday through Friday**. If you have not confirmed your cut-off, reach out to your solutions engineer before going live.
+  </Step>
+</Steps>
+
+## Settlement Process
+
+Each settlement cycle has two stages: calculating the net obligation and then delivering or receiving USD.
+
+### Step 1: Calculate the Settlement Amount
+
+You have three options for determining the net USD amount for a given session.
+
+<Tabs>
+  <Tab title="Option A — GET /trades">
+    Query `GET /trades` and filter by the session window using timestamp parameters. Sum the notional values across all trades to derive the net buy or sell amount.
+
+    **Request**
+
+    ```http
+    GET /trades?platform_code=00SCXM
+      &transaction_timestamp[gte]=<start_time>
+      &transaction_timestamp[lt]=<end_time>
+    ```
+
+    Use these timestamp rules depending on the day:
+
+    | Day | `[gte]` lookback |
+    |---|---|
+    | Tuesday – Friday | 24 hours before cut-off |
+    | Monday | 72 hours before cut-off (covers Fri–Sun weekend activity) |
+
+    **Example Response**
+
+    ```json
+    {
+      "content": {
+        "message": [
+          {
+            "trade_id": "372b48f2-e89b-4670-8c77-0b56e899544b",
+            "client_trade_id": "5ABCDEF12345",
+            "trade_state": "terminated",
+            "symbol": "ETH/USD",
+            "trade_quantity": "1",
+            "trade_price": "4267.64",
+            "total_notional": "4267.64",
+            "parties": [
+              {
+                "participant_code": "CUST01",
+                "side": "buy",
+                "asset": "ETH",
+                "amount": "1",
+                "settlement_state": "settled",
+                "commission": "3.84",
+                "commission_asset": "USD"
+              },
+              {
+                "participant_code": "00SCXM",
+                "side": "sell",
+                "asset": "USD",
+                "amount": "4267.64",
+                "settlement_state": "settled"
+              }
+            ],
+            "session_id": "20250818080703"
+          }
+        ],
+        "page": 1,
+        "total_pages": 1,
+        "page_size": 50
+      }
+    }
+    ```
+
+    Once you have all trades for the session, apply the following calculation logic:
+
+    **Calculating the buy amount:**
+    - Find all trades where your customer's `participant_code` appears on the `buy` side.
+    - Sum `total_notional + commission` for each such trade.
+
+    **Calculating the sell amount:**
+    - Find all trades where your customer's `participant_code` appears on the `sell` side.
+    - Sum `total_notional - commission` for each such trade.
+
+    **Net amount:**
+    - Subtract total sell from total buy.
+    - **Positive result** → your platform owes USD to Zero Hash.
+    - **Negative result** → Zero Hash owes USD to your platform.
+  </Tab>
+  <Tab title="Option B — NET Delivery Obligations">
+    The Net Delivery Obligation (NDO) endpoint gives you the real-time outstanding USD obligation tracked on your settlement account without manually aggregating individual trades.
+
+    Your settlement account follows this structure:
+
+    | Field | Value |
+    |---|---|
+    | `participant_code` | Your platform code |
+    | `account_group` | Your platform code |
+    | `account_label` | `general` |
+    | `asset` | `USD` |
+
+    **Request**
+
+    ```http
+    GET /accounts/net_delivery_obligations
+    ```
+
+    Filter the response where `account_group` equals your platform code, `account_label` equals `general`, and `asset` equals `USD`. The returned amount is what you must deliver to Zero Hash to settle outstanding obligations.
+
+    <Note>
+      If no NDO record exists for your account, you have no outstanding payable — either Zero Hash owes you for a net sell session, or your account is fully settled. Missed payments cause the NDO amount to accrue over time.
+    </Note>
+  </Tab>
+  <Tab title="Option C — Settlement Email">
+    Zero Hash sends a daily email to platform admins specifying the exact USD amount to be delivered or received for the most recent trading session. You can use this email as your primary settlement notice if you process settlements manually, or cross-reference it against your own calculation to identify reconciliation breaks.
+
+    <Tip>
+      Even if you use Option A or B programmatically, subscribing to the settlement email gives you an independent daily check that can catch discrepancies before the 12:00 PM EST wire deadline.
+    </Tip>
+  </Tab>
+</Tabs>
+
+### Step 2: Deliver or Receive USD
+
+Once you know the net obligation, execute the wire transfer by 12:00 PM EST on the settlement date.
+
+**If your platform has a net buy position:**
+
+Wire Zero Hash the calculated amount and include the following in the memo field:
+
+```
+Memo format: {platform_code}-SETTLEMENT
+Example:      ACME01-SETTLEMENT
+```
+
+**If your platform has a net sell position:**
+
+Zero Hash wires the calculated amount to your platform by 12:00 PM EST. No action is required from you.
+
+<Warning>
+  Always include the correct memo format (`{platform_code}-SETTLEMENT`) when wiring funds. Wires without this memo may not be applied to your settlement account, which will cause your NDO to accrue and may delay asset delivery to your end users.
+</Warning>
+
+## Weekend Settlement
+
+Trading activity booked on Friday, Saturday, or Sunday is grouped and settled together on the following Monday at 12:00 PM EST. When querying `GET /trades` for Monday's settlement, extend your lookback window to **72 hours** to capture all weekend trades.
+
+## Key Response Fields
+
+When querying `GET /trades` for settlement purposes, these fields are most relevant:
+
+<ResponseField name="trade_id" type="string">
+  The Zero Hash-assigned unique identifier for the trade. Use this to match records with your internal systems.
+</ResponseField>
+
+<ResponseField name="client_trade_id" type="string">
+  Your platform's own trade identifier, submitted at the time of trade creation.
+</ResponseField>
+
+<ResponseField name="trade_state" type="string">
+  The lifecycle state of the trade. A value of `terminated` confirms the trade has been fully settled.
+</ResponseField>
+
+<ResponseField name="settlement_state" type="string">
+  Per-party settlement status. A value of `settled` confirms that party's obligation has been fulfilled.
+</ResponseField>
+
+<ResponseField name="total_notional" type="string">
+  The total USD notional value of the trade, used as the basis for settlement calculations.
+</ResponseField>
+
+<ResponseField name="commission" type="string">
+  The commission charged on the trade, expressed in `commission_asset`. Add this to `total_notional` for buy-side calculations, subtract it for sell-side.
+</ResponseField>
+
+<ResponseField name="session_id" type="string">
+  Identifies the trading session in which the trade was booked. Use this to group trades by session when batching settlement calculations.
+</ResponseField>

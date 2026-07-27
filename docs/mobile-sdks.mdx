@@ -1,0 +1,364 @@
+---
+title: "Mobile SDKs: iOS, Android, and Capacitor Integration"
+sidebarTitle: "Mobile SDKs"
+description: "Embed Zero Hash SDK flows natively into iOS and Android apps, or use the Capacitor plugin for hybrid apps — with the same JWT auth as the web SDK."
+---
+
+Zero Hash provides native mobile SDKs for iOS and Android that let you embed product flows directly into your mobile application with minimal platform-specific code. Native SDKs deliver better performance and a more seamless user experience compared to mobile-web or API-only implementations. If you're building a hybrid app with Capacitor, a dedicated plugin wraps the native SDKs so you can present Zero Hash flows from your Capacitor JavaScript layer.
+
+<Note>
+  All mobile SDKs use the same JWT-based authentication as the web SDK. Your backend mints a short-lived JWT via the Zero Hash API and passes it to the SDK at runtime. The callbacks return the same event data described in the [Front-end callbacks](https://docs.zerohash.com/docs/front-end-callbacks) reference.
+</Note>
+
+---
+
+## iOS SDK
+
+The Zero Hash iOS SDK is a native Swift package. It supports the Fund (deposit) flow and uses the same JWT session model as all other Zero Hash SDK surfaces.
+
+### Requirements
+
+| Requirement | Minimum Version |
+|---|---|
+| iOS | 13.0+ |
+| Swift | 5.0+ |
+| Xcode | 13.0+ |
+
+### Installation via Xcode
+
+<Steps>
+  <Step title="Add the package dependency">
+    In Xcode, go to **File → Add Package Dependencies...** and enter the repository URL:
+
+    ```
+    https://github.com/zerohash-ext/zerohash-ios
+    ```
+  </Step>
+  <Step title="Select version rule">
+    Choose **Up to Next Major Version** for the version rule and click **Add Package**.
+  </Step>
+  <Step title="Select your app target">
+    On the next popup, select your app target and click **Add Package** to confirm.
+  </Step>
+  <Step title="Verify the dependency">
+    Confirm that the Zero Hash SDK appears in your app's package dependencies, and that it is listed under **Frameworks, Libraries and Embedded Content** in your application target settings.
+  </Step>
+</Steps>
+
+### Integration
+
+<Steps>
+  <Step title="Create a view to host the flow">
+    Create a `UIViewController` (or SwiftUI view) in your app that will trigger the Zero Hash flow.
+  </Step>
+  <Step title="Import the SDK and configure callbacks">
+    Import `ZerohashSDK` and define the callbacks you want to handle — `onClose`, `onError`, `onEvent`, and `onFund`.
+  </Step>
+  <Step title="Configure and present the session">
+    Call `ZerohashSDK.configureFund(jwt:environment:theme:callbacks:)` and then call `present(from:)` on the returned session object.
+  </Step>
+</Steps>
+
+### iOS Code Example
+
+```swift
+import UIKit
+import ZerohashSDK
+
+class FundViewController: UIViewController {
+
+    private var fundSession: ZerohashFundSession?
+
+    @IBAction func startFundTapped(_ sender: UIButton) {
+        let callbacks = FundCallbacks(
+            onClose: { print("Fund closed") },
+            onError: { error in
+                print("Fund error \(error.code): \(error.message)")
+            },
+            onEvent: { event in
+                print("Fund event: \(event.type)")
+            },
+            onFund: { fund in
+                if fund.success {
+                    print("✅ Deposit processed — status: \(fund.status ?? "unknown")")
+                } else {
+                    print("⏳ Deposit status: \(fund.status ?? "unknown")")
+                }
+            }
+        )
+
+        fundSession = ZerohashSDK.configureFund(
+            jwt: "your-jwt-token",    // Short-lived JWT from your backend
+            environment: .production, // .production or .sandbox
+            theme: .system,           // .light | .dark | .system
+            callbacks: callbacks
+        )
+
+        fundSession?.present(from: self)
+    }
+}
+```
+
+<Tip>
+  A full working recipe is available at the Zero Hash [iOS SDK Auth recipe](https://docs.zerohash.com/recipes/ios-sdk-auth).
+</Tip>
+
+---
+
+## Android SDK
+
+The Zero Hash Android SDK is a native Kotlin library distributed through JitPack.
+
+### Requirements
+
+| Requirement | Minimum Version |
+|---|---|
+| Android | 5.0+ (API level 21) |
+| Kotlin | 1.9+ |
+| Android Studio | Hedgehog (2023.1.1) or later |
+
+### GitHub Repository
+
+- [Main repo](https://github.com/zerohash-ext/zerohash-android)
+- [Readme](https://github.com/zerohash-ext/zerohash-android/blob/main/README.md)
+
+### Installation via Gradle
+
+<Steps>
+  <Step title="Add the SDK dependency">
+    In your app's `build.gradle.kts`, add the Zero Hash Android SDK:
+
+    ```kotlin
+    dependencies {
+        implementation("com.github.zerohash-android:zerohash-android:1.0.0")
+    }
+    ```
+  </Step>
+  <Step title="Add JitPack to your repositories">
+    The SDK is hosted on JitPack. Add the JitPack Maven repository to your project's Gradle configuration:
+
+    ```kotlin
+    allprojects {
+        repositories {
+            google()
+            mavenCentral()
+            maven { url = uri("https://jitpack.io") }
+        }
+    }
+    ```
+
+    If your project uses `dependencyResolutionManagement`, add the same `maven { ... }` block to that section in `settings.gradle` instead.
+  </Step>
+  <Step title="Sync Gradle">
+    Sync your Gradle project and confirm that `zerohash-sdk` appears in your project's External Libraries.
+  </Step>
+</Steps>
+
+### Integration
+
+<Steps>
+  <Step title="Create an Activity or Fragment">
+    Create the Activity or Fragment that will host the Zero Hash flow trigger (e.g., a button in your UI).
+  </Step>
+  <Step title="Import the SDK and configure callbacks">
+    Import the relevant classes from `com.zerohash.sdk` and define your `FundCallbacks` implementation.
+  </Step>
+  <Step title="Configure and present the session">
+    Call `ZerohashSDK.configureFund(...)` and then call `present(activity)` on the returned session object. Cancel the session in `onDestroy` to avoid memory leaks.
+  </Step>
+</Steps>
+
+### Android Code Example
+
+```kotlin
+import com.zerohash.sdk.ZerohashSDK
+import com.zerohash.sdk.ZerohashError
+import com.zerohash.sdk.Environment
+import com.zerohash.sdk.GenericEvent
+import com.zerohash.sdk.Theme
+import com.zerohash.sdk.fund.FundCallbacks
+import com.zerohash.sdk.fund.FundCompletedEvent
+import com.zerohash.sdk.fund.ZerohashFundSession
+
+class MainActivity : AppCompatActivity() {
+
+    private var fundSession: ZerohashFundSession? = null
+
+    private fun openFund(jwt: String) {
+        fundSession = ZerohashSDK.configureFund(
+            jwt = jwt,                           // Short-lived JWT from your backend
+            environment = Environment.PRODUCTION, // Environment.PRODUCTION or SANDBOX
+            theme = Theme.SYSTEM,                 // Theme.LIGHT | DARK | SYSTEM
+            callbacks = object : FundCallbacks {
+                override fun onClose() { fundSession = null }
+                override fun onError(error: ZerohashError) { /* show error UI */ }
+                override fun onEvent(event: GenericEvent) { /* forward to analytics */ }
+                override fun onFundCompleted(event: FundCompletedEvent) {
+                    // Fields available on FundCompletedEvent:
+                    // event.transactionId, event.assetSymbol, event.amount,
+                    // event.depositAddress, event.network, event.fundId,
+                    // event.notionalAmount
+                }
+            }
+        )
+        fundSession?.present(this)
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        fundSession?.cancel()
+    }
+}
+```
+
+---
+
+## Capacitor Plugin
+
+If you're building with [Capacitor](https://capacitorjs.com) rather than native Swift/Kotlin directly, the Zero Hash Capacitor plugin wraps the native iOS and Android SDKs and exposes them to your TypeScript layer. It currently supports the **Fund (deposit) flow**.
+
+### Prerequisites
+
+- A Capacitor app targeting iOS, Android, or both
+- iOS 15 or later; Android `minSdkVersion` 24 or later
+- A backend that mints a short-lived Fund session JWT from the Zero Hash API
+
+### Installation
+
+```bash
+npm install @zerohash-sdk/capacitor
+npx cap sync
+```
+
+`npx cap sync` wires in the native iOS SDK automatically via Swift Package Manager and registers the Android plugin. No additional iOS setup is required.
+
+#### Android — Add JitPack
+
+The Capacitor plugin's Android side pulls in the native Zero Hash Android SDK from JitPack. Add JitPack to your app's Gradle repositories:
+
+```kotlin
+allprojects {
+    repositories {
+        google()
+        mavenCentral()
+        maven { url = uri("https://jitpack.io") }
+    }
+}
+```
+
+If your project uses `dependencyResolutionManagement`, add the same block in `settings.gradle` instead.
+
+### Presenting the Fund Flow
+
+Register your event listeners **before** calling `presentFund`, then pass in the JWT your backend minted:
+
+```typescript
+import { Zerohash } from '@zerohash-sdk/capacitor';
+
+// 1. Register listeners before presenting.
+await Zerohash.addListener('fundCompleted', (event) => {
+  console.log('Deposit complete', event);
+});
+await Zerohash.addListener('close', () => console.log('Flow closed'));
+await Zerohash.addListener('error', (e) => console.error(e.code, e.message));
+
+// 2. Present the Fund flow with the JWT from your backend.
+await Zerohash.presentFund({
+  jwt: '<fund-session-jwt>',
+  environment: 'production', // 'sandbox' | 'production'
+  theme: 'system',           // 'light' | 'dark' | 'system'
+});
+```
+
+To manage the session programmatically:
+
+```typescript
+// Dismiss the Fund flow
+await Zerohash.cancel();
+
+// Check if a session is active
+const { isActive } = await Zerohash.isActive();
+
+// Clean up all listeners when tearing down your component
+await Zerohash.removeAllListeners();
+```
+
+### Capacitor Plugin API Reference
+
+#### Methods
+
+| Method | Signature | Description |
+|---|---|---|
+| `presentFund` | `presentFund(options: PresentFundOptions) => Promise<void>` | Presents the Fund flow. Rejects if a session is already active. |
+| `cancel` | `cancel() => Promise<void>` | Dismisses the active Fund session. |
+| `isActive` | `isActive() => Promise<{ isActive: boolean }>` | Reports whether a Fund session is currently presented. |
+| `addListener` | `addListener(eventName, listenerFunc) => Promise<PluginListenerHandle>` | Registers a listener for SDK events. |
+| `removeAllListeners` | `removeAllListeners() => Promise<void>` | Removes all registered listeners. |
+
+#### `PresentFundOptions`
+
+<ParamField body="jwt" type="string" required>
+  Short-lived Fund session JWT minted by your backend from the Zero Hash API.
+</ParamField>
+
+<ParamField body="environment" type="ZerohashEnvironment" default="production">
+  `'sandbox'` or `'production'`. Determines which Zero Hash environment the Fund session runs against.
+</ParamField>
+
+<ParamField body="theme" type="ZerohashTheme" default="system">
+  `'light'`, `'dark'`, or `'system'`. `'system'` follows the device's OS-level setting.
+</ParamField>
+
+<ParamField body="allowList" type="string[]">
+  Android only. Restricts the hosts the embedded WebView may load. Passing this on iOS rejects the call.
+</ParamField>
+
+#### Events
+
+| Event | Payload | Fires when |
+|---|---|---|
+| `close` | none | The user closes the Fund flow. |
+| `error` | `{ code: string, message: string }` | The Fund flow reports an error. |
+| `event` | `{ type: string, data: object }` | A low-level lifecycle event is forwarded. |
+| `fundCompleted` | `FundCompletedEvent` | A deposit completes successfully. |
+
+#### `FundCompletedEvent` fields (any not provided by the flow will be `null`)
+
+<ResponseField name="depositAddress" type="string | null">
+  The on-chain deposit address used for this transaction.
+</ResponseField>
+<ResponseField name="network" type="string | null">
+  The blockchain network (e.g., `ETH`, `SOL`).
+</ResponseField>
+<ResponseField name="assetSymbol" type="string | null">
+  The deposited asset symbol (e.g., `USDC`).
+</ResponseField>
+<ResponseField name="amount" type="string | null">
+  The asset quantity deposited.
+</ResponseField>
+<ResponseField name="transactionId" type="string | null">
+  The on-chain transaction hash.
+</ResponseField>
+<ResponseField name="fundId" type="string | null">
+  Zero Hash's internal identifier for this funding event.
+</ResponseField>
+<ResponseField name="notionalAmount" type="string | null">
+  The fiat-denominated value of the deposit.
+</ResponseField>
+
+---
+
+## Key Differences from the Web SDK
+
+| Aspect | Web SDK (`zh-web-sdk`) | Native iOS / Android | Capacitor Plugin |
+|---|---|---|---|
+| Installation | `npm install zh-web-sdk` | Swift Package Manager / Gradle | `npm install @zerohash-sdk/capacitor` |
+| Rendering | Modal overlay in a browser | Native view controller / activity | Native view via Capacitor bridge |
+| Event model | `window.postMessage` | Swift/Kotlin callbacks | Capacitor `addListener` |
+| Theme | `"light"` / `"dark"` / `"auto"` | `.light` / `.dark` / `.system` | `'light'` / `'dark'` / `'system'` |
+| JWT expiry | Varies by flow | Varies by flow | Varies by flow |
+| Currently supported flows | All SDK modules | Fund (deposit) | Fund (deposit) |
+
+<Warning>
+  If you're using a native mobile app (Swift, Flutter, etc.) and need a flow not yet available in the native SDK, use the **WebView approach** by loading the web SDK URL inside a `WKWebView` (iOS) or `WebView` (Android). See the [SDK integration with mobile apps](https://docs.zerohash.com/reference/sdk-integration-with-mobile-apps) reference for details.
+</Warning>

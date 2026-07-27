@@ -1,0 +1,113 @@
+---
+title: "Creating EU Participants: Requirements and Compliance Steps"
+sidebarTitle: "EU Participants"
+description: "Learn the additional document, address verification, and phone number requirements for onboarding participants in the EU environment on Zero Hash."
+---
+
+When you onboard participants in the EU system using the reliance KYC model, Zero Hash imposes stricter requirements than the US environment. You must upload identity verification documents and, by default, a proof-of-address document before a participant can be approved. Phone numbers must also conform to a stricter format. This page covers every EU-specific requirement so you can build your onboarding flow correctly from the start.
+
+## Identity Verification Documents
+
+You submit participant documents via the [POST /participant/documents](https://docs.zerohash.com/reference/post_participants-documents) endpoint. The following document types support **automatic system approval** — meaning the system will approve the participant without manual review if one of these documents is successfully uploaded and validated:
+
+<Tabs>
+  <Tab title="EU Documents">
+    | Document Type | Notes |
+    |---------------|-------|
+    | `eu_passport` | Single-side upload |
+    | `eu_id_card` | Front **and** back required |
+    | `eu_drivers_license` | Front **and** back required |
+  </Tab>
+  <Tab title="US Documents">
+    | Document Type | Notes |
+    |---------------|-------|
+    | `us_id_card` | Front **and** back required |
+    | `us_drivers_license` | Front **and** back required |
+    | `us_passport_card` | Front **and** back required |
+    | `us_passport` | Single-side upload |
+  </Tab>
+  <Tab title="Other Documents">
+    | Document Type | Notes |
+    |---------------|-------|
+    | `non_us_passport` | Single-side upload |
+  </Tab>
+</Tabs>
+
+<Warning>
+  Any document type that requires front and back — such as `eu_id_card` or `eu_drivers_license` — will not trigger automatic approval unless **both sides** are uploaded. A missing back-of-card upload leaves the participant in a pending state requiring manual review.
+</Warning>
+
+## Address Verification
+
+By default, EU participants require a proof-of-address document upload before they can be approved. The following document type is supported for automatic system approval:
+
+- `eu_address_verification`
+
+You upload this document via the same [POST /participant/documents](https://docs.zerohash.com/reference/post_participants-documents) endpoint used for identity documents.
+
+### Alternative: Proof-of-Address Coordinates
+
+If you prefer not to require document uploads for address verification, you can request that Zero Hash enable **proof-of-address coordinates** for your platform. Once enabled, you can pass the participant's geographic coordinates on the [POST /participants/customers/new](https://docs.zerohash.com/reference/post_participants-customers-new) request instead of uploading a document.
+
+```json
+{
+  "proof_of_address_coordinates": {
+    "latitude": "88.178419",
+    "longitude": "16.592011"
+  }
+}
+```
+
+<Info>
+  When coordinates mode is enabled, the `proof_of_address_coordinates` field is **optional** on participant creation. If you pass coordinates, the participant does not need an address verification document to be approved. If you omit coordinates, the participant will still require a document upload to reach `approved` status.
+</Info>
+
+To enable this configuration, submit a request to your Zero Hash contact. It cannot be self-configured.
+
+## Phone Number Validation
+
+EU participants require a valid `phone_number` on the [POST /participants/customers/new](https://docs.zerohash.com/reference/post_participants-customers-new) request. The value must conform to **E.164 format**, including the leading `+`.
+
+<Tabs>
+  <Tab title="Valid">
+    ```
+    +35315550123
+    ```
+    ✅ Includes the leading `+` and country code.
+  </Tab>
+  <Tab title="Invalid">
+    ```
+    35315550123
+    ```
+    ❌ Missing the leading `+`. This request will be rejected.
+  </Tab>
+</Tabs>
+
+<Note>
+  This is stricter than the US environment, where phone number validation is skipped if an `email` is also provided on the request. If you are building a single integration that covers both US and EU participants, do not assume phone formatting rules carry over between the two environments — always include the leading `+` for EU participants.
+</Note>
+
+## EU Participant Creation Checklist
+
+Before you submit an EU participant, confirm you have the following ready:
+
+<Steps>
+  <Step title="Collect identity document">
+    Obtain a scan or photo of one of the supported document types. For cards and licenses, ensure you have both the front and back images.
+  </Step>
+  <Step title="Collect address proof (or coordinates)">
+    Obtain a `eu_address_verification` document, or confirm that your platform has been configured for coordinates-based address verification.
+  </Step>
+  <Step title="Validate phone number format">
+    Confirm the participant's phone number starts with `+` and includes the correct E.164 country code. Do not strip the `+` before sending.
+  </Step>
+  <Step title="Submit the participant">
+    Call [POST /participants/customers/new](https://docs.zerohash.com/reference/post_participants-customers-new) with all required fields, including the `phone_number` in E.164 format.
+  </Step>
+  <Step title="Upload documents">
+    Call [POST /participant/documents](https://docs.zerohash.com/reference/post_participants-documents) to upload the identity document and, if required, the address verification document.
+  </Step>
+  <Step title="Confirm approval">
+    Poll [GET /participants](https://docs.zerohash.com/reference/get_participants) or listen for the participant status webhook. The participant must reach `approved` status before they can transact.
+  </Step>
+</Steps>

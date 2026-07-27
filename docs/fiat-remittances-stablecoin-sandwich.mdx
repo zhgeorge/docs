@@ -1,0 +1,208 @@
+---
+title: "Cross-Border Fiat Remittances via Stablecoin Bridge"
+sidebarTitle: "Fiat Remittances"
+description: "Send cross-border fiat payments to 130+ countries using stablecoins as a settlement bridge: fiat in, stablecoin routing, fiat out to local currency."
+---
+
+Zero Hash's fiat remittances product enables your platform to send cross-border payments by using stablecoins as an efficient intermediary between fiat currencies. The model is often called a "stablecoin sandwich": you send USD (or another source currency) on one side, stablecoins route the value across borders near-instantly, and the beneficiary receives local fiat currency on the other side. This approach eliminates the need for correspondent banking relationships and delivers better speed and cost characteristics than traditional FX and wire networks.
+
+## Why the Stablecoin Sandwich
+
+<CardGroup cols={3}>
+  <Card title="Efficient Cross-Border Payouts" icon="plane">
+    Send funds in one currency (e.g., USD) and deliver in another (e.g., ARS) using stablecoins like USDC as the intermediary for speed and cost efficiency.
+  </Card>
+  <Card title="Simplified Global Coverage" icon="earth-americas">
+    Avoid managing multiple local banking integrations or correspondent banking relationships. Zero Hash handles the network connectivity to 130+ countries.
+  </Card>
+  <Card title="Reduced Costs and Delays" icon="circle-dollar-to-slot">
+    Stablecoins enable near-instant settlement with lower fees compared to traditional FX and SWIFT wire networks.
+  </Card>
+</CardGroup>
+
+Zero Hash enables instant fiat payouts to **over 130 countries** across all major regions — including Latin America (Brazil, Mexico, Colombia), Africa (Nigeria, Kenya, South Africa), Asia-Pacific (India, Philippines, Indonesia), the Middle East (UAE, Saudi Arabia), and Europe (Netherlands, Germany, Poland). Contact Zero Hash directly for the full list of supported countries, currencies, and local payment networks.
+
+## Key Definitions
+
+| Term | Definition |
+|------|------------|
+| **Payout** | The end-to-end transaction: fiat → stablecoin conversion, on-chain disbursement, and stablecoin → local currency delivery. |
+| **Platform** | The company contracted with Zero Hash that interacts with the API directly. |
+| **Payor** | A non-natural person (typically a business) that is a customer of the Platform. The Payor may be the Platform itself. |
+| **Beneficiary** | The natural person who receives the final fiat payout. |
+
+## End-to-End API Flow
+
+<Steps>
+  <Step title="Submit Payor">
+    Register the Payor entity via `POST /participants/entity/new`. Include full entity details: legal name, address, entity type, tax ID, control persons, and beneficial owners.
+
+    You'll receive a `participant_code` in the response (e.g., `PAYOR1`). Store this value — it identifies the Payor for all future API calls.
+
+    <Note>
+      Your Payor will not reach `approved` status until you also supply required documents via `POST /participants/entity/documents`. Document requirements vary by `entity_type`.
+    </Note>
+  </Step>
+  <Step title="Query Payor status">
+    Verify the Payor's approval status using `GET /participants?participant_code=PAYOR1`. The initial status is `submitted`. Once documents are uploaded and reviewed, it transitions to `approved`.
+  </Step>
+  <Step title="Fund your float account">
+    Transfer fiat to your Zero Hash float account before initiating payouts. Your float account details:
+
+    | Field | Value |
+    |-------|-------|
+    | Participant code | `00SCXM` |
+    | Account group | Your platform code (e.g., `PLAT01`) |
+    | Account label | `general` |
+    | Account type | `available` |
+    | Asset | `USD` |
+
+    <Info>
+      In the Cert (certification) environment, your platform float account is pre-funded for testing purposes.
+    </Info>
+  </Step>
+  <Step title="Submit Beneficiary">
+    Register the payout recipient via `POST /participants/beneficiaries/new`. Include personal details, identity information, and a signed agreement.
+
+    ```json
+    {
+      "first_name": "Lucas",
+      "last_name": "Martinez",
+      "email": "lmartinez@gmail.com",
+      "address_one": "Calle San Martín 305",
+      "city": "Buenos Aires",
+      "zip": "C1000",
+      "jurisdiction_code": "AR-X",
+      "citizenship_code": "AR",
+      "date_of_birth": "1985-09-02",
+      "id_number_type": "non_us_passport",
+      "id_number": "A12345678",
+      "signed_agreements": [
+        {
+          "type": "payment_services_terms",
+          "region": "us",
+          "signed_timestamp": 1726005278070
+        }
+      ]
+    }
+    ```
+
+    You'll receive a `participant_code` in the response (e.g., `BENEF1`). Zero Hash runs automated sanctions screening immediately. Beneficiaries typically transition to `approved`, `rejected`, or `pending_approval` near-instantly.
+  </Step>
+  <Step title="Query Beneficiary status">
+    Confirm the beneficiary reached `approved` status before proceeding:
+
+    ```bash
+    GET /participants?participant_code=BENEF1
+    ```
+
+    Only `approved` beneficiaries can have external accounts linked and receive payouts.
+  </Step>
+  <Step title="Connect the Beneficiary's external account">
+    Link the beneficiary to their local bank account via `POST /payments/external_accounts`:
+
+    ```json
+    {
+      "participant_code": "BENEF1",
+      "type": "fiat",
+      "details": {
+        "network": "transferencias30",
+        "supported_assets": ["ARS"],
+        "account_number": "1234567890"
+      }
+    }
+    ```
+
+    The account starts in `pending` status. Zero Hash validates it automatically and transitions it to `approved` or `rejected`.
+  </Step>
+  <Step title="Query external accounts">
+    Verify the external account is `approved` before requesting a quote:
+
+    ```bash
+    GET /payments/external_accounts?participant_code=BENEF1
+    ```
+  </Step>
+  <Step title="Get an FX quote">
+    Request a real-time FX quote via `POST /payments/rfq`. Zero Hash automatically selects the most efficient blockchain network — you don't need to specify it:
+
+    ```json
+    {
+      "participant_code": "BENEF1",
+      "quoted_currency": "USD",
+      "underlying_currency": "ARS",
+      "side": "buy",
+      "total": "125"
+    }
+    ```
+
+    **Response includes:**
+    - `quote_id` — use this to execute the quote
+    - `price` — the FX rate
+    - `blockchain_network` — the stablecoin network Zero Hash selected (e.g., `USDC.POLYGON`)
+    - `expire_ts` — the quote expiry timestamp
+    - `disclosed_spread` — the total spread collected by your platform and Zero Hash
+  </Step>
+  <Step title="Execute the FX quote">
+    Execute the quote before it expires using `POST /payments/execute`:
+
+    ```json
+    {
+      "quote_id": "cffcafdb-8275-4cf0-d7a2-83a6a216d906"
+    }
+    ```
+
+    **Response:**
+    ```json
+    {
+      "request_id": "0f68333e-2114-469d-b505-c850d776e063",
+      "transaction_id": "0f68333e-2114-469d-b505-c850d776e063",
+      "status": "pending"
+    }
+    ```
+  </Step>
+  <Step title="Monitor payout status">
+    Track the payout via `GET /payments` or `GET /payments/{payment_id}`. Payout statuses progress through:
+
+    | Status | Description |
+    |--------|-------------|
+    | `submitted` | Payout has been started. |
+    | `posted` | Funds converted to stablecoin and broadcast on-chain. |
+    | `crypto_settled` | On-chain crypto leg settled. |
+    | `fiat_settled` | Local fiat delivered to beneficiary's bank account. |
+  </Step>
+</Steps>
+
+## Network Fee Handling
+
+Your platform has two options for covering blockchain network fees:
+
+<Tabs>
+  <Tab title="Fund a network fee account">
+    Pre-fund a dedicated network fee account. All network fees are deducted in real-time from this account.
+
+    | Field | Value |
+    |-------|-------|
+    | Participant code | Your platform code (e.g., `PLAT01`) |
+    | Account group | `PLAT01` |
+    | Account label | `network_fee` |
+    | Asset | `USD` |
+  </Tab>
+  <Tab title="Invoice at month-end">
+    Do not pre-fund the network fee account. The balance will build as a payable, and Zero Hash adds it to your end-of-month invoice alongside your payout usage charges.
+  </Tab>
+</Tabs>
+
+## Compliance: Beneficiary State Logic
+
+Beneficiaries can be in one of the following states after submission:
+
+| Status | Description |
+|--------|-------------|
+| `submitted` | Initial status. Zero Hash is running automated compliance screening. |
+| `approved` | Passed compliance checks. Beneficiary can receive payouts. |
+| `pending_approval` | Compliance hit flagged for manual review. Zero Hash's compliance team reviews within 24 hours. |
+| `rejected` | Failed compliance checks. Beneficiary cannot receive payouts. |
+
+<Warning>
+  Even in the Cert environment, Zero Hash runs real sanctions checks on every submitted beneficiary. Use realistic but non-real data for testing. To test a rejection, use `id_number: "111111111"`.
+</Warning>

@@ -1,0 +1,291 @@
+---
+title: "Payins Integration Guide: Accept Crypto at Checkout"
+sidebarTitle: "Payins"
+description: "End-to-end guide to integrating Zero Hash Payins: merchant and shopper onboarding, Auth SDK setup, payment flow, webhooks, and refund handling."
+---
+
+The Zero Hash Payins product lets payment service providers and merchants offer stablecoins and crypto as a payment option at checkout. Your shoppers select a crypto asset, receive a deposit address and quoted amount via the Zero Hash SDK, and send funds from their existing wallet or exchange. Zero Hash converts the received crypto to fiat and credits your settlement account. This guide walks you through every integration step from initial setup to refund handling.
+
+## Key Definitions
+
+| Term | Definition |
+|------|-----------|
+| **Platform** | Your company — the entity under contract with Zero Hash that integrates directly with the Zero Hash APIs or SDKs. |
+| **Merchant** | A business entity (non-natural person) that serves as the customer-facing front-end. May be your platform itself, or a separate customer of your platform. |
+| **Shopper** | The natural person who pays for a good or service at checkout. |
+
+## Integration Overview
+
+| Step | Method | Notes |
+|------|--------|-------|
+| Merchant onboarding | API | Skip if your platform is the merchant |
+| Shopper onboarding | API | Minimum: `email` or `phone_number` |
+| Shopper accepts T&Cs | SDK | First screen shown to new shoppers |
+| Shopper makes payment | SDK | Asset/network selection, address, quote |
+| Initiate refund | API | Requires pre-funded Refund account |
+| Initiate return | API | Contact Zero Hash for guidance |
+
+---
+
+## Step 1: Submit Merchant
+
+<Note>
+  If your platform is the merchant, skip this step. This step is only required when your platform serves multiple distinct merchant businesses.
+</Note>
+
+Submit each merchant business via [POST /participants/entity/new](https://docs.zerohash.com/reference/post_participants-entity-new). See the [Merchant Onboarding Guide](https://docs.zerohash.com/docs/merchant-onboarding-guide) for the full set of required fields, document requirements, and state logic.
+
+---
+
+## Step 2: Fund the Refund Float Account
+
+Before you can issue refunds to shoppers, you must pre-fund your Refund Float Account by sending a wire transfer to the Zero Hash settlement bank account. Tag the wire memo with your platform code followed by `_refund` — for example, `PLAT01_refund`.
+
+Your Refund Float Account details:
+
+| Field | Value |
+|-------|-------|
+| `participant_code` | `00SCXM` |
+| `account_group` | Your platform code (e.g., `PLAT01`) |
+| `account_label` | `pay_refund` |
+| `account_type` | `available` |
+| `asset` | `USD` |
+
+---
+
+## Step 3: Submit Shopper
+
+Onboard each shopper via [POST /participants/customers/new](https://docs.zerohash.com/reference/post_participants-customers-new). Set `onboarding_profile = "shopper"` and `partial = true`.
+
+```json
+{
+  "onboarding_profile": "shopper",
+  "email": "shopper@example.com",
+  "partial": true
+}
+```
+
+Shoppers with these fields are **auto-approved** upon creation as long as a `phone_number` or `email` is present. You do not need additional fields at creation time — you add them progressively via `PATCH` as the shopper's transaction tier requires more data.
+
+<Info>
+  Shopper diligence requirements scale with transaction size and merchant category (Perishable, Non-Transferable, or Transferable). See the [Shopper Onboarding guide](https://docs.zerohash.com/docs/onboard-shoppers) for tier-by-tier requirements.
+</Info>
+
+---
+
+## Step 4: Query Shopper
+
+Retrieve a shopper's current record and status via [GET /participants](https://docs.zerohash.com/reference/get_participants), filtering with `participant_code`:
+
+```
+GET /participants?participant_code=SHOPP1
+```
+
+---
+
+## Step 5: Query Shopper Limits
+
+Check a shopper's remaining transaction limits before initiating a payment via [GET /pay/limits](https://docs.zerohash.com/reference/get_pay-limits):
+
+```json
+{
+  "message": {
+    "participant_code": "SHOPP1",
+    "merchant_participant_code": "MERCH1",
+    "merchant_classification": "NON-TRANSFERABLE-3",
+    "current_level": 2,
+    "current_limits": [
+      {
+        "limit": "1000.00",
+        "spent": "250.00",
+        "remaining": "750.00",
+        "window": "daily"
+      }
+    ]
+  }
+}
+```
+
+---
+
+## Step 6: Platform Accounts
+
+Your platform operates with three fiat accounts for the Payins product:
+
+| Account | Purpose | `account_label` |
+|---------|---------|----------------|
+| Settlement Account | Accumulates successful payment proceeds | `pay` |
+| Refund Float Account | Funded by you, used to send refunds on-chain | `pay_refund` |
+| Error Account | Receives funds from over-payments, wrong assets, late payments | `pay_error` |
+
+---
+
+## Step 7: Initiate a Payment
+
+<Steps>
+  <Step title="Request an access token">
+    Call `POST /client_auth_token` to generate a short-lived JWT for the shopper's payment session.
+
+    ```json
+    {
+      "participant_code": "SHOPP1",
+      "permissions": ["crypto-pay"],
+      "payment_details": {
+        "purchase_amount": "100",
+        "denominated_currency": "USD"
+      },
+      "reference_id": "0bd7f7f0-cf26-495f-b2df-e8afe8481ba3",
+      "merchant_participant_code": "MERCH01"
+    }
+    ```
+
+    | Field | Required | Description |
+    |-------|----------|-------------|
+    | `participant_code` | ✅ | Shopper's participant code |
+    | `permissions` | ✅ | Must include `"crypto-pay"` |
+    | `purchase_amount` | ✅ | Amount to be paid, in `denominated_currency` |
+    | `denominated_currency` | ✅ | Fiat currency of the purchase (e.g., `USD`) |
+    | `reference_id` | ❌ | Your internal order ID, tied to the payment |
+    | `merchant_participant_code` | ❌ | Required only when Platform ≠ Merchant |
+  </Step>
+  <Step title="Launch the Payins SDK">
+    Initialize the `zh-web-sdk` with the JWT returned from `POST /client_auth_token`. For native mobile apps, use the WebView approach instead.
+
+    ```typescript
+    import React from 'react';
+    import ZeroHashSDK, { AppIdentifier } from 'zh-web-sdk';
+
+    const App = () => {
+      const sdk = new ZeroHashSDK({
+        zeroHashAppsURL: "https://web-sdk.cert.zerohash.com",
+        payJWT: "<JWT_TOKEN_HERE>"
+      });
+
+      sdk.openModal({
+        appIdentifier: AppIdentifier.PAY,
+      });
+
+      return <></>;
+    };
+
+    export default App;
+    ```
+  </Step>
+  <Step title="Shopper accepts terms and conditions">
+    First-time shoppers see the Zero Hash Terms and Conditions screen in the SDK. The shopper must accept before proceeding.
+  </Step>
+  <Step title="Shopper selects asset and network">
+    The SDK displays your configured list of accepted crypto assets. If the chosen asset supports multiple networks (e.g., USDC), the shopper selects the network. Single-network assets (e.g., BTC) skip the network selection screen.
+  </Step>
+  <Step title="Payment pending">
+    The SDK displays the exact crypto amount, deposit address, QR code, conversion rate, and payment expiration timer. The shopper sends funds from their external wallet or exchange using the exact asset, network, and amount shown.
+  </Step>
+  <Step title="Receive webhook on payment result">
+    Zero Hash sends a webhook to your registered endpoint with the payment outcome. See the Webhook Events section below.
+  </Step>
+</Steps>
+
+### Error Responses from `POST /client_auth_token`
+
+<Tabs>
+  <Tab title="Manual Approval Required">
+    Transactions at or above $500,000 — or when a shopper's lifetime spend reaches $500,000 — require manual approval by Zero Hash before the SDK can be launched.
+
+    ```json
+    {
+      "error": "Manual approval required for this transaction",
+      "transaction_id": "txn_01HZF7QWXJ8XK3VYNS6TKDM4G2"
+    }
+    ```
+
+    The transaction is automatically submitted to Zero Hash for review. You will receive a webhook once the status updates, then can call `POST /client_auth_token` successfully using the returned `transaction_id`.
+  </Tab>
+  <Tab title="KYC Requirements Not Met">
+    If the shopper does not have sufficient PII for their applicable tier, the API returns the missing fields.
+
+    ```json
+    {
+      "error": "Shopper KYC requirements for this transaction are not met",
+      "missing_requirements": [
+        "first_name",
+        "last_name",
+        "date_of_birth"
+      ]
+    }
+    ```
+
+    Update the shopper via [PATCH /participants/customers](https://docs.zerohash.com/reference/patch_participants-customers-participant-code) and retry.
+  </Tab>
+</Tabs>
+
+---
+
+## Step 8: Query Payments
+
+Retrieve historical payment records via [GET /fund/transactions](https://docs.zerohash.com/reference/get_fund-transactions).
+
+---
+
+## Step 9: Settlement
+
+Withdraw accumulated fiat from your Settlement Account to your external bank account via [POST /withdrawals/requests](https://docs.zerohash.com/reference/post_withdrawals-requests).
+
+---
+
+## Step 10: Refund a Payment
+
+To return funds to a shopper, you must:
+
+1. **Link a refund destination address** via [POST /payments/external_accounts](https://docs.zerohash.com/reference/post_payments-external-accounts).
+2. **Initiate the refund** via [POST /payments](https://docs.zerohash.com/reference/post_payments), which converts USD from your Refund Float Account to the target crypto asset and sends it on-chain automatically.
+
+<Warning>
+  Never use the deposit's original source address as the refund destination. Blockchain transactions are not bidirectional, and returning funds to a sender address may result in permanent loss. Always request and confirm a refund address directly from the shopper before initiating a refund.
+</Warning>
+
+---
+
+## Webhook Events
+
+### Successful Payment (Exact Amount)
+
+```json
+{
+  "participant_code": "SHOPP1",
+  "fund_asset": "USDC.BASE",
+  "quantity": "100",
+  "notional": "100",
+  "success": true,
+  "reason": "",
+  "reference_id": "04918aef-41d1-4dfb-82b8-2fdc232a8d88"
+}
+```
+
+### Successful Payment (Over-Payment)
+
+```json
+{
+  "participant_code": "SHOPP1",
+  "fund_asset": "USDC.BASE",
+  "quantity": "100",
+  "notional": "100",
+  "success": true,
+  "reason": "over payment",
+  "reference_id": "04918aef-41d1-4dfb-82b8-2fdc232a8d88"
+}
+```
+
+The excess is credited to your Error Account. Work with the shopper to resolve via `POST /payments` if a refund is warranted.
+
+### Failed Payment Events
+
+| `reason` value | Cause | Recommended action |
+|----------------|-------|-------------------|
+| `under payment` | Shopper sent less than the quoted amount | Facilitate a withdrawal to shopper's wallet via `POST /payments` |
+| `depeg` | Stablecoin depegged; conversion blocked | Contact Zero Hash via Slack or email to arrange manual withdrawal |
+| `above max threshold` | Deposit exceeded Zero Hash liquidation maximum | Contact Zero Hash to facilitate withdrawal |
+| `quarantine` | Source address flagged as high-risk | Contact Zero Hash; shopper may be `disabled` |
+| `payment session has expired` | Deposit arrived after the payment window closed | Facilitate a withdrawal to shopper's wallet |
+| `deposit currency does not match the expected currency` | Wrong asset or network used | Facilitate a withdrawal to shopper's wallet |
+
+All failed payment webhooks include `"success": false` and a `reason` field describing the failure.

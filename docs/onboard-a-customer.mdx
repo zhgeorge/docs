@@ -1,0 +1,307 @@
+---
+title: "How to Onboard a New Customer via the Zero Hash API"
+sidebarTitle: "Onboard a Customer"
+description: "Create individual and business participants via the Zero Hash API, submit KYC and sanction screening data, and receive a participant_code."
+---
+
+Before your customers can trade, deposit, or withdraw on the Zero Hash platform, you must register them as **participants**. Zero Hash supports two customer types — individuals (natural persons) and business entities — each with a dedicated endpoint. Upon successful creation, every participant receives a unique 6-digit alphanumeric `participant_code` (for example, `CUST01`) that you use to reference that customer in all subsequent API calls.
+
+<Note>
+  Zero Hash is a B2B platform. You (the platform) are responsible for conducting KYC and sanction screening on your customers before submitting participant records. Zero Hash accepts the results of those checks via the API fields described below.
+</Note>
+
+## Customer Types
+
+<CardGroup cols={2}>
+  <Card title="Individual" icon="user">
+    A natural person onboarded via `POST /participants/customers/new`. Requires personal identity details and KYC/sanction screening results.
+  </Card>
+  <Card title="Business Entity" icon="building">
+    A company or LLC onboarded via `POST /participants/entity/new`. Requires entity details, control persons, and beneficial owners.
+  </Card>
+</CardGroup>
+
+---
+
+## Onboard an Individual
+
+Use `POST /participants/customers/new` to create an individual participant. The request body must include the customer's personal information, address, jurisdiction, sanction screening outcome, and signed agreement details.
+
+### Required Fields
+
+<ParamField body="first_name" type="string" required>
+  Customer's legal first name.
+</ParamField>
+
+<ParamField body="last_name" type="string" required>
+  Customer's legal last name.
+</ParamField>
+
+<ParamField body="email" type="string" required>
+  Customer's email address. Must be unique across your platform.
+</ParamField>
+
+<ParamField body="phone_number" type="string" required>
+  E.164-formatted phone number, for example `+12345834789`.
+</ParamField>
+
+<ParamField body="date_of_birth" type="string" required>
+  Date of birth in `YYYY-MM-DD` format.
+</ParamField>
+
+<ParamField body="address_one" type="string" required>
+  Street address line 1.
+</ParamField>
+
+<ParamField body="city" type="string" required>
+  City of residence.
+</ParamField>
+
+<ParamField body="zip" type="string" required>
+  Postal/ZIP code.
+</ParamField>
+
+<ParamField body="jurisdiction_code" type="string" required>
+  ISO 3166-2 jurisdiction code, for example `US-IL` for Illinois.
+</ParamField>
+
+<ParamField body="ip_address" type="string">
+  IP address of the customer at the time of onboarding. Recommended for compliance purposes.
+</ParamField>
+
+<ParamField body="partial" type="boolean">
+  Set to `true` to create the participant in a partial/pending state while additional verification is completed.
+</ParamField>
+
+<ParamField body="sanction_screening" type="string" required>
+  Result of your sanction screening check. Accepted value: `pass`.
+</ParamField>
+
+<ParamField body="sanction_screening_timestamp" type="integer" required>
+  Unix timestamp (milliseconds) of when the sanction screening was performed.
+</ParamField>
+
+<ParamField body="signed_agreements" type="array" required>
+  Array of agreement objects the customer has signed. Each object requires `type`, `region`, and `signed_timestamp`.
+</ParamField>
+
+### Example Request
+
+<CodeGroup>
+```bash cURL
+curl -X POST https://api.zerohash.com/participants/customers/new \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <YOUR_TOKEN>" \
+  -d '{
+    "first_name": "John",
+    "last_name": "Smith",
+    "email": "jsmith@gmail.com",
+    "phone_number": "+12345834789",
+    "date_of_birth": "1985-09-02",
+    "ip_address": "999.168.252.199",
+    "address_one": "1 Main St.",
+    "address_two": "Suite 1000",
+    "city": "Chicago",
+    "zip": "12345",
+    "jurisdiction_code": "US-IL",
+    "partial": true,
+    "sanction_screening": "pass",
+    "sanction_screening_timestamp": 1603378501282,
+    "signed_agreements": [{
+      "type": "user_agreement",
+      "region": "us",
+      "signed_timestamp": 1603378501286
+    }]
+  }'
+```
+
+```json Response
+{
+  "participant_code": "CUST01",
+  "status": "submitted"
+}
+```
+</CodeGroup>
+
+<Tip>
+  Store the returned `participant_code` in your system. You will supply it in every future API call that references this customer — trades, transfers, deposits, and withdrawals all use it.
+</Tip>
+
+---
+
+## Onboard a Business Entity
+
+Use `POST /participants/entity/new` to create a business participant. In addition to entity-level details, you must include information about **control persons** (executives and officers) and **beneficial owners** (individuals owning 25 % or more of the entity).
+
+### Key Fields
+
+<ParamField body="platform_code" type="string" required>
+  Your master platform code, for example `PLAT01`.
+</ParamField>
+
+<ParamField body="entity_name" type="string" required>
+  The entity's operating/trade name.
+</ParamField>
+
+<ParamField body="legal_name" type="string" required>
+  The entity's full legal name, for example `Company XYZ Inc.`
+</ParamField>
+
+<ParamField body="entity_type" type="string" required>
+  Type of business entity, for example `llc`, `corporation`, `partnership`.
+</ParamField>
+
+<ParamField body="jurisdiction_code" type="string" required>
+  ISO 3166-2 jurisdiction where the entity is registered, for example `US-IL`.
+</ParamField>
+
+<ParamField body="tax_id" type="string" required>
+  Employer Identification Number (EIN) or equivalent tax identifier.
+</ParamField>
+
+<ParamField body="risk_rating" type="string">
+  Risk classification from your KYB vendor, for example `low`, `medium`, `high`.
+</ParamField>
+
+<ParamField body="sanction_screening" type="string" required>
+  Result of entity-level sanction screening. Accepted value: `pass`.
+</ParamField>
+
+<ParamField body="control_persons" type="array" required>
+  Array of control person objects. Each must include `name`, `email`, `date_of_birth`, `jurisdiction_code`, `kyc`, `kyc_timestamp`, `sanction_screening`, and `sanction_screening_timestamp`.
+</ParamField>
+
+<ParamField body="beneficial_owners" type="array" required>
+  Array of beneficial owner objects with the same identity fields as `control_persons`.
+</ParamField>
+
+### Example Request
+
+<CodeGroup>
+```bash cURL
+curl -X POST https://api.zerohash.com/participants/entity/new \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <YOUR_TOKEN>" \
+  -d '{
+    "platform_code": "PLAT01",
+    "entity_name": "Company XYZ",
+    "legal_name": "Company XYZ Inc.",
+    "contact_number": "15553765432",
+    "website": "www.company.com",
+    "date_established": "2018-01-15",
+    "entity_type": "llc",
+    "address_one": "1 Main St.",
+    "address_two": "Suite 1000",
+    "city": "Chicago",
+    "postal_code": "12345",
+    "jurisdiction_code": "US-IL",
+    "tax_id": "883987654",
+    "id_issuing_authority": "United States",
+    "risk_rating": "low",
+    "risk_vendor": "passbase",
+    "sanction_screening": "pass",
+    "sanction_screening_timestamp": 1677252628000,
+    "metadata": {},
+    "signed_timestamp": 1677252629000,
+    "submitter_email": "josh_doe@gmail.com",
+    "submitter_first_name": "Josh",
+    "submitter_last_name": "Doe",
+    "submitter_title": "Senior Legal Council",
+    "control_persons": [{
+      "name": "Joe Doe",
+      "email": "joe.doe@test.com",
+      "address_one": "1 South St.",
+      "address_two": "Suite 2000",
+      "city": "Chicago",
+      "postal_code": "12345",
+      "jurisdiction_code": "US-IL",
+      "date_of_birth": "1980-01-30",
+      "citizenship_code": "US",
+      "tax_id": "123456789",
+      "id_number_type": "us_passport",
+      "id_number": "332211200",
+      "kyc": "pass",
+      "kyc_timestamp": 1630623005000,
+      "sanction_screening": "pass",
+      "sanction_screening_timestamp": 1677252628000,
+      "control_person": 1
+    }],
+    "beneficial_owners": [{
+      "name": "Jane Doe Jr",
+      "beneficial_owner": 1,
+      "email": "janedoejr@test.com",
+      "address_one": "1 North St.",
+      "address_two": "Suite 3000",
+      "city": "Chicago",
+      "postal_code": "12345",
+      "jurisdiction_code": "US-IL",
+      "date_of_birth": "1980-01-30",
+      "citizenship_code": "US",
+      "tax_id": "012345578",
+      "id_number_type": "us_drivers_license",
+      "id_number": "P11122243333",
+      "kyc": "pass",
+      "kyc_timestamp": 1630623005000,
+      "sanction_screening": "pass",
+      "sanction_screening_timestamp": 1677252628000
+    }]
+  }'
+```
+
+```json Response
+{
+  "participant_code": "ENTI01",
+  "status": "submitted"
+}
+```
+</CodeGroup>
+
+---
+
+## KYC and Compliance Flow
+
+Zero Hash operates as a B2B platform. You remain responsible for customer verification. The fields in the participant creation payload tell Zero Hash the outcomes of those checks.
+
+<Steps>
+  <Step title="Perform KYC / KYB">
+    Run identity verification and background checks on your customer using your compliance vendor (for example, Passbase, Persona, or Jumio). Capture the pass/fail result and the UTC timestamp of the check.
+  </Step>
+  <Step title="Run Sanction Screening">
+    Screen your customer against OFAC and other relevant watchlists. Pass the `sanction_screening` result (`pass`) and `sanction_screening_timestamp` in the request body.
+  </Step>
+  <Step title="Collect Signed Agreements">
+    Ensure the customer has accepted your terms of service and the Zero Hash user agreement. Include a `signed_agreements` array with the `type`, `region`, and `signed_timestamp` of each document.
+  </Step>
+  <Step title="Submit Participant Record">
+    Call `POST /participants/customers/new` (individual) or `POST /participants/entity/new` (business) with the verified data.
+  </Step>
+  <Step title="Receive participant_code">
+    The API response contains a 6-digit alphanumeric `participant_code` (for example, `CUST01`). Store this identifier — it is the primary reference for this customer across all Zero Hash APIs.
+  </Step>
+  <Step title="Monitor Participant Status">
+    The initial status is `submitted`. Zero Hash compliance may move the participant to `pending_approval` for review. Once approved, the status transitions to `approved` and the customer can begin transacting. See [Participant & Account Statuses](/docs/participant-account-statuses-locking) for the full lifecycle.
+  </Step>
+</Steps>
+
+<Warning>
+  Customers with a `submitted` or `pending_approval` status cannot yet execute trades, deposits, or withdrawals. Verify the participant status before exposing trading functionality in your UI.
+</Warning>
+
+---
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Customer Account Types" icon="layer-group" href="/docs/customer-accounts-guide">
+    Learn about individual, joint, trust, and UTMA accounts and how to create them.
+  </Card>
+  <Card title="Participant Statuses" icon="circle-check" href="/docs/participant-account-statuses-locking">
+    Understand the full participant status lifecycle and what each status allows.
+  </Card>
+  <Card title="Customer Sub-Accounts" icon="sitemap" href="/docs/customer-sub-accounts">
+    Allow customers to organize funds across multiple labeled accounts.
+  </Card>
+  <Card title="Virtual Accounts" icon="wallet" href="/docs/virtual-accounts">
+    Create isolated USD-denominated ledgers for your end users.
+  </Card>
+</CardGroup>

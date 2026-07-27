@@ -1,0 +1,79 @@
+---
+title: "Liquidity Models: Standard, Novated, and Direct"
+sidebarTitle: "Liquidity Models"
+description: "Choose between Standard, Novated, or Direct liquidity models to control counterparty structure, credit checks, and settlement flow for your platform."
+---
+
+Zero Hash supports three distinct liquidity models that determine who acts as counterparty to a trade, how credit checks are performed, and how settlement flows between Zero Hash, your platform, and your customers. Selecting the right model depends on how your platform manages customer funds, credit risk, and regulatory responsibilities.
+
+<Note>
+  Your liquidity model is configured during onboarding. Contact your Zero Hash account manager or [support@zerohash.com](mailto:support@zerohash.com) to discuss which model fits your product structure.
+</Note>
+
+## The Three Liquidity Models
+
+<Tabs>
+  <Tab title="Standard">
+    In the Standard model, **your platform is the direct counterparty to every trade**. Zero Hash performs credit checks against your platform's reserve account before each trade executes.
+
+    This model is best suited for platforms trading on their own behalf using their own funds — for example, treasury operations, general liquidity management, or platforms that hold assets and trade on a principal basis.
+
+    **Credit check account:** `[PlatformCode]/00SCXM/general` (your platform's reserve account)
+  </Tab>
+  <Tab title="Novated">
+    In the Novated model, **your platform does not act as a counterparty**. The counterparty to the liquidity trade is typically an end user or retail customer of your platform. However, credit checks are performed against your platform's **float account**, not the individual customer account.
+
+    At the end of each day, Zero Hash and your platform settle the net amount of customer trading activity to replenish the float balance.
+
+    This model works well for retail platforms that want customers to trade directly without the platform taking principal risk on each trade, while still maintaining centralized credit management through the float account.
+
+    **Credit check account:** `00SCXM/[PlatformCode]/general` (your platform's float account)
+  </Tab>
+  <Tab title="Direct">
+    In the Direct model, **your platform does not act as counterparty** and credit checks are performed against each **end customer's individual account**. Customers must pre-fund their account balance before they can trade.
+
+    This model gives each customer direct exposure to their own trading activity and is suited to platforms that want a fully segregated, customer-level credit and settlement structure.
+
+    **Credit check account:** `[ParticipantCode]/[PlatformCode]/general` (the individual customer's account)
+  </Tab>
+</Tabs>
+
+## Comparison Table
+
+| Model | Platform Counterparty to Trade | Credit Check | Best For |
+|---|---|---|---|
+| **Standard** (default) | Yes | Platform's reserve account — `[PlatformCode]/00SCXM/general` | Platforms trading on their own behalf; treasury operations; own-fund liquidity |
+| **Novated** | No | Platform's float account — `00SCXM/[PlatformCode]/general` | Retail platforms where customers trade but the platform manages centralized float; daily net settlement |
+| **Direct** | No | End customer's account — `[ParticipantCode]/[PlatformCode]/general` | Fully segregated customer accounts; pre-funded customer balances; customer-level credit |
+
+## Choosing the Right Model
+
+<CardGroup cols={3}>
+  <Card title="Standard" icon="building">
+    **Use when:** Your platform purchases or sells assets using its own funds. You want a simple counterparty structure where Zero Hash checks your reserve balance per trade.
+
+    **Example:** A platform managing its own crypto treasury or purchasing assets for its own balance sheet.
+  </Card>
+  <Card title="Novated" icon="users">
+    **Use when:** Your customers initiate trades but you don't want the platform to act as principal on every transaction. You're comfortable managing a float account and reconciling net activity daily.
+
+    **Example:** A neobank where customers buy and sell crypto individually, but the platform maintains a pooled float to cover intraday activity.
+  </Card>
+  <Card title="Direct" icon="user">
+    **Use when:** You want full segregation — each customer has their own pre-funded account and their balance is checked independently before every trade. The platform has no principal exposure.
+
+    **Example:** An exchange or brokerage where customers deposit funds into individual accounts and trade entirely within their own balance.
+  </Card>
+</CardGroup>
+
+## Settlement and Net Reconciliation
+
+Under the **Novated** model, Zero Hash and your platform perform a daily net settlement to replenish the float account. The net amount reflects the aggregate of all customer trading activity over the settlement period — reducing operational overhead compared to settling each trade individually.
+
+Under the **Direct** model, each trade settles against the individual customer's account in real time. No float account is required, but each customer must maintain sufficient pre-funded balances.
+
+Under the **Standard** model, each trade settles against your platform's reserve account directly with Zero Hash.
+
+<Info>
+  The account path formats shown above — such as `[PlatformCode]/00SCXM/general` — represent the account hierarchy used within Zero Hash's system. Your Zero Hash onboarding team will provide your specific platform code and confirm the exact account paths configured for your model.
+</Info>

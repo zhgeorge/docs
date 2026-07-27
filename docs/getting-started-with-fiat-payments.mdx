@@ -1,0 +1,147 @@
+---
+title: "Getting Started with ACH and Fiat Payments via Plaid"
+sidebarTitle: "Fiat Setup"
+description: "Choose between Zero Hash Powered Plaid Link (managed) or Self-Service Plaid Link to verify and connect end customer bank accounts."
+---
+
+To accept or disburse fiat via ACH or RTP, you need to verify and link your end customers' bank accounts through Plaid. Zero Hash offers two integration paths: a fully managed option where Zero Hash handles the Plaid relationship on your behalf, and a self-service option where you contract with Plaid directly. Choose the path that fits your team's resources and integration preferences, then follow the setup steps below.
+
+## Choosing Your Integration Path
+
+| | Zero Hash Powered Plaid Link | Self-Service Plaid Link |
+|---|---|---|
+| **Contracting** | Contract with Zero Hash only | Contract with Zero Hash **and** Plaid directly |
+| **Plaid KYB approval** | Zero Hash handles this end-to-end | You complete KYB with Plaid independently |
+| **Plaid environment configuration** | Not required | You set up Plaid production and sandbox environments and enable the Zero Hash integration |
+| **Verify & link end customer bank accounts** | Invoke the Zero Hash SDK | Invoke the Plaid SDK, create a Plaid processor token, then create external accounts via the Zero Hash API |
+| **Manage end customer bank accounts** | Invoke the Zero Hash SDK or call the Zero Hash API | Invoke the Plaid SDK, create a Plaid processor token, then update external accounts via the Zero Hash API |
+
+<Tip>
+  Need help deciding? Contact your Zero Hash relationship manager. They can walk you through both options and recommend the right fit based on your timeline and technical resources.
+</Tip>
+
+---
+
+## Option 1: Zero Hash Powered Plaid Link (Recommended)
+
+Zero Hash Powered Plaid Link is the fastest path to production. Zero Hash manages the Plaid relationship — including KYB, environment setup, and ongoing configuration — so your team only needs to integrate the Zero Hash SDK.
+
+<Steps>
+  <Step title="Complete Zero Hash onboarding">
+    Your Zero Hash relationship manager coordinates with you to gather all necessary information and completes the Plaid KYB verification process on your behalf. This must finish before you can invoke the SDK.
+  </Step>
+  <Step title="Integrate the Zero Hash SDK">
+    Once Plaid onboarding is complete, invoke the Zero Hash SDK with `appIdentifier: FIAT_ACCOUNT_LINK` to present the Plaid Link UX to your end customers. The entire bank verification and account linking flow is wrapped inside the SDK.
+
+    ```typescript
+    import React from 'react';
+    import ZeroHashSDK, { AppIdentifier } from 'zh-web-sdk';
+
+    const App = () => {
+      const sdk = new ZeroHashSDK({
+        zeroHashAppsURL: "https://web-sdk.cert.zerohash.com",
+        PAYJWT: "<JWT_TOKEN_HERE>"
+      });
+
+      sdk.openModal({
+        appIdentifier: FIAT_ACCOUNT_LINK,
+      });
+
+      return <></>;
+    }
+
+    export default App;
+    ```
+
+    <Note>
+      If you use a native mobile app (Swift, Flutter, etc.), follow the WebView integration approach instead of `zh-web-sdk`. Contact your Zero Hash representative for the WebView guide.
+    </Note>
+  </Step>
+  <Step title="Accept Terms and Conditions">
+    First-time users will be prompted to accept the Zero Hash terms and conditions within the SDK modal before they can link a bank account.
+  </Step>
+  <Step title="End customer links their bank account">
+    The end customer verifies and links their bank account through the Plaid interface embedded in the SDK. On success, Zero Hash creates an external account and sends your platform a webhook with the `external_account_id`.
+
+    ```json
+    {
+      "request_id": "0f68333e-2114-469d-b505-c850d776e063",
+      "participant_code": "CUST01",
+      "platform_code": "TES123",
+      "account_nickname": "",
+      "status": "approved",
+      "external_account_id": "0f68333e-2114-469d-b505-c850d776e063",
+      "created_at": "1975-08-19T23:15:30.000Z"
+    }
+    ```
+
+    Store the `external_account_id` — you use it for all subsequent payment requests for this customer.
+  </Step>
+</Steps>
+
+### Managing Accounts (Zero Hash Powered)
+
+Once a bank account is linked, you can manage its lifecycle:
+
+- **Query accounts:** `GET /payments/external_accounts`
+- **Re-link an expired account:** Invoke the SDK with `appIdentifier: FIAT_ACCOUNT_UPDATE`
+- **Re-link after revocation:** Invoke the SDK with `appIdentifier: FIAT_ACCOUNT_LINK` for the customer to link a new account
+- **Close an account:** `POST /payments/external_accounts/{external_account_id}/close`
+
+---
+
+## Option 2: Self-Service Plaid Link
+
+If your team prefers to own the Plaid relationship directly, the Self-Service path gives you full control over the integration. You contract with Plaid independently, configure the environments yourself, and exchange Plaid processor tokens with Zero Hash.
+
+<Steps>
+  <Step title="Set up your Plaid account">
+    Create a Plaid production or sandbox account at [plaid.com](https://plaid.com). If you need an introduction to Plaid, your Zero Hash relationship manager can expedite the agreement process.
+  </Step>
+  <Step title="Enable the Zero Hash integration in Plaid">
+    In your Plaid account settings, navigate to **Developers → Integrations** and search for **Zero Hash**. Enable the integration. Your Plaid Account Manager can assist with this step.
+  </Step>
+  <Step title="Contract the required Plaid products">
+    You must have the following Plaid products enabled:
+
+    | Product | Purpose |
+    |---------|---------|
+    | **Auth** | Enables your platform to connect end customer bank accounts via Plaid Link. |
+    | **Balance** | Allows Zero Hash to check account balances before each transaction. Zero Hash performs this check automatically on every payment request. |
+    | **Identity** | Allows Zero Hash to verify that the participant name matches the bank account holder name. This check runs whenever an external account is linked. |
+  </Step>
+  <Step title="Implement the Plaid Link flow">
+    Build the Plaid Link flow in your application. The minimum required calls are:
+
+    1. [`/link/token/create`](https://plaid.com/docs/api/tokens/#linktokencreate) — Create a link token to initialize Plaid Link
+    2. [`/item/public_token/exchange`](https://plaid.com/docs/api/items/#itempublic_tokenexchange) — Exchange the public token for an access token
+    3. [`/processor/token/create`](https://plaid.com/docs/api/processors/#processortokencreate) — Create a processor token scoped to Zero Hash
+
+    <Note>
+      You can also offer [manual account linking](https://plaid.com/docs/auth/coverage/same-day/#default-manual-verification-flow) (routing and account number entry), which takes 1–2 business days and requires a slight change to the Auth configuration.
+    </Note>
+  </Step>
+  <Step title="Create an external account in Zero Hash">
+    Pass the Plaid processor token to the Zero Hash API to link the bank account:
+
+    | Parameter | Type | Description |
+    |-----------|------|-------------|
+    | `participant_code` | string | The participant code for the end customer. |
+    | `account_nickname` | string | A friendly label for the account (platform reference only). |
+    | `plaid_processor_token` | string | The processor token returned by Plaid's `/processor/token/create`. |
+
+    Zero Hash returns an `external_account_id` that you store and reference for all future payment requests. You never need to link the account again — bank account linking is a one-time, per-customer process.
+
+    <Note>
+      There is a default limit of **3 linked external accounts per participant**. Contact your account manager to change this limit.
+    </Note>
+  </Step>
+</Steps>
+
+### Managing Accounts (Self-Service)
+
+- **Query accounts:** `GET /payments/external_accounts`
+- **Re-link an expired or revoked account:** Re-run the Plaid Link flow to obtain a new processor token, then call `POST /payments/external_accounts` again
+- **Close an account:** `POST /payments/external_accounts/{external_account_id}/close`
+
+Subscribe to external account webhooks to receive real-time notifications for `approved`, `expired`, and `revoked` status changes.

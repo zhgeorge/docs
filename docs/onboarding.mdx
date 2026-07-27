@@ -1,0 +1,88 @@
+---
+title: "Client Portal Overview: Manage Your Zero Hash Integration"
+sidebarTitle: "Client Portal"
+description: "The Zero Hash Client Portal lets you manage API keys, IP whitelists, balances, activity, and reports across Cert and Production environments."
+---
+
+The Zero Hash Client Portal is a web-based UI that gives your platform direct control over the most common operational and administrative tasks — without requiring API calls. You use the portal to create and rotate API keys, manage IP whitelists, monitor account balances, review transaction activity, and download settlement reports. Every platform starts by getting access to the Cert (certification) portal before graduating to the Production portal.
+
+## Environments
+
+Zero Hash maintains two completely separate portals, each pointing to its own environment.
+
+<CardGroup cols={2}>
+  <Card title="Cert Portal" icon="flask" href="https://portal.cert.zerohash.com">
+    Use the Cert portal for all development and integration testing. Your platform is pre-funded with test float funds so you can exercise the full API flow without moving real money.
+  </Card>
+  <Card title="Production Portal" icon="shield-check" href="https://portal.zerohash.com">
+    Use the Production portal once your integration has passed certification review. All activity here involves real funds and live compliance checks.
+  </Card>
+</CardGroup>
+
+<Warning>
+  API keys, IP whitelist entries, and participant records created in Cert are **not** copied to Production. You must re-create all configuration in the Production portal after your integration is approved.
+</Warning>
+
+## What You Can Do in the Portal
+
+The portal covers the following operational areas. Most platforms use the portal for initial setup and ongoing operational tasks, then rely on the API for real-time transaction flows.
+
+<CardGroup cols={2}>
+  <Card title="API Key Management" icon="key">
+    Create, view, and revoke API keys. Each key can be scoped to specific permissions. Rotate keys without downtime by creating a new key before revoking the old one.
+  </Card>
+  <Card title="IP Whitelisting" icon="network-wired">
+    Restrict API access to specific IP addresses or CIDR ranges. Requests from non-whitelisted IPs are rejected at the gateway before reaching any endpoint.
+  </Card>
+  <Card title="Balances" icon="wallet">
+    View real-time account balances across all assets and account labels (e.g., `general`, `pay_refund`, `rewards`). Balances are displayed per participant and account group.
+  </Card>
+  <Card title="Activity & Reports" icon="chart-bar">
+    Browse transaction history, filter by date and participant, and download settlement and activity reports for reconciliation.
+  </Card>
+  <Card title="Participant Management" icon="users">
+    Submit new merchant participants (KYB), view participant statuses, and manage documents — all without writing a single line of code.
+  </Card>
+  <Card title="Withdrawal Address Whitelisting" icon="circle-check">
+    Whitelist external crypto wallet addresses for specific merchants. Multiple portal admins can co-approve address additions based on your security preferences.
+  </Card>
+</CardGroup>
+
+## Initial Setup Steps
+
+<Steps>
+  <Step title="Access the Cert Portal">
+    Navigate to [portal.cert.zerohash.com](https://portal.cert.zerohash.com). Your Zero Hash onboarding contact will provision your initial admin account. Complete two-factor authentication (2FA) on first login.
+  </Step>
+  <Step title="Add Team Members">
+    Invite additional users from the **Settings → Users** section. Each user gets their own login and 2FA. You can assign admin or read-only roles depending on the level of access each person needs.
+  </Step>
+  <Step title="Create API Keys">
+    Navigate to **Settings → API Keys** and click **Create New Key**. Assign the minimum required permissions for your integration and copy the key immediately — it is only shown once.
+  </Step>
+  <Step title="Whitelist Your IP Addresses">
+    Navigate to **Settings → IP Whitelist** and add the egress IPs for your servers. Include both your static production IPs and any NAT gateway IPs used during development.
+  </Step>
+  <Step title="Verify Your Float Balance">
+    Navigate to **Accounts** and confirm your pre-funded Cert float balance is visible. In Cert, Zero Hash pre-funds your account so you can start testing trades and payouts immediately.
+  </Step>
+  <Step title="Repeat in Production">
+    After your integration passes certification review, repeat all of the above steps in the [Production portal](https://portal.zerohash.com). Contact your Zero Hash relationship manager to get Production portal access provisioned.
+  </Step>
+</Steps>
+
+## Portal vs. API: When to Use Each
+
+| Task | Portal | API |
+|------|--------|-----|
+| Create API keys | ✅ | ❌ |
+| Whitelist IPs | ✅ | ❌ |
+| Submit merchant (KYB) | ✅ | ✅ |
+| Initiate trades or payouts | ❌ | ✅ |
+| View balances | ✅ | ✅ |
+| Download reports | ✅ | ✅ (via `GET /reports`) |
+| Whitelist withdrawal addresses | ✅ | ✅ |
+
+<Tip>
+  For the Enterprise Settlements No-Code product, the portal is your primary interface for all merchant onboarding and address whitelisting. You do not need API access for that workflow.
+</Tip>

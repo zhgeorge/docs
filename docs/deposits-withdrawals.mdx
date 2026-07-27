@@ -1,0 +1,99 @@
+---
+title: "Crypto Deposits and Withdrawals: Platform Overview"
+sidebarTitle: "Overview"
+description: "Enable retail crypto deposits and withdrawals for your end customers using Zero Hash deposit addresses, the withdrawal API, and optional Wallet Link SDK."
+---
+
+Zero Hash gives your platform the infrastructure to accept cryptocurrency deposits from retail end users and release funds back to them via crypto or stablecoin withdrawals. Deposits are powered by dedicated per-customer addresses, while withdrawals flow through Zero Hash's payments API and optional Wallet Link SDK. Both capabilities are available programmatically and require a one-time feature enablement before going live.
+
+## Frequently Asked Questions
+
+<AccordionGroup>
+  <Accordion title="Can our platform accept retail deposits?">
+    Yes. Platforms can create digital asset addresses for retail end users. The full list of supported assets for retail deposits is available in the [Asset Support reference](/docs/supported-assets-instruments).
+  </Accordion>
+  <Accordion title="Is this feature enabled by default?">
+    No. Retail deposit address creation is not enabled by default. Contact your Zero Hash representative to have it activated for your organization before you begin integration.
+  </Accordion>
+  <Accordion title="How does Zero Hash support EVM-based token deposits?">
+    Zero Hash uses forwarding smart contracts to accept retail deposits across all supported EVM networks — including Ethereum, Polygon, Arbitrum, Optimism, Base, and Avalanche C-Chain. Each retail customer receives a single dedicated address per EVM network, and that address accepts all native and ERC-20 compatible tokens on that network.
+  </Accordion>
+  <Accordion title="Are there deposit address creation fees?">
+    Most deposit addresses are free to create. For UTXO and tag-based assets there are no deposit address creation fees.
+  </Accordion>
+  <Accordion title="Why does my customer have the same address for all ERC-20 assets on one network?">
+    Customers receive one forwarding smart contract address per supported EVM network. All native tokens and ERC-20 compatible assets on that network route to the same address, reducing operational complexity and cost.
+  </Accordion>
+</AccordionGroup>
+
+## Supported Networks
+
+Zero Hash supports EVM-compatible forwarding contracts on the following networks:
+
+<CardGroup cols={3}>
+  <Card title="Ethereum" icon="ethereum" />
+  <Card title="Polygon" icon="circle-nodes" />
+  <Card title="Arbitrum" icon="layer-group" />
+  <Card title="Optimism" icon="circle-up" />
+  <Card title="Base" icon="b" />
+  <Card title="Avalanche C-Chain" icon="mountain" />
+</CardGroup>
+
+<Note>
+  UTXO-based assets (e.g., Bitcoin) and tag-based assets (e.g., XRP) use separate address schemes. Contact your Zero Hash representative for the complete list of supported assets and networks.
+</Note>
+
+## End-to-End Deposit Flow
+
+<Steps>
+  <Step title="Enable the feature">
+    Retail deposit address creation is off by default. Reach out to your Zero Hash relationship manager to enable it for your platform account.
+  </Step>
+  <Step title="Create a participant">
+    Onboard your end customer as a participant in Zero Hash. You will receive a `participant_code` (e.g., `CUST01`) that uniquely identifies that customer.
+  </Step>
+  <Step title="Generate a deposit address">
+    Call `POST /deposits/digital_asset_addresses` with the customer's `participant_code` and the desired `asset`. Zero Hash returns a unique wallet address you relay to the customer.
+
+    ```json
+    // Request
+    {
+      "participant_code": "CUST01",
+      "asset": "UNI"
+    }
+
+    // Response
+    {
+      "message": {
+        "created_at": 1647050013,
+        "address": "0x7f41A26C0CB9D5a1e57BE9cF10F8354b77CD8ab3",
+        "participant_code": "CUST01",
+        "asset": "UNI"
+      }
+    }
+    ```
+  </Step>
+  <Step title="Monitor incoming deposits">
+    Poll `GET /deposits` with `include_customer_deposits=true` to track recent deposit activity across all customers. Once a deposit transaction is confirmed on-chain, Zero Hash credits the funds to the customer's account.
+  </Step>
+  <Step title="Confirm the balance">
+    Your customer can verify their credited balance at any time using `GET /accounts`. Zero Hash maintains the on-chain account balance on the customer's behalf.
+  </Step>
+</Steps>
+
+## Withdrawal Overview
+
+Platforms can also allow end customers to withdraw crypto and stablecoins to external wallets. Zero Hash provides two integration paths:
+
+<CardGroup cols={2}>
+  <Card title="Withdrawal API" icon="code" href="/docs/withdrawals-releasing-funds">
+    Initiate withdrawals programmatically using `POST /client_auth_token` and the payments API. Full control over the withdrawal state machine and webhook handling.
+  </Card>
+  <Card title="Wallet Link SDK" icon="wallet" href="/docs/wallet-link-sdk-integration-guide">
+    Embed the Zero Hash Wallet Link SDK to let end customers initiate withdrawals directly from your UI without building a custom withdrawal flow.
+  </Card>
+</CardGroup>
+
+<Warning>
+  Your platform is completely responsible for ensuring that an end customer does not withdraw more than their current balance. Never release funds back to an end customer unless you have received an explicit `failed` or `abandoned` webhook — or confirmed a `failed`/`abandoned` status via `GET /payments/{payment_id}`.
+</Warning>

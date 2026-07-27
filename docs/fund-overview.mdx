@@ -1,0 +1,173 @@
+---
+title: "Account Funding SDK: Crypto Deposits and Withdrawals"
+sidebarTitle: "Account Funding"
+description: "Let end customers fund their platform account with crypto or stablecoins, and withdraw funds to external wallets — available 24/7/365."
+---
+
+Account Funding enables platforms to let their end customers fund and withdraw from their account using crypto or stablecoins. Deposits can be automatically converted to fiat so your platform instantly recognizes a credit to the customer's fiat balance. This serves as an alternative funding mechanism that sits side-by-side with card, wire, ACH, and other traditional rails — available around the clock and without chargeback risk.
+
+<Note>
+  Account Funding is available for both US and EU platforms. EU flows are operated by Zero Hash Europe B.V., licensed by the Dutch Autoriteit Financiële Markten (AFM). The product works the same way in both regions — the only integration difference is the API and SDK host URL you point to.
+</Note>
+
+---
+
+## The Two Account Funding SDKs
+
+Account Funding consists of two complementary SDK modules that you can use independently or together:
+
+<CardGroup cols={2}>
+  <Card title="Account Funding Deposits SDK" icon="arrow-down-to-bracket" href="https://docs.zerohash.com/reference/fund-sdk">
+    Presents end customers with a deposit address and QR code for sending crypto or stablecoins (USDC, PYUSD, RLUSD, USDT, and 50+ assets) into their platform account. Optionally auto-converts the deposit to fiat upon settlement.
+  </Card>
+  <Card title="Account Funding Withdrawals SDK" icon="arrow-up-from-bracket" href="/docs/wallet-link-sdk-integration-guide">
+    Two-part flow: the **Account Link SDK** lets customers link an external wallet (selecting asset, network, and address), and the **Crypto Withdraw SDK** lets them initiate a withdrawal to that linked wallet.
+  </Card>
+</CardGroup>
+
+---
+
+## Use Cases
+
+- **Investment platforms.** Offer an additional funding method for customers contributing to investment funds or participating in fundraising.
+- **Trading account funding.** CFD or equity trading platforms can offer stablecoin deposits as an alternative to card or bank transfer.
+- **Neobanks and digital wallets.** Increase assets on platform and boost engagement by accepting crypto deposits.
+- **Any platform requiring account funding.** Any product where end customers need to fund their account before trading, investing, or purchasing can use Account Funding.
+
+## Key Benefits
+
+| Feature | Detail |
+|---|---|
+| **Available anytime** | 24/7/365 instant account funding — no banking hours or holiday delays |
+| **Lightning fast** | On-chain transactions settle quickly, enabling near-instant balance updates |
+| **No chargebacks** | Irreversible blockchain transactions eliminate chargeback risk |
+| **Globally accessible** | No need to manage multiple local fiat payment rails |
+| **Lower fees** | Transfer fees are cheaper than ACH, card, wire, and SWIFT |
+
+---
+
+## Prerequisites: Customer Onboarding
+
+Before a customer can use Account Funding, they must be onboarded as a Zero Hash participant. You have three options:
+
+<Tabs>
+  <Tab title="SDK (Recommended)">
+    Use the Zero Hash [Onboarding SDK](/docs/onboarding-experience-sample) to run KYC as a Service with a fully managed, low-code front-end widget. This is the recommended path for most platforms.
+  </Tab>
+  <Tab title="API — Reliance">
+    Use your own KYC solution and pass Zero Hash the verification results via `POST /participants/customers/new`. Approved platforms can use this path if they already have a KYC solution in place. EU participant guidelines are available [here](https://docs.zerohash.com/docs/eu-participant-creation).
+  </Tab>
+  <Tab title="API — KYC as a Service">
+    Use the Zero Hash KYC product while owning the front-end yourself. Available individually based on compliance approval. Contact your Zero Hash representative for access.
+  </Tab>
+</Tabs>
+
+---
+
+## Configuration
+
+### Ledgering Options
+
+After a customer deposits crypto and it is converted to fiat, you choose how the resulting USD is held:
+
+**Option 1 — Automatic platform transfer (recommended for SDK integrations)**
+
+The USD is automatically transferred to the platform on the Zero Hash ledger immediately after conversion. Flow of funds:
+
+| Movement Type | Participant | Asset | Type |
+|---|---|---|---|
+| Deposit | End Customer | USDC (example) | Credit |
+| Trade Settlement | End Customer | USDC | Debit |
+| Trade Settlement | End Customer | USD | Credit |
+| Transfer | End Customer | USD | Debit |
+| Transfer | Platform | USD | Credit |
+
+**Option 2 — USD stays in the end customer's account**
+
+The USD remains in the end customer's account after conversion. The platform can then initiate a fiat withdrawal directly from that account. This option is not recommended when using the Account Funding SDK.
+
+### Fee Configuration
+
+- **Option 1 — Platform incurs fees.** The end customer is not charged a conversion fee (issuer fees may still apply).
+- **Option 2 — End customer incurs fees.** The fee is deducted upon conversion, allowing the platform to pass product usage costs to the customer.
+
+### Deposit Limits
+
+Platforms can configure minimum and maximum deposit amounts. Zero Hash enforces these limits and displays them in the SDK UI.
+
+| Setting | Default |
+|---|---|
+| Minimum deposit | $1 |
+| Maximum deposit | $250,000 per deposit |
+
+---
+
+## Regional Availability: US vs. EU
+
+| | **US** | **EU** |
+|---|---|---|
+| Entity | Zero Hash LLC | Zero Hash Europe B.V. (AFM-licensed) |
+| User Agreement | [Zero Hash User Agreement](https://zerohash.zendesk.com/hc/en-us/articles/47668692221075-zerohash-US-User-Agreement) | Unique to each platform |
+| Regulatory Disclosures | [US Licenses & Disclosures](https://docs.zerohash.com/page/us-licenses-and-disclosures) | [Zero Hash Europe Disclosures](https://zerohash.com/legal/disclosures) |
+| API host | `api.zerohash.com` | `api.zerohash.eu` |
+| SDK host | `web-sdk.zerohash.com` | `web-sdk.zerohash.eu` |
+
+Pointing your integration at the EU host routes traffic to Zero Hash Europe B.V.'s clusters. SDK screens and emails automatically display "Zero Hash Europe B.V." branding, and user agreements render correctly for the EU flow — no additional configuration required on your end.
+
+---
+
+## Supported Assets
+
+Account Funding supports 50+ non-stablecoin assets as well as all major stablecoins, including USDC, PYUSD, RLUSD, USDT, and more.
+
+---
+
+## Email Receipts
+
+Zero Hash requires that an email receipt is delivered to every end customer for each Account Funding transaction. If your platform cannot deliver these receipts, Zero Hash will provide this as a service. Contact your Zero Hash representative to enable it.
+
+---
+
+## Webhooks
+
+Account Funding emits webhooks for every transaction. Register a webhook endpoint and configure it with your Zero Hash representative before going live.
+
+- `x-zh-hook-payload-type`: `fund_transaction_updated`
+- Full webhook reference: [Account Funding Webhook](https://docs.zerohash.com/reference/fund-transaction-update)
+
+---
+
+## Platform Settlement
+
+Zero Hash settles funds to your platform once per day. The schedule follows business-day sessions:
+
+| Session | Start | End | Expected Settlement |
+|---|---|---|---|
+| Monday | Mon 9:00 AM EST | Tue 8:59:59 AM EST | Tuesday EOD |
+| Tuesday | Tue 9:00 AM EST | Wed 8:59:59 AM EST | Wednesday EOD |
+| Wednesday | Wed 9:00 AM EST | Thu 8:59:59 AM EST | Thursday EOD |
+| Thursday | Thu 9:00 AM EST | Fri 8:59:59 AM EST | Friday EOD |
+| Friday | Fri 9:00 AM EST | Mon 8:59:59 AM EST | Monday EOD |
+
+<Note>
+  During US holidays, settlement arrives by EOD on the next business day.
+</Note>
+
+---
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Deposits SDK Integration" icon="arrow-down-to-bracket" href="https://docs.zerohash.com/reference/fund-sdk">
+    Full technical guide for integrating the Account Funding Deposits SDK.
+  </Card>
+  <Card title="Wallet Link & Withdrawals SDK" icon="arrow-up-from-bracket" href="/docs/wallet-link-sdk-integration-guide">
+    Step-by-step integration guide for the Account Link and Crypto Withdraw SDKs.
+  </Card>
+  <Card title="Account Funding API" icon="code" href="https://docs.zerohash.com/reference/post_fund-rfq">
+    Use the REST API directly if you own your own deposit/withdrawal front-end.
+  </Card>
+  <Card title="Onboarding SDK" icon="id-card" href="/docs/onboarding-experience-sample">
+    Set up KYC for your end customers before enabling Account Funding.
+  </Card>
+</CardGroup>

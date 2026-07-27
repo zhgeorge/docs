@@ -1,0 +1,136 @@
+---
+title: "Releasing Funds: Initiating Stablecoin Withdrawals"
+sidebarTitle: "Releasing Funds"
+description: "Initiate crypto and stablecoin withdrawals for end customers, manage the full webhook-driven state machine, and handle all edge cases safely."
+---
+
+Zero Hash gives your platform the ability to allow end customers to withdraw crypto and stablecoins to external wallets. Your platform holds the fiat ledger for most customers — so when a withdrawal is requested, Zero Hash relies entirely on your platform to ensure that the customer has sufficient balance before the withdrawal is approved. This page outlines the requirements, the full webhook-driven state machine, and common failure scenarios you must handle before going live.
+
+<Warning>
+  Your platform is **completely responsible** for ensuring that an end customer cannot withdraw more than their current balance. Never release funds back to an end customer unless you receive an explicit `failed` or `abandoned` webhook — or you confirm that status via `GET /payments/{payment_id}`.
+</Warning>
+
+## Platform Requirements
+
+Before you go live, Zero Hash administers an official conformance test to confirm that your platform handles all required scenarios:
+
+1. When the Withdraw SDK is invoked, **lock (encumber) the funds** on your system immediately, preventing the end customer from using them until the withdrawal reaches a terminal `failed` or `abandoned` state.
+2. If a webhook cannot be matched or processed successfully, **keep the funds encumbered**.
+3. Only re-credit the end customer's balance when the withdrawal reaches a terminal state of `failed` or `abandoned`.
+4. Before re-crediting, confirm the status by calling `GET /payments/{payment_id}` and verifying the response shows `status: failed` or `status: abandoned`.
+5. Track withdrawal states in your own state machine. Persist both Zero Hash's `payment_id` and your own `reference_id` for each withdrawal.
+6. Use only the `payment_id` returned in the `POST /client_auth_token` response to match incoming webhooks. The `reference_id` is metadata only.
+
+<Info>
+  Zero Hash strongly recommends allowing **only one active withdrawal at a time per `participant_code`**. If you allow multiple concurrent withdrawals, use the `created_at` timestamp to disambiguate open requests.
+</Info>
+
+## Withdrawal Flow
+
+<Steps>
+  <Step title="Platform invokes the Withdraw SDK">
+    Call `POST /client_auth_token` with the customer's participant code, the target external account, the asset, and the withdrawal amount. Lock the corresponding funds on your platform immediately.
+
+    **Request:**
+    ```json
+    {
+      "participant_code": "CUST01",
+      "permissions": ["crypto-withdrawals"],
+      "withdrawal_details": {
+        "external_account_id": "c476a81f-a29f-4e22-88db-1f521d7cf004",
+        "quoted_asset": "USD",
+        "withdrawal_request_amount": "200"
+      },
+      "reference_id": "0bd7f7f0-cf26-495f-b2df-e8afe8481ba3"
+    }
+    ```
+
+    **Response:**
+    ```json
+    {
+      "message": {
+        "token": "<JWT_TOKEN_RESPONSE>",
+        "payment_id": "0jld7f7f0-cf26-495f-b2df-e8afe8481re6"
+      }
+    }
+    ```
+
+    Store the `payment_id` — this is Zero Hash's unique identifier for the withdrawal and is required to match all future webhooks.
+  </Step>
+  <Step title="End customer initiates the withdrawal">
+    The Withdraw SDK presents a confirmation screen to the end customer. When they click **Initiate withdrawal**, Zero Hash receives the request and begins processing. The JWT token is valid for **5 minutes**. If the customer does not act within that window, Zero Hash sends an `abandoned` webhook.
+  </Step>
+  <Step title="Zero Hash sends webhooks">
+    Zero Hash sends a sequence of webhooks as the withdrawal progresses. Your platform must update its internal state machine for each matched webhook.
+  </Step>
+</Steps>
+
+## Webhook Status Lifecycle
+
+| Status | Description |
+|--------|-------------|
+| `initialized` | The platform successfully generated a JWT via `POST /client_auth_token`. |
+| `submitted` | Zero Hash received the withdrawal request from the end customer. |
+| `pending` | Zero Hash is processing the request. |
+| `posted` | The withdrawal has been broadcast on-chain. |
+| `settled` | The withdrawal completed on-chain. The end customer has their funds. **Keep the balance deducted.** |
+| `abandoned` | The JWT expired before the customer initiated a withdrawal. **Re-credit the balance.** |
+| `failed` | The withdrawal was not successfully sent on-chain. **Re-credit the balance.** |
+
+### Terminal States
+
+| State | Action |
+|-------|--------|
+| `settled` | Keep the customer's balance deducted. Settle the outstanding amount with Zero Hash on the agreed settlement cadence. |
+| `failed` | Re-credit the customer's balance with the `withdrawal_request_amount`. |
+| `abandoned` | Re-credit the customer's balance with the `withdrawal_request_amount`. |
+
+## Field Matching Logic
+
+To consider a webhook as matched, your system must perform a one-to-one match on all three of the following fields:
+
+- `participant_code`
+- `withdrawal_request_amount`
+- `payment_id`
+
+Any webhook that does not satisfy all three matches must be treated as unmatched. Keep the funds encumbered and trigger your internal alert system.
+
+## Failure Scenarios
+
+<AccordionGroup>
+  <Accordion title="Scenario 1: Successful withdrawal">
+    Zero Hash sends webhooks in sequence: `initialized` → `submitted` → `pending` → `posted` → `settled`. Your platform updates its state machine at each step and confirms the customer's balance remains deducted at `settled`.
+  </Accordion>
+  <Accordion title="Scenario 2: Platform does not receive a webhook">
+    If a webhook is missing or cannot be matched, trigger your internal alert and call `GET /payments/{payment_id}` to retrieve the current status. Use the response to manually advance your state machine and get back to a reconciled state.
+  </Accordion>
+  <Accordion title="Scenario 3: Webhook arrives with a null payment_id">
+    Do not update your state machine. Keep the funds encumbered. If subsequent webhooks also carry a null `payment_id`, escalate to Zero Hash support — do not release funds to the customer under any circumstances until the issue is resolved.
+  </Accordion>
+  <Accordion title="Scenario 4: Duplicate webhooks received">
+    If Zero Hash sends the same status webhook more than once (e.g., two `posted` webhooks), apply idempotency in your state machine and ignore the duplicate. Do not double-process or double-credit.
+  </Accordion>
+  <Accordion title="Scenario 5: Webhook arrives with a mismatched payment_id">
+    If the `payment_id` in a webhook does not match the one returned in your `POST /client_auth_token` response, do not update your state machine. Keep the funds encumbered and alert your team.
+  </Accordion>
+  <Accordion title="Scenario 6: Withdrawal truly fails on-chain">
+    Zero Hash sends a `failed` webhook. Update your state machine to `failed` and re-credit the end customer's balance with the `withdrawal_request_amount`.
+  </Accordion>
+  <Accordion title="Scenario 7: JWT expires before the customer acts">
+    Zero Hash sends an `abandoned` webhook approximately 5 minutes after the JWT was generated. Update your state machine to `abandoned` and re-credit the end customer's balance.
+  </Accordion>
+</AccordionGroup>
+
+<Warning>
+  Zero Hash strongly recommends setting up an automated internal alerting system for withdrawal processing. If an alert fires, contact Zero Hash support immediately — the operations team will assist with state reconciliation.
+</Warning>
+
+## Querying a Withdrawal
+
+You can retrieve the current status of any withdrawal at any time using the `payment_id`:
+
+```bash
+GET /payments/{payment_id}
+```
+
+This endpoint is self-service and returns the most recent status of the withdrawal. Use it whenever your state machine is out of sync with the webhook stream.

@@ -1,0 +1,13 @@
+# Source: https://docs.zerohash.com/login?redirect_uri=%2Fdocs%2Fgetting-started
+
+# Connecting to
+
+![Okta Dashboard](https://ok14static.oktacdn.com/assets/img/logos/okta-logo-end-user-dashboard.fc6d8fdbcb8cb4c933d009e71456cec6.svg)
+
+Sign in with your account to access Okta Dashboard
+
+![Zero Hash Holdings, Ltd](https://ok14static.oktacdn.com/fs/bco/1/fs0sg0yel3A5SXA0x697)
+
+## The page has timed out
+
+If this page does not reload automatically, please refresh your browser.

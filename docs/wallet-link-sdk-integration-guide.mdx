@@ -1,0 +1,405 @@
+---
+title: "Wallet Link SDK: Link Wallets and Initiate Withdrawals"
+sidebarTitle: "Wallet Link SDK"
+description: "Integrate the Account Link and Crypto Withdraw SDKs to let customers link an external wallet and withdraw stablecoins or crypto from your platform."
+---
+
+The Zero Hash Wallet Link integration combines two embeddable SDK modules that work together to enable crypto and stablecoin withdrawals from your platform. The **Account Link SDK** lets end customers link an external wallet (by selecting an asset, network, and address). The **Crypto Withdraw SDK** then lets them initiate a withdrawal to that linked wallet. Both modules are part of `zh-web-sdk` and require version **2.10.6 or higher** for web usage.
+
+<Note>
+  The Crypto Withdraw SDK JWT expires **5 minutes** after it is generated. The Account Funding SDK JWT expires **1 hour** after it is generated. Generate the Withdraw JWT as close to the moment the customer initiates the withdrawal as possible.
+</Note>
+
+---
+
+## How It Works: End-to-End Flow
+
+The complete withdrawal flow consists of ten steps across your backend, the SDK front-end, and Zero Hash's systems:
+
+<Steps>
+  <Step title="Fund your float account">
+    Before customers can withdraw, your platform's fiat float account must be funded. Zero Hash uses this float to purchase the withdrawal asset and fund the on-chain transaction on behalf of the customer.
+
+    Float account details:
+    - `participant_code`: Your platform's participant code (e.g., `PLAT01`)
+    - `account_group`: Your platform code
+    - `account_label`: `general`
+    - `account_type`: `available`
+    - `asset`: Fiat currency (e.g., `USD`)
+  </Step>
+  <Step title="Request an Account Link access token">
+    Call `POST /client_auth_token` from your backend, specifying the customer's `participant_code` and the `crypto-account-link` permission:
+
+    ```json
+    {
+      "participant_code": "CUST01",
+      "permissions": ["crypto-account-link"]
+    }
+    ```
+  </Step>
+  <Step title="Initialize the Account Link SDK">
+    Pass the JWT to the SDK and open the modal with the `CRYPTO_ACCOUNT_LINK` app identifier:
+
+    ```typescript
+    import React from 'react';
+    import ZeroHashSDK, { AppIdentifier } from 'zh-web-sdk';
+
+    const App = () => {
+      const sdk = new ZeroHashSDK({
+        zeroHashAppsURL: "https://web-sdk.cert.zerohash.com",
+        // For production: "https://web-sdk.zerohash.com"
+        cryptoAccountLinkJWT: "<JWT_TOKEN_HERE>"
+      });
+
+      sdk.openModal({
+        appIdentifier: AppIdentifier.CRYPTO_ACCOUNT_LINK, // "crypto-account-link"
+      });
+
+      return <></>;
+    };
+
+    export default App;
+    ```
+
+    The customer selects the asset (e.g., USDC), network (e.g., Ethereum or Solana), wallet address, and optionally a nickname for the linked wallet.
+  </Step>
+  <Step title="Handle the account-linked event">
+    When the customer successfully links a wallet, the SDK emits a `postMessage` event with type `CRYPTO_ACCOUNT_LINK_EXTERNAL_ACCOUNT_CREATED`. Listen for this event on your frontend to fetch the new external account details:
+
+    ```javascript
+    useEffect(() => {
+      window.addEventListener('message', message => {
+        if (message.data.type === 'CRYPTO_ACCOUNT_LINK_EXTERNAL_ACCOUNT_CREATED') {
+          // A new external account was created — fetch details from
+          // GET /payments/external_accounts and store the external_account_id
+        }
+      });
+      return () => {
+        window.removeEventListener('message', () => {});
+      };
+    }, []);
+    ```
+  </Step>
+  <Step title="Consume external account webhooks">
+    Zero Hash sends a webhook whenever the external account status changes. The `x-zh-hook-payload-type` is `external_account_status_changed`.
+
+    Key statuses:
+    - `pending` — All accounts pass through this state briefly
+    - `approved` — The wallet address passed validation and compliance checks
+    - `locked` — Zero Hash compliance is reviewing the account
+    - `closed` — The account has been closed (by the platform or compliance)
+
+    See [Section: External Account Webhook Payloads](#external-account-webhook-payloads) below for example payloads.
+  </Step>
+  <Step title="Query external accounts (optional)">
+    Call `GET /payments/external_accounts` to retrieve the linked account details, including the `external_account_id` you'll need for the Withdraw SDK token request.
+  </Step>
+  <Step title="Request a Crypto Withdraw access token">
+    Once the wallet is linked and approved, call `POST /client_auth_token` with the `crypto-withdrawals` permission and the withdrawal details:
+
+    ```json
+    {
+      "participant_code": "CUST01",
+      "permissions": ["crypto-withdrawals"],
+      "withdrawal_details": {
+        "external_account_id": "c476a81f-a29f-4e22-88db-1f521d7cf004",
+        "quoted_asset": "USD",
+        "withdrawal_request_amount": "200"
+      },
+      "reference_id": "0bd7f7f0-cf26-495f-b2df-e8afe8481ba3"
+    }
+    ```
+  </Step>
+  <Step title="Initialize the Crypto Withdraw SDK">
+    Pass the JWT and open the modal with the `CRYPTO_WITHDRAWALS` app identifier:
+
+    ```typescript
+    import React from 'react';
+    import ZeroHashSDK, { AppIdentifier } from 'zh-web-sdk';
+
+    const App = () => {
+      const sdk = new ZeroHashSDK({
+        zeroHashAppsURL: "https://web-sdk.cert.zerohash.com",
+        // For production: "https://web-sdk.zerohash.com"
+        cryptoWithdrawalsJWT: "<JWT_TOKEN_HERE>"
+      });
+
+      sdk.openModal({
+        appIdentifier: AppIdentifier.CRYPTO_WITHDRAWALS, // "crypto-withdrawals"
+      });
+
+      return <></>;
+    };
+
+    export default App;
+    ```
+
+    The customer sees a pre-populated withdrawal screen showing:
+
+    | Field | Description |
+    |---|---|
+    | Withdrawal Request Amount | Amount in `quoted_asset` (e.g., 200 USD) |
+    | Destination Wallet | Nickname and masked address of the linked wallet |
+    | Withdrawal Fee | Platform or Zero Hash fee assessed on the withdrawal |
+    | Network Fee | Blockchain fee in `quoted_asset` terms |
+    | Withdrawal Receive Amount | Net crypto or stablecoin amount the customer receives |
+  </Step>
+  <Step title="Consume payment webhooks">
+    After the customer initiates the withdrawal, Zero Hash sends payment status webhooks. The `x-zh-hook-payload-type` is `payment_status_changed`.
+
+    See [Section: Payment Webhook Payloads](#payment-webhook-payloads) below for example payloads for each status.
+  </Step>
+  <Step title="Complete EOD settlement (Net Delivery Obligation)">
+    After each session, your platform tops up the float account to cover cumulative withdrawals. This is the **Net Delivery Obligation (NDO)**.
+
+    | Session | NDO Wire Due |
+    |---|---|
+    | Monday | By Tuesday EOD |
+    | Tuesday | By Wednesday EOD |
+    | Wednesday | By Thursday EOD |
+    | Thursday | By Friday EOD |
+    | Friday | By Monday EOD |
+  </Step>
+</Steps>
+
+---
+
+## Account Link Front-End Validations
+
+Zero Hash validates every account link attempt on the front-end before creating the external account:
+
+- The customer-entered address must be valid for the selected asset and network. For example, a Bitcoin address is rejected if the asset is USDC on Ethereum.
+- The address must pass Zero Hash compliance checks. OFAC-sanctioned addresses are automatically rejected.
+
+---
+
+## Access Token Parameters
+
+### Account Link Token
+
+<ParamField body="participant_code" type="string" required>
+  The 6-digit alphanumeric code for the customer requesting the link. This is the `participant_code` returned by `POST /participants/customers/new`.
+</ParamField>
+
+<ParamField body="permissions" type="array" required>
+  Array of permission strings. Use `["crypto-account-link"]` for the Account Link SDK.
+</ParamField>
+
+### Crypto Withdraw Token
+
+<ParamField body="participant_code" type="string" required>
+  The 6-digit alphanumeric code for the customer initiating the withdrawal.
+</ParamField>
+
+<ParamField body="permissions" type="array" required>
+  Array of permission strings. Use `["crypto-withdrawals"]` for the Withdraw SDK.
+</ParamField>
+
+<ParamField body="withdrawal_details.external_account_id" type="string" required>
+  The UUID of the approved linked external account, from `GET /payments/external_accounts`.
+</ParamField>
+
+<ParamField body="withdrawal_details.quoted_asset" type="string" required>
+  The fiat currency used to denominate the withdrawal amount (e.g., `"USD"`).
+</ParamField>
+
+<ParamField body="withdrawal_details.withdrawal_request_amount" type="string" required>
+  The amount in `quoted_asset` terms to withdraw (e.g., `"200"`).
+</ParamField>
+
+<ParamField body="reference_id" type="string">
+  Optional platform reference ID for the transaction. Returned in all subsequent webhooks for reconciliation.
+</ParamField>
+
+---
+
+## External Account Webhook Payloads
+
+<Tabs>
+  <Tab title="pending">
+    All external accounts pass through `pending` briefly after creation:
+
+    ```json
+    {
+      "account_nickname": "johns-usdc-eth-wallet",
+      "external_account_id": "c476a81f-a29f-4e22-88db-1f521d7cf004",
+      "external_account_status": "pending",
+      "participant_code": "CUST01",
+      "timestamp": 1729195673718
+    }
+    ```
+  </Tab>
+  <Tab title="approved">
+    The wallet address has passed all validation and compliance checks:
+
+    ```json
+    {
+      "account_nickname": "johns-usdc-eth-wallet",
+      "external_account_id": "c476a81f-a29f-4e22-88db-1f521d7cf004",
+      "external_account_status": "approved",
+      "participant_code": "CUST01",
+      "timestamp": 1729195673719
+    }
+    ```
+  </Tab>
+  <Tab title="locked">
+    Zero Hash compliance is reviewing the account. Withdrawals to this account are blocked while it is locked:
+
+    ```json
+    {
+      "account_nickname": "johns-usdc-eth-wallet",
+      "external_account_id": "c476a81f-a29f-4e22-88db-1f521d7cf004",
+      "external_account_status": "locked",
+      "participant_code": "CUST01",
+      "timestamp": 1729195673721
+    }
+    ```
+  </Tab>
+  <Tab title="closed">
+    The account has been closed — either by the platform via `POST /payments/external_accounts/{id}/close`, or by Zero Hash compliance following a review:
+
+    ```json
+    {
+      "account_nickname": "johns-usdc-eth-wallet",
+      "external_account_id": "c476a81f-a29f-4e22-88db-1f521d7cf004",
+      "external_account_status": "closed",
+      "participant_code": "CUST01",
+      "timestamp": 1729195673720
+    }
+    ```
+  </Tab>
+</Tabs>
+
+---
+
+## Payment Webhook Payloads
+
+Payment webhooks use `x-zh-hook-payload-type: payment_status_changed`. The lifecycle for a withdrawal is: `initialized` → `submitted` → `posted` → `settled` (terminal success) or `failed` / `abandoned` (terminal failure).
+
+<Tabs>
+  <Tab title="initialized">
+    Sent when the JWT is successfully generated via `POST /client_auth_token`, before the customer interacts with the SDK:
+
+    ```json
+    {
+      "payment_id": "0f68333e-2114-469d-b505-c850d776e061",
+      "obo_participant": {
+        "participant_code": "CUST01",
+        "account_group": "PLAT01",
+        "account_label": "general"
+      },
+      "payment_details": {
+        "destination_address": "0xa6b0Cd1baaa15AE97D8135f0E87F61af27c6cB89"
+      },
+      "asset": "",
+      "network": "ETH",
+      "payment_type": "payout",
+      "external_account_id": "c476a81f-a29f-4e22-88db-1f521d7cf004",
+      "participant_code": "CUST01",
+      "status": "initialized",
+      "total": "200",
+      "reference_id": "0bd7f7f0-cf26-495f-b2df-e8afe8481ba3"
+    }
+    ```
+  </Tab>
+  <Tab title="submitted">
+    The withdrawal has been accepted and is being processed:
+
+    ```json
+    {
+      "payment_id": "0f68333e-2114-469d-b505-c850d776e061",
+      "payment_details": {
+        "trade_id": "b752503c-1c42-4dfe-ad1d-7b39da5db59c",
+        "destination_address": "0xa6b0Cd1baaa15AE97D8135f0E87F61af27c6cB89"
+      },
+      "asset": "USDC",
+      "network": "ETH",
+      "participant_code": "CUST01",
+      "status": "submitted",
+      "total": "200",
+      "reference_id": "0bd7f7f0-cf26-495f-b2df-e8afe8481ba3"
+    }
+    ```
+  </Tab>
+  <Tab title="posted">
+    The asset has been broadcast on-chain. The `on_chain_transaction_id` is now available — display this to the customer so they can trace the transaction on a block explorer:
+
+    ```json
+    {
+      "payment_id": "0f68333e-2114-469d-b505-c850d776e061",
+      "payment_details": {
+        "withdrawal_request_id": "14f8ebb8-7530-4aa4-bef9-9d73d56313f3",
+        "trade_id": "b752503c-1c42-4dfe-ad1d-7b39da5db59c",
+        "on_chain_transaction_id": "0x55dfac6137387a81e32fc353fca45eea3124cd42564a4112192323add8dee1da",
+        "network_fee_notional": "1.25",
+        "network_fee_quantity": ".00032",
+        "withdrawal_fee_notional": "1.50",
+        "destination_address": "0xa6b0Cd1baaa15AE97D8135f0E87F61af27c6cB89"
+      },
+      "asset": "USDC",
+      "network": "ETH",
+      "participant_code": "CUST01",
+      "quantity": "197.25",
+      "status": "posted",
+      "total": "200",
+      "reference_id": "0bd7f7f0-cf26-495f-b2df-e8afe8481ba3"
+    }
+    ```
+  </Tab>
+  <Tab title="settled">
+    The transaction has been confirmed on-chain. The customer's destination wallet balance should now reflect the received amount:
+
+    ```json
+    {
+      "payment_id": "0f68333e-2114-469d-b505-c850d776e061",
+      "payment_details": {
+        "on_chain_transaction_id": "0x55dfac6137387a81e32fc353fca45eea3124cd42564a4112192323add8dee1da",
+        "network_fee_notional": "1.25",
+        "withdrawal_fee_notional": "1.50",
+        "destination_address": "0xa6b0Cd1baaa15AE97D8135f0E87F61af27c6cB89"
+      },
+      "asset": "USDC",
+      "network": "ETH",
+      "participant_code": "CUST01",
+      "quantity": "197.25",
+      "status": "settled",
+      "total": "200",
+      "reference_id": "0bd7f7f0-cf26-495f-b2df-e8afe8481ba3"
+    }
+    ```
+  </Tab>
+  <Tab title="failed / abandoned">
+    `failed` occurs due to Zero Hash processing issues or blockchain issues. `abandoned` is sent when the customer leaves the SDK UI without initiating the withdrawal — use this for balance ledgering and reconciliation.
+
+    ```json
+    {
+      "payment_id": "0f68333e-2114-469d-b505-c850d776e061",
+      "asset": "USDC",
+      "network": "ETH",
+      "participant_code": "CUST01",
+      "status": "abandoned",
+      "total": "200",
+      "reference_id": "0bd7f7f0-cf26-495f-b2df-e8afe8481ba3"
+    }
+    ```
+  </Tab>
+</Tabs>
+
+<Warning>
+  Your platform must be configured with a valid webhook URL to receive these events. Contact your Zero Hash representative to register your endpoint. You will not receive webhooks without this configuration.
+</Warning>
+
+---
+
+## Query APIs
+
+You can also poll the REST API to fetch current state for both external accounts and payments:
+
+- **External accounts:** `GET /payments/external_accounts` — returns linked wallet details including `status`, `network`, `supported_assets`, and `address`.
+- **Payments:** `GET /payments` — returns current payment status, `trade_id`, `on_chain_transaction_id`, fees, and quantities.
+
+---
+
+## Mobile Apps
+
+If you're building a native iOS, Android, or Capacitor app rather than a web app, use the **WebView approach** instead of `zh-web-sdk` directly. See the [Mobile SDKs](/docs/mobile-sdks) guide for instructions.

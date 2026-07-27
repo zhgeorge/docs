@@ -1,0 +1,92 @@
+---
+title: "ACH and Real-Time Fiat Payments with Zero Hash API"
+sidebarTitle: "Fiat Payments"
+description: "Accept and disburse USD via ACH, RTP, and FedNow using Zero Hash — cost-effective bank-to-bank transfers with regulatory compliance built in."
+---
+
+Zero Hash supports ACH, RTP, and FedNow as bank-to-bank payment rails, allowing your platform to offer end customers direct funding and withdrawal options without relying on card networks. ACH is the most widely used system for electronic funds transfer in the United States, enabling direct movement of funds between bank accounts at low cost. RTP and FedNow extend that coverage to real-time settlement for eligible transactions.
+
+## Payment Rail Overview
+
+<CardGroup cols={3}>
+  <Card title="ACH" icon="building-columns">
+    The standard US bank-to-bank transfer network, governed by Nacha. Supports same-day and standard processing. Cost-effective and widely accepted.
+  </Card>
+  <Card title="RTP" icon="bolt">
+    Real-Time Payments, managed by The Clearing House. Near-instant settlement for participating banks.
+  </Card>
+  <Card title="FedNow" icon="landmark">
+    A real-time payment service provided by the Federal Reserve. Zero Hash automatically invokes FedNow when RTP is unavailable, ensuring full coverage under the `rtp` network type on the API.
+  </Card>
+</CardGroup>
+
+<Note>
+  On the Zero Hash API, both RTP and FedNow are accessed via the `rtp` network type. FedNow is invoked automatically when RTP is not available for the receiving bank.
+</Note>
+
+## Regulatory Framework
+
+ACH transactions are governed by rules and regulations established by **Nacha** (the National Automated Clearing House Association). These regulations cover:
+
+- **Authorization requirements** — customers must explicitly authorize ACH debits before any transaction is initiated
+- **Processing timelines** — rules define standard and same-day settlement windows
+- **Return and dispute resolution** — defined return codes and deadlines for unauthorized or erroneous transactions
+
+Platforms using Zero Hash for ACH must comply with Nacha's return rate thresholds. See [ACH Returns](/docs/getting-started-with-fiat-payments) for the full list of return codes and how to calculate your return rates.
+
+## Use Cases
+
+<CardGroup cols={3}>
+  <Card title="On-Ramp" icon="arrow-right-to-bracket">
+    Offer a cost-effective direct payment method to end customers. ACH typically has higher transaction limits and lower fees than card payments.
+  </Card>
+  <Card title="Off-Ramp" icon="arrow-right-from-bracket">
+    Let end customers withdraw fiat directly to their bank account instead of withdrawing crypto to a third-party exchange.
+  </Card>
+  <Card title="Alternative Payment Method" icon="arrows-left-right">
+    Diversify your platform's funding options by adding ACH or RTP alongside card payments.
+  </Card>
+</CardGroup>
+
+## Key Features
+
+| Feature | Detail |
+|---------|--------|
+| **Cost-effective** | ACH and RTP transactions carry low fees compared to card and wire alternatives. |
+| **Processing optionality** | Choose standard or same-day ACH processing based on your customers' needs and your platform's support. |
+| **Capital efficiency** | Pull funds directly from customer bank accounts instead of maintaining a pre-funded float. *(Implementation-dependent.)* |
+| **Flexible liquidity models** | Zero Hash supports two ACH funding models depending on your preferred liquidity approach. |
+
+## ACH Liquidity Models
+
+Zero Hash offers two approaches to ACH funding depending on how your platform manages liquidity:
+
+<CardGroup cols={2}>
+  <Card title="Prefunded Workflow" icon="piggy-bank" href="/docs/getting-started-with-fiat-payments">
+    Your platform pre-funds a float account. Trades are settled immediately using available float balance, and ACH debits replenish the float over time.
+  </Card>
+  <Card title="On-Demand Workflow" icon="rotate" href="/docs/getting-started-with-fiat-payments">
+    ACH debits are initiated at the time of each transaction. No pre-funding is required, but settlement depends on the ACH clearing window.
+  </Card>
+</CardGroup>
+
+## ACH Limits and Velocity Controls
+
+Platforms using ACH processing are subject to transaction limits and velocity controls to manage risk and maintain regulatory compliance. These limits are configurable and may differ for credit (deposit) and debit (withdrawal) transactions.
+
+| Limit Type | Description |
+|------------|-------------|
+| Maximum Transaction Size | The maximum dollar amount allowed per individual transaction. |
+| Minimum Transaction Size | The minimum dollar amount allowed per individual transaction. |
+| $ Transactions Per Week (User) | The cumulative weekly dollar amount of transactions permitted per user. |
+| # Transactions Per Week (User) | The number of transactions allowed per user per week. |
+| Transactions In Flight | The maximum number of pending transactions a user can have simultaneously. |
+| # Linked Bank Accounts | The maximum number of active bank accounts a participant may have linked at one time. |
+| $ Transactions Per Week (Platform) | The cumulative weekly transaction volume allowed across your entire platform. |
+
+When a transaction is blocked by any of these controls, its status updates to `rejected`. For a full breakdown of rejection reason codes, see the [ACH Limits and Velocity Controls reference](/docs/getting-started-with-fiat-payments).
+
+## API Reference
+
+- [Payments API docs](https://docs.zerohash.com/reference/payments)
+- [Payments webhooks](https://docs.zerohash.com/reference/payments-1)

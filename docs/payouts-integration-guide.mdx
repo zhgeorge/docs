@@ -1,0 +1,354 @@
+---
+title: "Payouts Integration Guide: Send Stablecoin Payouts via API"
+sidebarTitle: "Payouts"
+description: "End-to-end guide for integrating Zero Hash Payouts: onboard payors and beneficiaries, fund floats, initiate transfers, and handle webhook status events."
+---
+
+The Zero Hash Payouts product lets marketplaces, payment service providers, employer-of-record platforms, and similar businesses send stablecoin payouts globally to their end recipients. Your platform submits a payout request via API, Zero Hash converts the fiat balance in your float account to stablecoin, and the funds are automatically sent on-chain to the beneficiary's external wallet. This guide covers the complete end-to-end integration.
+
+## Key Definitions
+
+| Term | Definition |
+|------|-----------|
+| **Payout** | The conversion of fiat to stablecoin and an automatic on-chain transfer to a destination address. |
+| **Platform** | Your company — under contract with Zero Hash and integrating directly with the Zero Hash APIs. |
+| **Payor** | A non-natural person (business) that is your customer and the initiator of the payout. |
+| **Beneficiary** | The natural person who receives the stablecoin payout. |
+
+## High-Level Flow
+
+1. Submit Payor
+2. Query Payor
+3. Fund Float Account
+4. Submit Beneficiary
+5. Query Beneficiary
+6. Connect External Account
+7. Query External Accounts
+8. Initiate Payout
+9. Query Payouts
+10. Network Fee Procedures
+11. Email Receipt Requirements
+
+---
+
+## Initial Setup
+
+Your platform must be onboarded to Zero Hash before you can use the Payouts API. This means creating API keys, whitelisting IP addresses, and completing the portal setup. See the [Client Portal guide](https://docs.zerohash.com/docs/onboarding) for details.
+
+---
+
+## Step 1: Submit Payor
+
+Submit the payor business entity via [POST /participants/entity/new](https://docs.zerohash.com/reference/post_participants-entity-new). The examples below use `PLAT01` as the platform code.
+
+```json
+{
+  "platform_code": "PLAT01",
+  "entity_name": "Freelancer Platform XYZ",
+  "legal_name": "Freelancer Platform XYZ Inc.",
+  "contact_number": "15553765432",
+  "website": "www.freelancerplatform.com",
+  "date_established": "2018-01-15",
+  "entity_type": "llc",
+  "address_one": "1 Main St.",
+  "city": "Chicago",
+  "postal_code": "12345",
+  "jurisdiction_code": "US-IL",
+  "tax_id": "883987654",
+  "sanction_screening": "pass",
+  "sanction_screening_timestamp": 1677252628000,
+  "signed_timestamp": 1677252629000,
+  "submitter_email": "josh_doe@gmail.com",
+  "control_persons": [
+    {
+      "name": "Joe Doe",
+      "email": "joe.doe@test.com",
+      "date_of_birth": "1980-01-30",
+      "citizenship_code": "US",
+      "tax_id": "123456789",
+      "id_number_type": "us_passport",
+      "id_number": "332211200",
+      "kyc": "pass",
+      "kyc_timestamp": 1630623005000,
+      "sanction_screening": "pass",
+      "sanction_screening_timestamp": 1677252628000,
+      "control_person": 1
+    }
+  ],
+  "beneficial_owners": [
+    {
+      "name": "Jane Doe Jr",
+      "beneficial_owner": 1,
+      "email": "janedoejr@test.com",
+      "date_of_birth": "1980-01-30",
+      "citizenship_code": "US",
+      "tax_id": "012345578",
+      "id_number_type": "us_drivers_license",
+      "id_number": "P11122243333",
+      "kyc": "pass",
+      "kyc_timestamp": 1630623005000,
+      "sanction_screening": "pass",
+      "sanction_screening_timestamp": 1677252628000
+    }
+  ]
+}
+```
+
+The response contains a `participant_code` that permanently and uniquely identifies the payor — this guide uses **PAYOR1** throughout. You must submit at least one `beneficial_owners` entry and one `control_persons` entry. If those persons do not have an SSN, submit their identity documents via [POST /participants/entity/documents](https://docs.zerohash.com/reference/post_participants-entity-documents).
+
+The payor will not reach `approved` status until all required documents are uploaded.
+
+---
+
+## Step 2: Query Payor
+
+Retrieve existing payors via [GET /participants](https://docs.zerohash.com/reference/get_participants). Filter by `participant_code` to retrieve a specific payor.
+
+---
+
+## Step 3: Fund Float Account
+
+Send a wire transfer to the Zero Hash settlement bank account to fund your float. Your float account details:
+
+| Field | Value |
+|-------|-------|
+| `participant_code` | `00SCXM` |
+| `account_group` | Your platform code (e.g., `PLAT01`) |
+| `account_label` | `general` |
+| `account_type` | `available` |
+| `asset` | `USD` |
+
+<Info>
+  In the Cert environment, your platform is pre-funded with float account funds. You do not need to send a wire to test payouts in Cert.
+</Info>
+
+---
+
+## Step 4: Submit Beneficiary
+
+Submit the beneficiary (the natural person receiving the payout) via [POST /participants/beneficiaries/new](https://docs.zerohash.com/reference/post_participants-beneficiaries-new). This guide uses **BENEF1** as the beneficiary participant code.
+
+```json
+{
+  "first_name": "Lucas",
+  "last_name": "Martinez",
+  "email": "lmartinez+1@gmail.com",
+  "address_one": "Calle San Martín 305",
+  "city": "Buenos Aires",
+  "zip": "C1000",
+  "jurisdiction_code": "AR-X",
+  "citizenship_code": "AR",
+  "date_of_birth": "1985-09-02",
+  "id_number_type": "non_us_passport",
+  "id_number": "A12345678",
+  "signed_agreements": [
+    {
+      "type": "payment_services_terms",
+      "region": "us",
+      "signed_timestamp": 1726005278070
+    }
+  ]
+}
+```
+
+Zero Hash runs an automated sanctions check immediately upon submission. Expect the status to transition from `submitted` to `approved`, `pending_approval`, or `rejected` nearly instantly.
+
+<Warning>
+  Zero Hash runs sanctions checks in Cert using real validation logic. Submitting an actual sanctioned individual's data in Cert will result in a `rejected` status. To test rejection in Cert, use `id_number: "111111111"`. To test `pending_approval`, use `first_name: "Joseph"` and `last_name: "Kony"`.
+</Warning>
+
+---
+
+## Step 5: Query Beneficiary
+
+Retrieve a beneficiary's current status via [GET /participants](https://docs.zerohash.com/reference/get_participants):
+
+```
+GET /participants/?participant_code=BENEF1
+```
+
+---
+
+## Step 6: Connect External Account
+
+Link the beneficiary to their destination crypto wallet via [POST /payments/external_accounts](https://docs.zerohash.com/reference/post_payments-external-accounts):
+
+<CodeGroup>
+```json SOL Example
+{
+  "participant_code": "BENEF1",
+  "type": "crypto",
+  "details": {
+    "network": "SOL",
+    "supported_assets": ["USDC"],
+    "address": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+  }
+}
+```
+
+```json XLM Example (with destination tag)
+{
+  "participant_code": "BENEF1",
+  "type": "crypto",
+  "details": {
+    "network": "XLM",
+    "supported_assets": ["USDC"],
+    "address": "GCYEIQEWOCTTSA72VPZ6LYIZIK4W4KNGJR72UADIXUXG45VDFRVCQTYE",
+    "destination_tag": "abc123"
+  }
+}
+```
+</CodeGroup>
+
+**Supported payout assets and networks:**
+
+`USDC.ALGO`, `USDC.ARBITRUM`, `USDC.AVAX`, `USDC.BASE`, `USDC.ETH`, `USDC.HBAR`, `USDC.OPT`, `USDC.POLYGON`, `USDC.SOL`, `USDC.SUI`, `USDC.XLM`, `USDC.ZKSYNC`
+
+The external account enters `submitted` status, then transitions to `approved` or `rejected` after automated address checks. Each beneficiary can have a maximum of 100 external accounts.
+
+---
+
+## Step 7: Query External Accounts
+
+View all external accounts for a beneficiary via [GET /payments/external_accounts](https://docs.zerohash.com/reference/get_payments-external-accounts).
+
+---
+
+## Step 8: Initiate Payout
+
+Submit the payout via [POST /payments](https://docs.zerohash.com/reference/post_payments):
+
+```json
+{
+  "participant_code": "BENEF1",
+  "obo_participant": {
+    "participant_code": "PAYOR1",
+    "account_group": "PLAT01",
+    "account_label": "general"
+  },
+  "external_account_id": "2cc93b20-ee43-4877-8cdc-863e61829015",
+  "asset": "USDC",
+  "quoted_asset": "USD",
+  "total": "125.50",
+  "payment_type": "payout"
+}
+```
+
+<Note>
+  Specify `asset` as `USDC` — do not include the network suffix (e.g., do not write `USDC.BASE`). The network is inferred from the external account.
+</Note>
+
+Under the hood, Zero Hash creates a trade converting USD from the payor's float account to USDC, then immediately initiates an on-chain withdrawal to the beneficiary's address.
+
+**Payout status lifecycle:**
+
+| Status | Meaning |
+|--------|---------|
+| `submitted` | Payout received; address checks in progress |
+| `posted` | USDC settled on Zero Hash ledger; on-chain transfer dispatched |
+| `settled` | On-chain transaction confirmed; beneficiary received funds |
+| `failed` | Terminal failure — funds were not sent |
+
+---
+
+## Step 9: Query Payouts
+
+Retrieve all payouts via [GET /payments](https://docs.zerohash.com/reference/get_payments) or a single payout via `GET /payments/{id}`.
+
+---
+
+## Step 10: Network Fee Procedures
+
+Your platform pays the blockchain network fee for each payout. You have two options:
+
+<CardGroup cols={2}>
+  <Card title="Pre-fund Network Fee Account" icon="money-bill">
+    Fund the account at `participant_code: PLAT01`, `account_label: network_fee`, `asset: USD`. Fees are deducted in real-time from this account.
+  </Card>
+  <Card title="Invoice at Month-End" icon="file-invoice-dollar">
+    Leave the network fee account unfunded. Zero Hash accumulates the balance as a payable and adds it to your end-of-month invoice alongside payout usage fees.
+  </Card>
+</CardGroup>
+
+---
+
+## Step 11: Email Receipt Requirements
+
+Zero Hash requires you to send the payor an email receipt for every payout. The receipt must include:
+
+| Receipt Field | Source |
+|---------------|--------|
+| Order Number | `payment_id` from `GET /payments` or `POST /payments` response |
+| Order Type | Hard-code to `"Payout Transmission"` |
+| Transmission Amount | `total` from payments response |
+| Amount Received by Beneficiary | `total` from payments response |
+| Fees | `network_fee_notional` if the payor incurs the fee; otherwise state `"$0 Fees"` |
+| Date/Time | `created_at` from payments response |
+| Account ID | `participant_code` from payments response |
+
+The receipt must also include your platform's support contact information and the following Zero Hash contact information verbatim:
+
+> Zero Hash LLC (NMLS ID 1699379)  
+> 327 N Aberdeen St, Chicago, IL 60607  
+> 855-744-7333 | support@zerohash.com | www.zerohash.com
+
+---
+
+## Webhook Events
+
+<CodeGroup>
+```json Submitted
+{
+  "payment_id": "0f68333e-2114-469d-b505-c850d776e061",
+  "asset": "USDC",
+  "network": "SOL",
+  "payment_type": "payout",
+  "participant_code": "BENEF1",
+  "status": "submitted",
+  "total": "125.50"
+}
+```
+
+```json Posted
+{
+  "payment_id": "0f68333e-2114-469d-b505-c850d776e061",
+  "payment_details": {
+    "withdrawal_request_id": "14f8ebb8-7530-4aa4-bef9-9d73d56313f3",
+    "trade_id": "b752503c-1c42-4dfe-ad1d-7b39da5db59c",
+    "on_chain_transaction_id": "FLaUcxdNxRwnaSXp6pXeRSfANXEHouqYbqF6X1bgRxg2",
+    "network_fee_notional": ".01",
+    "network_fee_quantity": ".001",
+    "destination_address": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+  },
+  "asset": "USDC",
+  "network": "SOL",
+  "status": "posted",
+  "total": "125.50"
+}
+```
+
+```json Settled
+{
+  "payment_id": "0f68333e-2114-469d-b505-c850d776e061",
+  "payment_details": {
+    "withdrawal_request_id": "14f8ebb8-7530-4aa4-bef9-9d73d56313f3",
+    "trade_id": "b752503c-1c42-4dfe-ad1d-7b39da5db59c",
+    "on_chain_transaction_id": "FLaUcxdNxRwnaSXp6pXeRSfANXEHouqYbqF6X1bgRxg2",
+    "network_fee_notional": ".01",
+    "destination_address": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+  },
+  "status": "settled",
+  "total": "125.50"
+}
+```
+
+```json Failed
+{
+  "payment_id": "0f68333e-2114-469d-b505-c850d776e061",
+  "asset": "USDC",
+  "network": "SOL",
+  "status": "failed",
+  "total": "125.50"
+}
+```
+</CodeGroup>

@@ -1,0 +1,312 @@
+---
+title: "Submit and Execute RFQ Quotes: Step-by-Step Guide"
+sidebarTitle: "Submit & Execute"
+description: "Step-by-step guide to requesting a firm quote via POST /liquidity/rfq and executing it via POST /liquidity/execute, with full field references."
+---
+
+Zero Hash provides two straightforward REST endpoints to request and execute quotes. You request a quote by specifying the instrument, side, and quantity; receive a firm price locked for 5 or 30 seconds; then execute by passing the `quote_id` back. The entire flow requires exactly two API calls to settle a trade.
+
+<Note>
+  Quotes can be configured with a default expiration of 5 or 30 seconds. Other expiration windows are available on request. All limits you define must fall within the constraints listed on the [RFQ Supported Assets](https://docs.zerohash.com/docs/supported-instruments-1) page.
+</Note>
+
+## Step 1 — Request a Quote
+
+Call `POST /liquidity/rfq` to retrieve a firm quoted price for a given instrument and trade size.
+
+- Specify the trading instrument (`underlying` and `quoted_currency`), the direction (`side`), and the size (`quantity` or `total`).
+- Optionally include a `spread` value in basis points to apply a custom commission on this specific request.
+- The response includes a unique `quote_id`, the all-in quoted price with fees embedded, and an expiration timestamp (`expire_ts`).
+
+<Warning>
+  Credit checks against participant balances are **not** performed on the RFQ request. Balance validation occurs only at execution time.
+</Warning>
+
+### Request Fields
+
+<ParamField body="side" type="string" required>
+  Direction of the trade. Must be `"buy"` or `"sell"`.
+</ParamField>
+
+<ParamField body="participant_code" type="string" required>
+  The participant code of the platform or customer on whose behalf the quote is being requested.
+</ParamField>
+
+<ParamField body="account_label" type="string" required>
+  The account label for the participant. Typically `"general"`.
+</ParamField>
+
+<ParamField body="underlying" type="string" required>
+  The asset or trading instrument being quoted. For example `"BTC"`, `"ETH"`, or a pair such as `"USDC.ETH"`.
+</ParamField>
+
+<ParamField body="quoted_currency" type="string" required>
+  The currency in which the price is quoted. For example `"USD"`.
+</ParamField>
+
+<ParamField body="quantity" type="number">
+  The quantity of the underlying asset to trade. Use `quantity` for asset-denominated orders or `total` for notional-denominated orders.
+</ParamField>
+
+<ParamField body="total" type="string">
+  The total notional value of the trade in the `quoted_currency`. Use instead of `quantity` for notional-based orders.
+</ParamField>
+
+<ParamField body="spread" type="string">
+  Optional. A custom spread in basis points to apply to this quote. For example `"25"` adds 25 bps to the quoted price. Overrides the platform default spread for this request.
+</ParamField>
+
+<ParamField body="quote_expiry" type="string">
+  Optional. The desired quote expiry window, such as `"5s"` or `"30s"`. Defaults to the platform-configured value if omitted.
+</ParamField>
+
+<ParamField body="fees" type="array">
+  Optional. An array of fee objects to apply to this quote. Each fee object supports `name`, `type` (`"bps"` or `"notional"`), and `amount`. See [Spreads and Fees](/docs/spreads-and-fees) for details.
+</ParamField>
+
+### Sample Request and Response
+
+<CodeGroup>
+
+```json Request
+{
+  "side": "buy",
+  "participant_code": "CUST01",
+  "account_label": "general",
+  "underlying": "USDC.ETH",
+  "quoted_currency": "USD",
+  "quantity": 500,
+  "spread": "25"
+}
+```
+
+```json Response
+{
+  "message": {
+    "request_id": "42684912-6107-4547-9999-977b2f847bfd",
+    "participant_code": "ZBGFHV",
+    "quoted_currency": "USD",
+    "side": "buy",
+    "quantity": "500",
+    "price": "1.0025",
+    "quote_id": "2888c933-4766-4a35-aba7-a3d3c3c8e3cc",
+    "expire_ts": 1755539666435,
+    "account_group": "00SCXM",
+    "account_label": "general",
+    "total_notional": "501.25",
+    "underlying": "USDC.ETH",
+    "asset_cost_notional": "501.25",
+    "spread_notional": "1.25",
+    "spread_bps": "25"
+  }
+}
+```
+
+</CodeGroup>
+
+### Response Fields
+
+<ResponseField name="request_id" type="string">
+  A unique identifier for this RFQ request.
+</ResponseField>
+
+<ResponseField name="participant_code" type="string">
+  The platform participant code associated with the quote.
+</ResponseField>
+
+<ResponseField name="quoted_currency" type="string">
+  The currency in which the price is denominated.
+</ResponseField>
+
+<ResponseField name="side" type="string">
+  The trade direction: `"buy"` or `"sell"`.
+</ResponseField>
+
+<ResponseField name="quantity" type="string">
+  The quantity of the underlying asset covered by the quote.
+</ResponseField>
+
+<ResponseField name="price" type="string">
+  The all-in quoted price per unit of the underlying, including all spreads and fees.
+</ResponseField>
+
+<ResponseField name="quote_id" type="string">
+  A unique identifier for this quote. Pass this value to `POST /liquidity/execute` to settle the trade.
+</ResponseField>
+
+<ResponseField name="expire_ts" type="integer">
+  Unix timestamp in milliseconds indicating when the quote expires. You must call execute before this time.
+</ResponseField>
+
+<ResponseField name="account_group" type="string">
+  The account group associated with the quote.
+</ResponseField>
+
+<ResponseField name="account_label" type="string">
+  The account label associated with the quote.
+</ResponseField>
+
+<ResponseField name="obo_participant" type="object">
+  On-behalf-of participant details, including their `participant_code`, `account_group`, and `account_label`.
+</ResponseField>
+
+<ResponseField name="total_notional" type="string">
+  The total notional value of the trade in the `quoted_currency`, including all fees.
+</ResponseField>
+
+<ResponseField name="asset_cost_notional" type="string">
+  The notional cost of the underlying asset, excluding spread fees.
+</ResponseField>
+
+<ResponseField name="spread_notional" type="string">
+  The notional value of the spread fee applied to this quote.
+</ResponseField>
+
+<ResponseField name="spread_bps" type="string">
+  The spread applied to this quote in basis points.
+</ResponseField>
+
+<ResponseField name="underlying" type="string">
+  The underlying asset or instrument being quoted.
+</ResponseField>
+
+---
+
+## Step 2 — Execute a Quote
+
+Once your customer confirms the quoted price, call `POST /liquidity/execute` with the `quote_id` from the active quote.
+
+At execution time, Zero Hash performs two validations:
+
+1. **Quote expiry:** The `quote_id` must still be within its validity window (before `expire_ts`).
+2. **Balance check:** The customer account must hold sufficient balance to cover the full trade notional.
+
+If both checks pass, the trade settles immediately and Zero Hash returns the trade details.
+
+<Note>
+  Credit checks are performed on quote execution to ensure the account can cover the trade. If the account has insufficient funds, the execution request will be rejected.
+</Note>
+
+### Request Fields
+
+<ParamField body="quote_id" type="string" required>
+  The unique quote identifier returned by `POST /liquidity/rfq`. This value must correspond to an active, unexpired quote.
+</ParamField>
+
+### Sample Request
+
+```json
+{
+  "quote_id": "1f998343-d9f1-4b1d-bed7-df3aa8265bdb"
+}
+```
+
+### Response Fields
+
+<ResponseField name="request_id" type="string">
+  A unique identifier for the execute request.
+</ResponseField>
+
+<ResponseField name="quote" type="object">
+  The full quote object echoed back from the original RFQ, including all price, notional, and spread fields.
+</ResponseField>
+
+<ResponseField name="trade_id" type="string">
+  The unique identifier for the settled trade. Use this with `GET /trades` to retrieve full trade details.
+</ResponseField>
+
+<ResponseField name="status" type="string">
+  The settlement status of the trade. A successful execution returns `"Completed"`.
+</ResponseField>
+
+<ResponseField name="trade_ids_list" type="array">
+  An array containing the `trade_id`(s) associated with this execution. For standard single-fill trades, this array contains one entry.
+</ResponseField>
+
+### Sample Response
+
+```json
+{
+  "message": {
+    "request_id": "ca2d7948-4468-4691-9b63-c306179ffae7",
+    "quote": {
+      "request_id": "9ec9921d-f8d6-49d7-89db-cdd67f1d6e11",
+      "participant_code": "ZBGFHV",
+      "quoted_currency": "USD",
+      "side": "buy",
+      "quantity": "500",
+      "price": "1.0025",
+      "quote_id": "1f998343-d9f1-4b1d-bed7-df3aa8265bdb",
+      "expire_ts": 1755542139137,
+      "account_group": "00SCXM",
+      "account_label": "general",
+      "obo_participant": {
+        "participant_code": "X58PGA",
+        "account_group": "ZBGFHV",
+        "account_label": "general"
+      },
+      "total_notional": "501.25",
+      "settlement_type": null,
+      "issuer_fee_rate": null,
+      "issuer_fee_amount": null,
+      "issuer_fee_payor_type": null,
+      "underlying": "USDC.ETH",
+      "asset_cost_notional": "501.25",
+      "spread_notional": "1.25",
+      "spread_bps": "25",
+      "transaction_timestamp": 1755542134538
+    },
+    "trade_id": "a2b4bed4-9723-4f22-9692-8efc53e4ef7f",
+    "status": "Completed",
+    "trade_ids_list": [
+      "a2b4bed4-9723-4f22-9692-8efc53e4ef7f"
+    ]
+  }
+}
+```
+
+---
+
+## Step 3 — Retrieve Trade Information
+
+After execution, retrieve full trade details using the `trade_id` returned in the execute response.
+
+**Endpoint:** `GET /trades`
+
+- Pass the `trade_id` to fetch details for a specific trade.
+- The `/trades` endpoint also supports filter parameters such as instrument, date range, or `trade_id` for retrieving historical activity.
+
+---
+
+## Complete Worked Example
+
+The following example shows a platform buying 500 USDC.ETH with a 25 bps spread applied.
+
+<Steps>
+  <Step title="Request the quote">
+    The platform calls `POST /liquidity/rfq` specifying `side: buy`, `quantity: 500`, `underlying: USDC.ETH`, and a `spread: 25` (bps).
+
+    Zero Hash returns a firm price of `1.0025` per USDC (reflecting the 25 bps spread), a `quote_id`, and an `expire_ts` timestamp 30 seconds in the future. The `spread_notional` of `1.25` shows the fee embedded in the total notional of `501.25`.
+  </Step>
+  <Step title="Present the price to the customer">
+    Your application displays the all-in price of $1.0025 per USDC, with a total cost of $501.25 for 500 USDC. The customer confirms they want to proceed.
+  </Step>
+  <Step title="Execute the quote">
+    Before `expire_ts`, the platform calls `POST /liquidity/execute` with `quote_id: 1f998343-d9f1-4b1d-bed7-df3aa8265bdb`.
+
+    Zero Hash confirms the quote is still valid, checks the customer account balance, settles the trade, and returns `status: Completed` along with a `trade_id`.
+  </Step>
+  <Step title="Confirm the trade">
+    The platform records the `trade_id` and optionally calls `GET /trades` to retrieve and display a trade confirmation to the customer.
+  </Step>
+</Steps>
+
+---
+
+## Quoting Controls
+
+You can define boundaries and defaults that govern how quotes behave on your platform.
+
+- **Minimum and maximum notional:** Set the smallest and largest trade sizes you accept. All limits you configure must remain within the constraints defined on the [RFQ Supported Assets](https://docs.zerohash.com/docs/supported-instruments-1) page.
+- **Default quote validity:** Configure a platform-wide default expiry (5s or 30s). Individual requests can specify a different `quote_expiry` value.
+- **Custom spread per request:** Pass a `spread` value in each RFQ payload to adjust commissions on a per-request basis, for example to run a promotion or differentiate by customer segment.

@@ -1,0 +1,95 @@
+---
+title: "Zero Hash Core API Resources: Groups and Endpoints"
+sidebarTitle: "Core Resources"
+description: "An overview of the Zero Hash API resource groups — Participants, Accounts, Deposits, Withdrawals, Trades, and Quotes — with links to deeper guides."
+---
+
+The Zero Hash API is organized into resource groups, each of which represents a distinct domain of functionality. Understanding these groups and how they relate to one another is the key to designing a clean integration. The resources below are the foundation of nearly every Zero Hash workflow — from onboarding a customer to executing a trade and withdrawing funds.
+
+## Resource Groups
+
+<CardGroup cols={2}>
+  <Card title="Participants" icon="users">
+    Participants are the entities that interact with Zero Hash — Platforms, Customers, and Liquidity Providers. Before any other resource can be used for an end user, that user must exist as a Participant in the system.
+
+    **Common operations:**
+    - Create a new customer (`POST /participants/customers/new`)
+    - Retrieve participant details (`GET /participants`)
+    - Manage participant status and KYC data
+
+    Understanding the distinction between Participants, Platforms, and Customers is essential. See [Terminology](/docs/terminology) for full definitions.
+  </Card>
+  <Card title="Accounts" icon="wallet">
+    Accounts represent the individual balance ledgers within Zero Hash. Each account is a unique combination of participant, asset, account type, account group, and account label. Accounts are created automatically when asset movements occur.
+
+    **Common operations:**
+    - Query balances (`GET /accounts`)
+    - Filter by asset, account type, account group, or account label
+    - View net delivery obligations (`GET /accounts/net_delivery_obligations`)
+
+    See [Terminology — Account](/docs/terminology#accounts-and-balances) for the complete data model.
+  </Card>
+  <Card title="Deposits" icon="arrow-down-to-line">
+    The Deposits resource handles inbound asset transfers into Zero Hash accounts. This covers both crypto on-chain deposits and fiat institutional transfers from retail end users.
+
+    **Common operations:**
+    - Generate a crypto deposit address for a participant
+    - Query deposit history (`GET /deposits`)
+    - Monitor deposit status and confirmation
+
+    <Note>
+      Deposit addresses for some blockchains are generated using smart contracts. Test deposit functionality in Cert using testnet assets — see [Supported Assets and Instruments](/docs/supported-assets-instruments).
+    </Note>
+  </Card>
+  <Card title="Withdrawals" icon="arrow-up-from-line">
+    The Withdrawals resource manages outbound asset transfers from Zero Hash accounts to external destinations. All crypto assets support withdrawals for retail end users. All fiat assets support institutional withdrawals.
+
+    **Common operations:**
+    - Create a withdrawal account (`POST /withdrawal_requests`)
+    - Query withdrawal history (`GET /withdrawal_requests`)
+    - Check minimum withdrawal amounts (`GET /assets`)
+  </Card>
+  <Card title="Trades" icon="arrow-right-arrow-left">
+    The Trades resource records and settles crypto-to-fiat and crypto-to-crypto exchanges on the Zero Hash platform. Trades can be submitted for immediate settlement or deferred based on your settlement configuration.
+
+    **Common operations:**
+    - Submit a trade (`POST /trades`)
+    - Query trade history (`GET /trades`)
+    - Check trade status and settlement details
+
+    Trades are tightly coupled with Accounts — each party to a trade needs sufficient available balance in the correct account group, and the trade creates new account entries for the received asset.
+  </Card>
+  <Card title="Quotes (Liquidity)" icon="tag">
+    The Quotes resource powers the Request-for-Quote (RFQ) flow, allowing you to get a firm price for a trade before executing it. Quotes are time-limited — you must execute within the quote's validity window.
+
+    **Common operations:**
+    - Request a quote (`GET /liquidity/rfq`)
+    - Execute a quoted trade (`POST /liquidity/execute`)
+    - Request a convert-and-withdraw quote (`GET /convert_withdraw/rfq`)
+    - Execute a convert-and-withdraw (`POST /convert_withdraw/execute`)
+
+    <Tip>
+      When a `POST /liquidity/execute` or `POST /convert_withdraw/execute` call returns a 502, 503, or 504, the request is safe to retry directly. For a 404, check trade status first using `GET /trades` with the `quote_id` as `client_trade_id` before retrying. See [Error Handling](/docs/error-handling) for the full retry guide.
+    </Tip>
+  </Card>
+</CardGroup>
+
+## How the Resources Fit Together
+
+A typical end-to-end flow ties all of these resources together in sequence:
+
+1. **Create a Participant** — onboard your customer via the Participants API.
+2. **Fund an Account** — the customer deposits crypto or fiat, creating an `available` Account balance.
+3. **Get a Quote** — request a firm price via `GET /liquidity/rfq`.
+4. **Execute a Trade** — submit the trade via `POST /liquidity/execute`, consuming the quote.
+5. **Withdraw Funds** — the customer withdraws their received asset via the Withdrawals API.
+
+For common complete flows, see the [Getting Started](/docs/getting-started) section, which provides step-by-step walkthroughs of onboarding, deposit, trade, and settlement scenarios.
+
+## API Reference
+
+Every resource group has a corresponding section in the full API Reference with all available endpoints, request parameters, and response schemas.
+
+<Card title="Explore the API Reference" icon="rectangle-terminal" href="/docs/core-resources">
+  Browse every endpoint across all resource groups with interactive examples and full parameter documentation.
+</Card>

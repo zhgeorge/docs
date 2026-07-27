@@ -1,0 +1,145 @@
+---
+title: "Single API Call Payouts: Streamlined Disbursements"
+sidebarTitle: "Streamlined Payouts"
+description: "Reduce your payout workflow to one Payor setup and a single API call per transaction — Zero Hash orchestrates all intermediary steps internally."
+---
+
+Single API Call Payouts is the streamlined version of Zero Hash's payout product. It reduces the full payout lifecycle — which normally involves participant registration, compliance checks, account linking, and transaction execution — down to just two steps: a one-time Payor onboarding and a single API call per payout. Zero Hash orchestrates all intermediary steps internally, so your platform focuses on business logic rather than workflow state management.
+
+## How It Works
+
+<Steps>
+  <Step title="Onboard your Payor (one time)">
+    Register the Payor — the business or entity on whose behalf payouts are sent. This is a one-time step. Once the Payor is approved, you do not repeat this step for future payouts. Submit the Payor via `POST /participants/entity/new` with full entity details including control persons and beneficial owners.
+  </Step>
+  <Step title="Initiate a payout (per transaction)">
+    For every subsequent payout, send a single API call containing the complete payor and beneficiary details. Zero Hash handles participant verification, compliance screening, external account creation, FX quoting, and final execution internally.
+  </Step>
+</Steps>
+
+<Note>
+  After your Payor is registered and approved, you never need to repeat the onboarding step. Every payout going forward requires only one API call.
+</Note>
+
+## When to Use Single API Call Payouts
+
+<CardGroup cols={2}>
+  <Card title="Licensed Financial Institutions" icon="building-columns">
+    Platforms managing multiple nested payors that need a clean, stateless disbursement layer without building custom payout state machines.
+  </Card>
+  <Card title="Simple Stateless Workflows" icon="bolt">
+    Teams that want the simplest possible integration with no intermediate steps to manage or track between payout requests.
+  </Card>
+  <Card title="No Custom Payout UX" icon="code">
+    Platforms that are not building a custom end-customer withdrawal experience and just need to trigger payouts programmatically.
+  </Card>
+  <Card title="Batch Payouts at Scale" icon="layer-group">
+    High-volume disbursement scenarios where operational simplicity and throughput matter more than granular state visibility.
+  </Card>
+</CardGroup>
+
+## Example: Initiate a Single API Call Payout
+
+After your Payor is onboarded, submit a payout with all beneficiary and destination details in one request:
+
+<CodeGroup>
+```bash cURL
+curl --request POST \
+  --url https://api.zerohash.com/payments \
+  --header 'Authorization: Bearer <YOUR_API_KEY>' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "payor_participant_code": "PAYOR1",
+    "beneficiary": {
+      "first_name": "Lucas",
+      "last_name": "Martinez",
+      "email": "lmartinez@gmail.com",
+      "address_one": "Calle San Martín 305",
+      "city": "Buenos Aires",
+      "zip": "C1000",
+      "jurisdiction_code": "AR-X",
+      "citizenship_code": "AR",
+      "date_of_birth": "1985-09-02",
+      "id_number_type": "non_us_passport",
+      "id_number": "A12345678"
+    },
+    "destination": {
+      "network": "transferencias30",
+      "supported_assets": ["ARS"],
+      "account_number": "1234567890"
+    },
+    "quoted_currency": "USD",
+    "underlying_currency": "ARS",
+    "total": "125"
+  }'
+```
+
+```json Request Body
+{
+  "payor_participant_code": "PAYOR1",
+  "beneficiary": {
+    "first_name": "Lucas",
+    "last_name": "Martinez",
+    "email": "lmartinez@gmail.com",
+    "address_one": "Calle San Martín 305",
+    "city": "Buenos Aires",
+    "zip": "C1000",
+    "jurisdiction_code": "AR-X",
+    "citizenship_code": "AR",
+    "date_of_birth": "1985-09-02",
+    "id_number_type": "non_us_passport",
+    "id_number": "A12345678"
+  },
+  "destination": {
+    "network": "transferencias30",
+    "supported_assets": ["ARS"],
+    "account_number": "1234567890"
+  },
+  "quoted_currency": "USD",
+  "underlying_currency": "ARS",
+  "total": "125"
+}
+```
+</CodeGroup>
+
+**Response:**
+
+```json
+{
+  "request_id": "0f68333e-2114-469d-b505-c850d776e063",
+  "transaction_id": "0f68333e-2114-469d-b505-c850d776e063",
+  "status": "pending"
+}
+```
+
+## What Zero Hash Orchestrates Internally
+
+When you submit a Single API Call Payout, Zero Hash automatically runs all of the following on your behalf:
+
+| Step | What Zero Hash Does |
+|------|---------------------|
+| Participant verification | Checks that the Payor is in `approved` status |
+| Beneficiary onboarding | Registers the beneficiary if they don't already exist |
+| Compliance screening | Runs sanctions screening and identity checks on the beneficiary |
+| External account creation | Creates and validates the destination external account |
+| FX quoting | Selects the most efficient blockchain network and generates an FX quote |
+| Execution | Executes the quote and initiates the on-chain transfer |
+
+## Payout Status Lifecycle
+
+After submission, your payout progresses through the following statuses. Subscribe to webhooks to receive real-time updates:
+
+| Status | Description |
+|--------|-------------|
+| `submitted` | The payout has been accepted and processing has started. |
+| `posted` | The funds have been converted and the on-chain transaction has been broadcast. |
+| `crypto_settled` | The crypto leg of the payout has settled on-chain. |
+| `fiat_settled` | The local fiat currency has been delivered to the beneficiary's bank account. |
+
+## Full Integration Guide
+
+For step-by-step instructions including Payor onboarding, beneficiary submission, FX quoting, and webhook handling, see the complete [Single API Call Payouts Integration Guide](/docs/payouts-integration-guide).
+
+<Tip>
+  If you need full control over the payout workflow — including custom UX, manual state management, or staged execution — consider [Modular Payouts](/docs/payouts) instead.
+</Tip>

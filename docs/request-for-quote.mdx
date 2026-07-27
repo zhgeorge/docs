@@ -1,0 +1,89 @@
+---
+title: "Request For Quote (RFQ): Firm-Price Trade Execution"
+sidebarTitle: "RFQ Overview"
+description: "Use Zero Hash's RFQ service to request firm, real-time quotes from top market makers and execute trades at a locked-in price within the quote window."
+---
+
+Zero Hash's Request For Quote (RFQ) service lets your platform access digital asset liquidity by requesting and executing quotes against the top market makers in the industry. You receive a firm, locked-in price for the duration of the quote window, giving your customers a transparent, all-in cost before they confirm a trade.
+
+<Note>
+  Zero Hash manages all liquidity provider relationships on your behalf. You gain access to deep, aggregated liquidity without needing to integrate or maintain separate LP connections.
+</Note>
+
+## How RFQ Works
+
+The RFQ flow uses two sequential REST API calls to take a trade from quote to execution.
+
+<Steps>
+  <Step title="Request a quote">
+    Call `POST /liquidity/rfq` with the trading instrument, side, quantity or notional, and any optional parameters such as a custom spread. Zero Hash fetches a firm price from market makers and returns a `quote_id`, a locked-in price with fees already included, and a timestamp indicating when the quote expires.
+  </Step>
+  <Step title="Review the quoted price">
+    Present the quoted price and any fee breakdown to your customer. The quote is firm — the price will not change while the quote is active. Your customer decides whether to proceed.
+  </Step>
+  <Step title="Execute or let expire">
+    If your customer accepts, call `POST /liquidity/execute` with the `quote_id`. Zero Hash validates that the quote has not expired and that the customer account holds sufficient balance, then settles the trade. If you do not call execute within the quote window, the quote expires automatically with no action taken.
+  </Step>
+  <Step title="Retrieve trade details">
+    After successful execution, use `GET /trades` with the `trade_id` returned from the execute response to retrieve full trade details or historical activity.
+  </Step>
+</Steps>
+
+<Warning>
+  Credit checks against the customer account balance are **not** performed at quote request time. The balance check occurs only at execution. Ensure your customers have sufficient funds before they confirm a trade to avoid execution failures.
+</Warning>
+
+## Quote Expiration
+
+When you request a quote, Zero Hash locks in the price for a defined window. Quotes expire automatically at `expire_ts` if not executed.
+
+| Expiry Option | Typical Use |
+|---|---|
+| **5 seconds** | High-velocity retail flows, automated execution pipelines |
+| **30 seconds** | Standard retail buy/sell where the customer reviews price before confirming |
+
+<Tip>
+  Zero Hash can configure a default quote validity period for your platform (5s or 30s) to match your product workflow. Other expiration windows are available on request.
+</Tip>
+
+## Key Features
+
+- **Multiple Expiry Times:** Choose from 5-second or 30-second quote windows — or request a custom window — to match your execution flow.
+- **Multiple Liquidity Providers:** Zero Hash aggregates quotes from some of the largest LPs in the market to ensure quality pricing and competitive spreads.
+- **Price Band Protections:** Zero Hash rejects quotes that fall outside internal price bands, ensuring you always receive quality, market-consistent prices.
+- **Spread-Based Fees:** Commissions are embedded in the quoted price as basis points, so the price shown to your customer is all-in with no hidden fees.
+- **Custom Spreads Per Request:** Pass a `spread` value in each RFQ request to adjust commissions dynamically, for example during promotions or for specific customer segments.
+- **Redundancy:** Multiple liquidity providers reduce the risk of pricing downtime or trade disruption.
+
+## Use Cases
+
+<CardGroup cols={2}>
+  <Card title="Neobanks" icon="building-columns">
+    Offer a simple buy, sell, and hold crypto product to customers with firm pricing and a lightweight two-step integration.
+  </Card>
+  <Card title="Brokerages" icon="briefcase">
+    Enhance order execution capabilities for retail investors and traders with transparent, all-in pricing.
+  </Card>
+  <Card title="Roundups" icon="coins">
+    Execute small-notional trades automatically as customers invest spare change, using short quote windows for fast settlement.
+  </Card>
+  <Card title="High-Volume Trading Desks" icon="arrow-trend-up">
+    Access competitive liquidity for large-scale transactions using firm quoted prices without order-book exposure.
+  </Card>
+</CardGroup>
+
+## API Endpoints
+
+The RFQ workflow uses two REST endpoints.
+
+| Step | Endpoint | Description |
+|---|---|---|
+| Request a quote | `POST /liquidity/rfq` | Returns a firm quoted price, `quote_id`, and expiration timestamp |
+| Execute a quote | `POST /liquidity/execute` | Settles the trade at the quoted price; returns `trade_id` and status |
+| Retrieve trade | `GET /trades` | Fetch full trade details using the `trade_id` from execution |
+
+For detailed request and response field references and worked examples, see the [Submit and Execute Quotes guide](/docs/submit-and-execute-quotes).
+
+## Compliance and Licensing
+
+The RFQ service operates within Zero Hash's regulated infrastructure. All trades execute within a compliant environment governed by Zero Hash's licensing and industry best practices. Refer to Zero Hash's [policies](https://docs.zerohash.com/docs/policies) and [disclosures](https://docs.zerohash.com/docs/test) for more information.

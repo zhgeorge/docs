@@ -1,0 +1,103 @@
+---
+title: "Zero Hash API Terminology and Key Concepts Glossary"
+sidebarTitle: "Terminology"
+description: "Definitions of essential Zero Hash concepts including Participant, Platform, Customer, Account, Account Group, Account Label, and Account Type."
+---
+
+Understanding Zero Hash's data model before you start building will save you significant debugging time later. Several terms that seem familiar — like "account" or "participant" — carry specific meanings in the Zero Hash platform that differ from their everyday usage. This glossary defines the terms you will encounter most frequently across the API and documentation.
+
+## Core Entities
+
+<AccordionGroup>
+  <Accordion title="Participant">
+    The broadest term for any entity on the Zero Hash network. A Participant can be a Platform, a Customer, a Liquidity Provider, or any other recognized network actor. Every Participant is identified by a unique `participant_code` assigned by Zero Hash.
+
+    <Info>
+      When you see `participant_code` in API requests and responses, it refers to the unique identifier for any of these entity types — not just end customers.
+    </Info>
+  </Accordion>
+  <Accordion title="Platform">
+    A type of Participant that operates a customer-facing product built on top of Zero Hash. Your business is a Platform. Platforms are the master accounts from which you create API keys, manage customers, and interact with the Zero Hash stack. All API, webhook, WebSocket, and SDK interactions are associated with a Platform.
+  </Accordion>
+  <Accordion title="Customer">
+    A type of Participant that is a customer of a Platform. A Customer may be a natural person (an individual human) or a non-natural person (a business entity). Customers are created and managed by Platforms through the API.
+  </Accordion>
+  <Accordion title="User">
+    An employee of a Platform who has been granted access to the Zero Hash Client Portal. Users are not the same as Customers — they are your internal team members who use the portal to manage API keys, view balances, and download reports. Users are provisioned by Zero Hash during Platform setup.
+  </Accordion>
+  <Accordion title="Liquidity Provider">
+    A type of Participant that supplies liquidity on the Zero Hash network. Liquidity Providers are counterparties to trades executed through the Zero Hash Liquidity Services platform. You interact with Liquidity Providers indirectly through the trading and quote APIs.
+  </Accordion>
+</AccordionGroup>
+
+## Interfaces and Tools
+
+<AccordionGroup>
+  <Accordion title="Client Portal">
+    The web-based user interface for Platform employees (Users). From the Client Portal you can view balances and transaction activity, generate and manage API keys, whitelist IP addresses, add users, and download compliance and financial reports.
+
+    | Environment | US URL | EU URL |
+    |---|---|---|
+    | Cert | [portal.cert.zerohash.com](https://portal.cert.zerohash.com) | [portal.cert.zerohash.eu](https://portal.cert.zerohash.eu) |
+    | Prod | [portal.zerohash.com](https://portal.zerohash.com) | [portal.zerohash.eu](https://portal.zerohash.eu) |
+  </Accordion>
+</AccordionGroup>
+
+## Accounts and Balances
+
+<AccordionGroup>
+  <Accordion title="Account">
+    A unique combination of five fields that together define a specific balance ledger for a Participant:
+
+    | Field | Description |
+    |---|---|
+    | `participant_code` | The owner of the account |
+    | `asset` | The asset held (e.g., `BTC`, `USD`, `ETH`) |
+    | `account_type` | How the balance is classified (see Account Type) |
+    | `account_group` | The platform or purpose the funds are allocated to |
+    | `account_label` | A sub-grouping within the account group |
+
+    Every Account has an associated `balance` (the `amount` field) and a unique `account_id`. Accounts are created automatically the first time an asset movement occurs for a given combination — for example, depositing BTC creates a BTC available account.
+
+    <Note>
+      A Participant has no accounts by default when first created. Accounts come into existence when you use them: a deposit creates an available account, a trade creates accounts for the received asset, and so on.
+    </Note>
+  </Accordion>
+  <Accordion title="Account Group">
+    A logical grouping of asset accounts allocated for a specific purpose or counterparty platform. The `account_group` value is typically the `participant_code` of the platform the funds are allocated toward.
+
+    For example, if you have 100 BTC on Zero Hash and 20 BTC are allocated to trading on platform `00SCXM` (Zero Hash Liquidity Services) and 80 BTC to another dealer `ABC123`, those funds sit in two different account groups. The special **UNALLOCATED** account group holds funds not yet assigned to any platform.
+  </Accordion>
+  <Accordion title="Account Label">
+    A sub-grouping within an account group, functioning like a sub-account. Account Labels let a single Participant hold multiple distinct balances of the same asset within the same account group. The default `account_label` value is `general`.
+
+    A common use case is separating a customer's standard brokerage account from an IRA account — both hold BTC within the same account group, but under different account labels.
+  </Accordion>
+  <Accordion title="Account Type">
+    Describes how a balance is currently classified within Zero Hash's accounting ledgers. There are six account types:
+
+    | Account Type | Description |
+    |---|---|
+    | `available` | Free to use for trading, settling, paying fees, or withdrawing. New deposits flow here. |
+    | `payable` | Amount you owe in a settlement that is outstanding due to insufficient available balance. |
+    | `receivable` | Amount owed to you in a settlement that has not been paid yet. |
+    | `collateral` | Assets locked for open positions, pending staking activation, or pending unstaking. |
+    | `collateral_payable` | Amount owed by the Participant to cover collateral requirements. |
+    | `staked` | Assets actively staked and earning rewards. Must be unstaked before selling or withdrawing. |
+  </Accordion>
+</AccordionGroup>
+
+## Quick Reference
+
+| Term | One-Line Definition |
+|---|---|
+| **Participant** | Any entity on the Zero Hash network (Platform, Customer, Liquidity Provider, etc.) |
+| **Platform** | Your business — the master account that owns API keys and manages customers |
+| **Customer** | An end user (individual or business) created and managed by a Platform |
+| **User** | A Platform employee with Client Portal access |
+| **Liquidity Provider** | A network participant that supplies liquidity for trades |
+| **Client Portal** | Web UI for Platform employees to manage keys, view balances, and run reports |
+| **Account** | A specific balance ledger defined by participant, asset, type, group, and label |
+| **Account Group** | A set of accounts allocated to a specific platform or purpose |
+| **Account Label** | A sub-grouping within an account group; enables multiple balances of the same asset |
+| **Account Type** | Classification of how a balance is held (available, payable, receivable, etc.) |

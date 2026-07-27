@@ -1,0 +1,87 @@
+---
+title: "Buy/Sell: Digital Asset Trading for Your Platform"
+sidebarTitle: "Buy / Sell"
+description: "Offer crypto trading to your customers through Zero Hash's Buy/Sell service — choose RFQ for firm quotes or CLOB for real-time order-book execution."
+---
+
+Zero Hash's Buy/Sell service gives your platform a single integration point to offer digital asset trading to your customers. Whether you're building a retail crypto feature for a neobank or a high-volume trading desk for institutional clients, you can execute trades through two complementary models: Request For Quote (RFQ) for firm, quote-based execution, or a Central Limit Order Book (CLOB) for real-time, price-and-time-priority matching.
+
+<Note>
+  Both execution models are backed by deep, aggregated liquidity sourced from top market makers. Zero Hash manages all liquidity provider relationships on your behalf, so you get competitive pricing and reliable execution without building pricing or matching infrastructure yourself.
+</Note>
+
+## Execution Models
+
+Zero Hash supports two execution models. You can integrate one or both depending on the product flows you need to support.
+
+<CardGroup cols={2}>
+  <Card title="Request For Quote (RFQ)" icon="file-invoice-dollar" href="/docs/request-for-quote">
+    Request a real-time firm quote, review the locked-in price, and execute within the quote window. Best for retail apps, neobanks, roundup products, and any flow where fixed, transparent pricing matters most.
+  </Card>
+  <Card title="Central Limit Order Book (CLOB)" icon="chart-candlestick" href="/docs/central-limit-order-book-3">
+    Place limit or market orders into Zero Hash's order book. Orders match based on price-time priority. Best for trading platforms, advanced users, and high-volume flows that need order-book depth and granular execution control.
+  </Card>
+</CardGroup>
+
+## RFQ vs CLOB: Which Model Fits Your Use Case?
+
+Use this table to decide which execution model — or combination of models — aligns with your platform's requirements.
+
+| Attribute | RFQ | CLOB |
+|---|---|---|
+| **Execution style** | Request a firm quote, then execute or let it expire | Submit orders into a live order book; match on price-time priority |
+| **Pricing model** | Firm, locked-in price for the quote lifetime | Real-time market price; can vary between order submission and fill |
+| **Typical latency** | Two-step (request → execute); quote valid for 5s or 30s | Real-time matching; fills as liquidity is available |
+| **Order types** | Single direction buy or sell at quoted price | Limit, Market-to-Limit, Stop, Stop Limit |
+| **Fee model** | Spread bps added to quoted price; fees included in the displayed price | Configurable commission: bps, flat fee, min/max notional; applied via FIX |
+| **Integration API** | REST (`POST /liquidity/rfq`, `POST /liquidity/execute`) | FIX 5.0 protocol |
+| **Best for** | Neobanks, roundups, retail buy/sell, simple flows | Exchanges, brokers, institutional desks, advanced order strategies |
+
+## Use Cases
+
+<CardGroup cols={2}>
+  <Card title="Neobanks" icon="building-columns">
+    Offer a simple buy, sell, and hold crypto product to your customers without managing exchange infrastructure.
+  </Card>
+  <Card title="Brokerages" icon="briefcase">
+    Enhance order execution capabilities and expand your product offering for retail investors and traders.
+  </Card>
+  <Card title="Roundups" icon="coins">
+    Let customers automatically invest spare change into digital assets as a passive strategy.
+  </Card>
+  <Card title="High-Volume Trading Desks" icon="arrow-trend-up">
+    Facilitate large-scale transactions efficiently for institutional investors and hedge funds.
+  </Card>
+</CardGroup>
+
+## Key Features
+
+- **Two Execution Models:** Choose RFQ, CLOB, or both to match each product flow, from a simple retail widget to a full-featured trading interface.
+- **Deep, Aggregated Liquidity:** Zero Hash integrates with some of the largest liquidity providers in the market, providing quality pricing and execution depth.
+- **Transparent Pricing:** Firm, all-in pricing on RFQ; real-time order-book pricing on CLOB.
+- **Redundancy:** Multiple liquidity providers reduce the risk of downtime or disruptions in trade execution.
+- **Compliance:** Trade within a regulated environment built on Zero Hash's licenses and industry best practices.
+
+## Integration Journey
+
+<Steps>
+  <Step title="Choose your execution model">
+    Review the RFQ and CLOB models and decide which fits your product. Many platforms start with RFQ for its simpler two-step REST integration.
+  </Step>
+  <Step title="Configure your liquidity model">
+    Select the [liquidity model](/docs/liquidity-models) that matches how credit checks and counterparty risk should be structured for your customers: Standard, Novated, or Direct.
+  </Step>
+  <Step title="Set up spreads and fees">
+    Work with the Zero Hash team to configure your [spread and fee structure](/docs/spreads-and-fees). For RFQ, fees are embedded in the quoted price. For CLOB, commissions are passed via FIX tags.
+  </Step>
+  <Step title="Integrate the API">
+    For RFQ, implement the two REST endpoints (`POST /liquidity/rfq` and `POST /liquidity/execute`). For CLOB, establish a FIX 5.0 session with Zero Hash's infrastructure.
+  </Step>
+  <Step title="Test and go live">
+    Validate your integration in the Zero Hash sandbox environment, then work with the client services team to promote to production.
+  </Step>
+</Steps>
+
+<Tip>
+  Contact [support@zerohash.com](mailto:support@zerohash.com) to get started or to discuss which execution model best fits your product requirements.
+</Tip>

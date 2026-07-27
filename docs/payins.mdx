@@ -1,0 +1,108 @@
+---
+title: "Payins: Accept Stablecoin and Crypto from Customers"
+sidebarTitle: "Payins"
+description: "Accept stablecoin and crypto payments from end users around the clock with no chargebacks, using Zero Hash's payin deposit infrastructure."
+---
+
+Payins allow your platform to accept stablecoin and cryptocurrency payments from end users as a first-class payment method. Unlike card or ACH payments, on-chain transactions settle around the clock, are irreversible once confirmed, and work across borders without requiring local banking relationships. Zero Hash handles the on-chain infrastructure, compliance checks, and account crediting so your platform can focus on the customer experience.
+
+## Use Cases
+
+<CardGroup cols={2}>
+  <Card title="Payments Acceptance" icon="credit-card">
+    Accept stablecoins and crypto from customers as a payment method at checkout — whether for digital goods, subscriptions, or physical products.
+  </Card>
+  <Card title="Crypto Receipts" icon="arrow-down-to-line">
+    Allow users to fund their platform accounts with crypto they already hold in external wallets, bridging on-chain assets into your platform's managed environment.
+  </Card>
+  <Card title="Global Remittances" icon="globe">
+    Receive cross-border payments in stablecoins without managing correspondent banking relationships or dealing with FX conversion friction at the point of receipt.
+  </Card>
+  <Card title="DeFi and Web3 Integrations" icon="link">
+    Accept deposits from web3-native users who prefer paying directly from self-custody wallets rather than connecting a bank account or debit card.
+  </Card>
+</CardGroup>
+
+## Key Features
+
+<CardGroup cols={2}>
+  <Card title="24/7 Availability" icon="clock">
+    Stablecoin and crypto transactions settle on-chain at any time — no banking hours, no weekend delays, no holiday cutoffs.
+  </Card>
+  <Card title="No Chargebacks" icon="shield-check">
+    Blockchain transactions are irreversible. Once a payin confirms on-chain, you eliminate the chargeback risk inherent in card and ACH payments.
+  </Card>
+  <Card title="Globally Accessible" icon="earth-americas">
+    Accept payments from users anywhere in the world. Zero Hash supports USDC across 15 blockchain networks, USDT across 4, and 30+ additional crypto assets.
+  </Card>
+  <Card title="Cost Effective" icon="circle-dollar-to-slot">
+    On-chain transfer fees are typically lower than card interchange fees and wire charges, especially for large or recurring transactions.
+  </Card>
+</CardGroup>
+
+## How the Auth Payins Flow Works
+
+The Auth payins flow uses the Zero Hash deposit address infrastructure to receive funds from end users. A deposit address is generated per customer and per asset, and Zero Hash monitors it for incoming on-chain transactions.
+
+<Steps>
+  <Step title="Generate a deposit address">
+    Call `POST /deposits/digital_asset_addresses` with the customer's `participant_code` and the desired asset. Zero Hash returns a unique deposit address to relay to the end user.
+
+    ```json
+    // Request
+    {
+      "participant_code": "CUST01",
+      "asset": "USDC"
+    }
+
+    // Response
+    {
+      "message": {
+        "created_at": 1647050013,
+        "address": "0x7f41A26C0CB9D5a1e57BE9cF10F8354b77CD8ab3",
+        "participant_code": "CUST01",
+        "asset": "USDC"
+      }
+    }
+    ```
+  </Step>
+  <Step title="Customer sends crypto to the address">
+    Share the deposit address with your end user. They initiate an on-chain send from their external wallet to the generated address.
+  </Step>
+  <Step title="Zero Hash detects and confirms the transaction">
+    Zero Hash monitors the address for incoming transactions. Once the deposit achieves the required on-chain confirmations, Zero Hash credits the funds to the customer's account automatically.
+  </Step>
+  <Step title="Monitor deposit activity">
+    Poll `GET /deposits` with `include_customer_deposits=true` to track recent deposit activity. You can also subscribe to deposit webhooks for real-time notifications.
+  </Step>
+  <Step title="Customer balance is updated">
+    After confirmation, the customer's balance is reflected in their Zero Hash account. Query `GET /accounts` with the customer's `participant_code` to verify the credited balance.
+  </Step>
+</Steps>
+
+## Integration Guides
+
+<CardGroup cols={2}>
+  <Card title="Payins SDK Integration" icon="mobile-screen-button" href="/docs/wallet-link-sdk-integration-guide">
+    Use the Zero Hash Wallet Link SDK to embed a guided payin flow directly into your platform's UI.
+  </Card>
+  <Card title="Deposit Address API Reference" icon="code" href="/docs/generating-platform-deposit-addresses">
+    Generate deposit addresses programmatically for retail customers or your platform account.
+  </Card>
+</CardGroup>
+
+<Note>
+  Retail deposit address creation is not enabled by default. Contact your Zero Hash representative to activate this feature for your platform before starting your integration.
+</Note>
+
+## Supported Assets for Payins
+
+Zero Hash supports an extensive range of stablecoins and crypto assets for payins, including:
+
+- **USDC** — across 15 different blockchain networks
+- **USDT** — across 4 different blockchain networks
+- **PYUSD** — on Solana and Ethereum
+- **RLUSD** — on Solana and XRPL
+- **BTC, ETH, SOL** — and 30+ additional crypto assets
+
+For the complete and current list of supported assets and networks, refer to the [Asset Support reference](/docs/supported-assets-instruments).

@@ -1,0 +1,389 @@
+---
+title: "Account Funding API Integration Guide for Platforms"
+sidebarTitle: "Funding API"
+description: "Integrate crypto and stablecoin deposits via the Account Funding API, from participant onboarding through balance reconciliation and daily settlement."
+---
+
+The Account Funding API integration lets your platform accept crypto and stablecoin deposits from end customers without building any custom frontend. Zero Hash handles the deposit, auto-converts the received asset to USD, and sweeps the converted balance to your platform's master ledger account — all automatically after a single deposit address is generated. This guide covers the full flow: participant setup, generating deposit addresses, monitoring webhooks, reconciling ledger movements, and querying settlements.
+
+<Note>
+  This guide assumes you are using the **Onboarding API (Reliance)** model, where your platform performs KYC using an external provider and passes the results to Zero Hash via API. If you use the Zero Hash KYC SDK for onboarding, see the [Account Funding SDK guide](/docs/fund-integration-guide-sdk).
+</Note>
+
+## Prerequisites
+
+Before you begin, confirm the following with your Zero Hash representative:
+
+<CardGroup cols={2}>
+  <Card title="Webhooks configured" icon="bell">
+    Ask your Zero Hash representative to enable **Onboarding** and **Account Funding** webhooks for your platform.
+  </Card>
+  <Card title="Signed agreements" icon="file-signature">
+    Each customer must accept the `fund_auto_convert` agreement. Missing this agreement causes all `/fund` API calls to fail.
+  </Card>
+  <Card title="Permitted jurisdictions" icon="globe">
+    Verify that your customers' states and countries are in Zero Hash's list of permitted jurisdictions before submission.
+  </Card>
+  <Card title="Platform credentials" icon="key">
+    You have your `platform_code` and API credentials for the Zero Hash environment you are targeting.
+  </Card>
+</CardGroup>
+
+## Step 1: Onboard the Participant
+
+Your platform verifies the customer using your external KYC provider, then submits the verified results to Zero Hash via API. Zero Hash responds with a `participant_code` that uniquely identifies the customer in all future API calls.
+
+<Tabs>
+  <Tab title="Natural Person">
+    Submit a natural person (individual) using `POST /participants/customers/new`. Include the `fund_auto_convert` signed agreement so that `/fund` API calls succeed for this participant.
+
+    ```json
+    {
+      "first_name": "John",
+      "last_name": "Smith",
+      "email": "jsmith@example.com",
+      "phone_number": "9545551234",
+      "address_one": "1 Main St.",
+      "address_two": "Suite 1000",
+      "city": "Chicago",
+      "state": "IL",
+      "zip": "12345",
+      "country": "United States",
+      "date_of_birth": "1985-09-02",
+      "citizenship": "United States",
+      "tax_id": "123456789",
+      "risk_rating": "low",
+      "kyc": "pass",
+      "kyc_timestamp": 1630623005000,
+      "sanction_screening": "pass",
+      "sanction_screening_timestamp": 1630623005000,
+      "idv": "pass",
+      "liveness_check": "pass",
+      "signed_timestamp": 1630623005000,
+      "metadata": {},
+      "signed_agreements": [
+        {
+          "type": "fund_auto_convert",
+          "region": "us",
+          "signed_timestamp": 1712008721000
+        }
+      ]
+    }
+    ```
+
+    Zero Hash returns a `participant_code` (e.g., `CUST01`) in the response. Store this value — you will use it in every subsequent API call for this customer.
+  </Tab>
+  <Tab title="Entity (Partial KYB)">
+    Platforms approved for the partial KYB path can submit a stripped-down entity packet. This is typically reserved for licensed financial institutions.
+
+    ```json
+    {
+      "request_id": "a1b2c3d4-5678-90ab-cdef-1234567890ab",
+      "platform_code": "PLAT01",
+      "legal_name": "Entity A",
+      "contact_number": "15553765432",
+      "address_one": "1 Main St.",
+      "address_two": "Suite 1000",
+      "city": "Chicago",
+      "postal_code": "12345",
+      "jurisdiction_code": "US-IL",
+      "tax_id": "883987654",
+      "id_issuing_authority": "United States",
+      "sanction_screening": "pass",
+      "sanction_screening_timestamp": 1603378501286,
+      "signed_agreements": [
+        {
+          "type": "fund_auto_convert",
+          "region": "us",
+          "signed_timestamp": 1603378501286
+        }
+      ]
+    }
+    ```
+
+    A successful partial entity submission returns `"status": "approved"` immediately.
+  </Tab>
+  <Tab title="Entity (Full KYB)">
+    The full KYB path is the default and requires control persons, beneficial owners, and complete entity details.
+
+    ```json
+    {
+      "request_id": "a1b2c3d4-5678-90ab-cdef-1234567890ab",
+      "platform_code": "PLAT01",
+      "entity_name": "Entity A",
+      "legal_name": "Entity A",
+      "contact_number": "15553765432",
+      "website": "https://entitya.com",
+      "date_established": "2020-01-15",
+      "entity_type": "llc",
+      "address_one": "1 Main St.",
+      "city": "Chicago",
+      "postal_code": "12345",
+      "jurisdiction_code": "US-IL",
+      "tax_id": "883987654",
+      "id_issuing_authority": "United States",
+      "risk_rating": "low",
+      "sanction_screening": "pass",
+      "sanction_screening_timestamp": 1603378501286,
+      "signed_timestamp": 1603378501286,
+      "submitter_email": "compliance@entitya.com",
+      "control_persons": [ ... ],
+      "beneficial_owners": [ ... ],
+      "signed_agreements": [
+        {
+          "type": "fund_auto_convert",
+          "region": "us",
+          "signed_timestamp": 1603378501286
+        }
+      ]
+    }
+    ```
+
+    Full entity submissions return `"status": "submitted"` while Zero Hash compliance reviews the packet. Watch for the onboarding webhook to confirm approval.
+  </Tab>
+</Tabs>
+
+<Warning>
+  If a customer resides in a jurisdiction where your platform is not permitted to operate, Zero Hash returns a `400` error. Implement a feature flag or pre-check on your side to block customers from restricted states before you call the API. Display a clear error message when a submission is rejected.
+</Warning>
+
+<Tip>
+  Make participant creation idempotent by passing a `request_id`. If you submit the same `request_id` with different participant data, Zero Hash returns a `400` with the message `"requestID already used with different participant data"`.
+</Tip>
+
+## Step 2: Generate a Deposit Address
+
+Once the participant is in `approved` status, generate a deposit address by calling `POST /fund/rfq`. This single call provisions the on-chain address where the customer will send funds.
+
+```json
+{
+  "participant_code": "CUST01",
+  "fund_asset": "USDC.ETH",
+  "client_fund_id": "abc123"
+}
+```
+
+Zero Hash returns a deposit address along with the fee and limit configuration for this participant:
+
+```json
+{
+  "message": {
+    "request_id": "14f8ebb8-7530-4aa4-bef9-9d73d56313f3",
+    "participant_code": "CUST01",
+    "fund_asset": "USDC.ETH",
+    "rate": "1",
+    "quoted_currency": "USD",
+    "expiry_timestamp": null,
+    "deposit_address": "7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU",
+    "deposit_fee_bps": 100,
+    "subsequent_deposit_fee_floor": "1.00",
+    "first_deposit_fee_floor": "1.00",
+    "minimum_deposit": "1",
+    "maximum_deposit": "500000",
+    "reference_id": "abc123"
+  }
+}
+```
+
+Display the `deposit_address` to your customer and instruct them to send the desired amount of the specified asset to that address. The `client_fund_id` you supplied appears as `reference_id` in all subsequent webhook payloads and transaction query responses, making it easy to correlate deposits with your internal records.
+
+<Note>
+  The `minimum_deposit` and `maximum_deposit` values are enforced by Zero Hash. Deposits outside these bounds trigger a failure webhook and are not converted to fiat.
+</Note>
+
+## Step 3: Deposit Received — What Happens Next
+
+After the blockchain transaction receives the required number of on-chain confirmations (for example, 1 confirmation for USDC on Ethereum), Zero Hash automatically executes the following sequence:
+
+<Steps>
+  <Step title="Deposit">
+    The inbound crypto is credited to the customer's Zero Hash account.
+
+    | account_owner | account_group | movement_type | asset    | change  |
+    |---------------|---------------|---------------|----------|---------|
+    | CUST01        | PLAT01        | deposit       | USDC.ETH | +1,000  |
+  </Step>
+  <Step title="Auto-conversion">
+    Zero Hash converts the deposited asset to USD. This creates a trade recorded as `final_settlement` movements.
+
+    | account_owner | account_group | movement_type   | asset    | change  |
+    |---------------|---------------|-----------------|----------|---------|
+    | CUST01        | PLAT01        | final_settlement| USDC.ETH | -1,000  |
+    | CUST01        | PLAT01        | final_settlement| USD      | +1,000  |
+  </Step>
+  <Step title="Transfer to platform">
+    Zero Hash transfers the USD from the customer's account to your platform's master account.
+
+    | account_owner | account_group | movement_type | asset | change  |
+    |---------------|---------------|---------------|-------|---------|
+    | CUST01        | PLAT01        | transfer      | USD   | -1,000  |
+    | PLAT01        | PLAT01        | transfer      | USD   | +1,000  |
+  </Step>
+</Steps>
+
+## Step 4: Handle the Deposit Webhook
+
+Once the full sequence completes, Zero Hash sends a `DEPOSIT_FUND_COMPLETE` webhook to your configured endpoint.
+
+```json
+{
+  "participant_code": "CUST01",
+  "fund_asset": "USDC.ETH",
+  "rate": "1",
+  "quoted_currency": "USD",
+  "source_address": "3xJ9KzymPqfHBqp2fGKoHtBcEn7LP5gSYNzGKS1vJcBr",
+  "deposit_address": "7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU",
+  "quantity": "500",
+  "notional": "495.00",
+  "fund_id": "a1b2c3d4-5678-9012-abcd-ef1234567890",
+  "fund_timestamp": 1745262000000000000,
+  "deposit_timestamp": 1745261950000000000,
+  "transaction_id": "4vJ9GKzymPqfHBqp2fGKoHtBcEn7LP5...",
+  "account_label": "general",
+  "success": true,
+  "reason": "Deposit processed",
+  "reference_id": "abc123",
+  "raw_fee_bps": "100",
+  "deposit_fee_bps": "100",
+  "raw_fee_notional": "5.00",
+  "deposit_fee_notional": "5.00",
+  "source": {}
+}
+```
+
+Key fields to capture and store:
+
+<ResponseField name="fund_id" type="string">
+  The unique identifier for this Account Funding event. Use this to query related movements and cross-reference with your internal records.
+</ResponseField>
+
+<ResponseField name="reference_id" type="string">
+  Echoes the `client_fund_id` you provided when generating the deposit address. Use this to correlate the event with your own transaction ID.
+</ResponseField>
+
+<ResponseField name="success" type="boolean">
+  `true` when the full deposit-and-convert flow completed. `false` on any failure; inspect `reason` for the specific error.
+</ResponseField>
+
+<ResponseField name="notional" type="string">
+  The USD value of the deposit after fees are deducted.
+</ResponseField>
+
+<ResponseField name="deposit_fee_notional" type="string">
+  The dollar amount of the fee charged on this deposit.
+</ResponseField>
+
+## Step 5: Query Deposit Transactions
+
+You can retroactively retrieve all Account Funding events for your platform using `GET /fund/transactions`.
+
+```json
+{
+  "message": [
+    {
+      "participant_code": "CUST01",
+      "fund_asset": "USDC.ETH",
+      "rate": "1",
+      "quoted_currency": "USD",
+      "quantity": "500",
+      "notional": "500",
+      "success": true,
+      "status_reason_code": "DEPOSIT_PROCESSED",
+      "fund_timestamp": 1745262000000,
+      "deposit_timestamp": 1745261950000,
+      "transaction_id": "4vJ9GKzymPqfHBqp2fGKoHtBcEn7LP5...",
+      "fund_id": "a1b2c3d4-5678-9012-abcd-ef1234567890",
+      "is_first_deposit": true,
+      "raw_fee_bps": "100",
+      "deposit_fee_bps": "100",
+      "raw_fee_notional": "5",
+      "deposit_fee_notional": "5",
+      "reference_id": "abc123"
+    }
+  ],
+  "page": 1,
+  "page_size": 50,
+  "total_pages": 1
+}
+```
+
+## Step 6: Reconcile Ledger Movements
+
+To reconcile the full chain of movements associated with a deposit event, query `GET /movements` and filter by `parent_link_id`. All deposit, conversion, and transfer movements share the same `parent_link_id`, giving you a complete audit trail in a single query.
+
+```json
+{
+  "message": [
+    {
+      "movement_timestamp": 1550174570000,
+      "account_id": "47a854fa-d0e4-405b-831b-f1a86bbf7988",
+      "movement_id": "5d4d962d-dc37-4ddc-b0c5-b8980d1d4421",
+      "movement_type": "deposit",
+      "parent_link_id": "5155f7c9-95cb-4556-ab89-c178943a7111",
+      "change": "1000"
+    },
+    {
+      "movement_timestamp": 1550174571000,
+      "account_id": "47a854fa-d0e4-405b-831b-f1a86bbf7988",
+      "movement_id": "3d4d962d-dc37-4ddc-b0c5-b8980d1d4422",
+      "movement_type": "final_settlement",
+      "parent_link_id": "5155f7c9-95cb-4556-ab89-c178943a7111",
+      "change": "-1000"
+    },
+    {
+      "movement_timestamp": 1550174572000,
+      "account_id": "52c29f2d-8298-4e8c-84bc-7773960bee12",
+      "movement_id": "80818b7b-92ec-4882-a371-a59fb3f8bce0",
+      "movement_type": "final_settlement",
+      "parent_link_id": "5155f7c9-95cb-4556-ab89-c178943a7111",
+      "change": "1000"
+    },
+    {
+      "movement_timestamp": 1550174573000,
+      "account_id": "52c29f2d-8298-4e8c-84bc-7773960bee12",
+      "movement_type": "transfer",
+      "parent_link_id": "5155f7c9-95cb-4556-ab89-c178943a7111",
+      "change": "-1000"
+    },
+    {
+      "movement_timestamp": 1550174574000,
+      "account_id": "77c29f2d-8298-4e8c-84bc-7773960bee10",
+      "movement_type": "transfer",
+      "parent_link_id": "5155f7c9-95cb-4556-ab89-c178943a7111",
+      "change": "1000"
+    }
+  ]
+}
+```
+
+## Step 7: Track and Receive Platform Settlement
+
+Zero Hash sends a daily fiat settlement wire to your platform representing the sum of all converted deposits from the prior trading session.
+
+| Session   | Start                   | End                      | Expected Settlement    |
+|-----------|-------------------------|--------------------------|------------------------|
+| Monday    | Monday 9:00 AM EST      | Tuesday 8:59:59 AM EST   | Tuesday EOD            |
+| Tuesday   | Tuesday 9:00 AM EST     | Wednesday 8:59:59 AM EST | Wednesday EOD          |
+| Wednesday | Wednesday 9:00 AM EST   | Thursday 8:59:59 AM EST  | Thursday EOD           |
+| Thursday  | Thursday 9:00 AM EST    | Friday 8:59:59 AM EST    | Friday EOD             |
+| Friday    | Friday 9:00 AM EST      | Monday 8:59:59 AM EST    | Monday EOD             |
+
+<Note>
+  During US holidays, expect settlement to arrive by EOD on the next business day.
+</Note>
+
+To track the pending settlement amount, query `GET /accounts` with the following parameters to find your platform's USD account:
+
+- `participant_code`: your platform code
+- `account_group`: your platform code
+- `account_label`: `general`
+- `account_type`: `available`
+- `asset`: `USD`
+
+To query historical settlements, use `GET /withdrawals/requests?participant_code=PLAT01`. Platform settlements are processed as withdrawals.
+
+## Deposit Returns
+
+<Warning>
+  You **cannot** use the deposit's source address as the return destination. Blockchain transactions are not bidirectional, and returning funds to a source address can result in permanent loss. If your platform needs to return a deposit, always collect a verified destination address directly from the customer before initiating the return via `POST /withdrawals/requests`. Contact your Zero Hash sales engineer before implementing a return flow.
+</Warning>

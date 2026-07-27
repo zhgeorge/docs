@@ -1,0 +1,341 @@
+---
+title: "Account Funding SDK Integration Guide for Platforms"
+sidebarTitle: "Funding SDK"
+description: "Integrate crypto and stablecoin deposits using the Zero Hash Account Funding SDK: install, initialize, embed the widget, and handle all webhook events."
+---
+
+The Account Funding SDK integration lets you embed Zero Hash's fully managed deposit widget directly in your platform without building a custom crypto deposit UI. Your backend handles participant onboarding and JWT issuance; Zero Hash's frontend SDK takes over from there, guiding the customer through asset and network selection, generating the deposit address, and confirming the on-chain transaction. This guide covers the complete flow from participant creation through webhook handling and daily settlement.
+
+<Note>
+  This guide covers the **Onboarding API (Reliance) + Account Funding SDK** pattern, where your platform runs KYC using an external provider and embeds the Zero Hash deposit widget. If you want Zero Hash to handle both onboarding and the deposit UI, see the [Onboarding SDK + Fund SDK guide](/docs/fund-integration-guide-sdk).
+</Note>
+
+## Prerequisites
+
+Before you begin, confirm the following with your Zero Hash representative:
+
+<CardGroup cols={2}>
+  <Card title="Webhooks enabled" icon="bell">
+    Ask your Zero Hash representative to enable **Onboarding** and **Fund** webhooks on your platform configuration.
+  </Card>
+  <Card title="SDK access" icon="code">
+    You have access to the `zh-web-sdk` npm package. Install version 3.x for the latest UI and light/dark mode support.
+  </Card>
+  <Card title="JWT endpoint" icon="lock">
+    Your backend is able to call `POST /client_auth_token` with the `fwc` permission to generate short-lived JWTs for the SDK.
+  </Card>
+  <Card title="Permitted jurisdictions" icon="globe">
+    Customers in restricted jurisdictions must be blocked before you submit them to Zero Hash or invoke the SDK.
+  </Card>
+</CardGroup>
+
+## Step 1: Onboard the Participant via API
+
+Your platform verifies the customer using your external KYC provider, then submits results to Zero Hash. Zero Hash returns a `participant_code` that you will use to generate the SDK token.
+
+<Tabs>
+  <Tab title="Natural Person">
+    ```json
+    {
+      "first_name": "John",
+      "last_name": "Smith",
+      "email": "jsmith@example.com",
+      "phone_number": "9545551234",
+      "address_one": "1 Main St.",
+      "city": "Chicago",
+      "zip": "12345",
+      "jurisdiction_code": "US-IL",
+      "date_of_birth": "1985-09-02",
+      "citizenship": "United States",
+      "tax_id": "123456789",
+      "risk_rating": "low",
+      "kyc": "pass",
+      "kyc_timestamp": 1630623005000,
+      "sanction_screening": "pass",
+      "sanction_screening_timestamp": 1630623005000,
+      "idv": "pass",
+      "liveness_check": "pass",
+      "metadata": {}
+    }
+    ```
+  </Tab>
+  <Tab title="Entity (Partial KYB)">
+    ```json
+    {
+      "request_id": "a1b2c3d4-5678-90ab-cdef-1234567890ab",
+      "platform_code": "PLAT01",
+      "legal_name": "Entity A",
+      "contact_number": "15553765432",
+      "address_one": "1 Main St.",
+      "city": "Chicago",
+      "postal_code": "12345",
+      "jurisdiction_code": "US-IL",
+      "tax_id": "883987654",
+      "id_issuing_authority": "United States",
+      "sanction_screening": "pass",
+      "sanction_screening_timestamp": 1603378501286,
+      "signed_agreements": [
+        {
+          "type": "fund_auto_convert",
+          "region": "us",
+          "signed_timestamp": 1603378501286
+        }
+      ]
+    }
+    ```
+  </Tab>
+  <Tab title="Entity (Full KYB)">
+    ```json
+    {
+      "request_id": "a1b2c3d4-5678-90ab-cdef-1234567890ab",
+      "platform_code": "PLAT01",
+      "entity_name": "Entity A",
+      "legal_name": "Entity A",
+      "entity_type": "llc",
+      "address_one": "1 Main St.",
+      "city": "Chicago",
+      "postal_code": "12345",
+      "jurisdiction_code": "US-IL",
+      "tax_id": "883987654",
+      "risk_rating": "low",
+      "sanction_screening": "pass",
+      "sanction_screening_timestamp": 1603378501286,
+      "submitter_email": "compliance@entitya.com",
+      "control_persons": [ ... ],
+      "beneficial_owners": [ ... ],
+      "signed_agreements": [
+        {
+          "type": "fund_auto_convert",
+          "region": "us",
+          "signed_timestamp": 1603378501286
+        }
+      ]
+    }
+    ```
+  </Tab>
+</Tabs>
+
+<Warning>
+  If you omit the `fund_auto_convert` agreement in `signed_agreements`, the SDK will fail to launch the deposit flow. Always include it when onboarding customers for Account Funding.
+</Warning>
+
+## Step 2: Install the SDK
+
+Install the Zero Hash Web SDK from npm. Version 3.x introduced a refreshed UI and light/dark mode support.
+
+```bash
+npm install zh-web-sdk@3
+# or
+yarn add zh-web-sdk@3
+```
+
+## Step 3: Generate the Account Funding JWT
+
+Your backend must request a short-lived JWT from Zero Hash before invoking the SDK. The customer's `participant_code` must be in `approved` status when you make this call.
+
+```bash
+POST /client_auth_token
+```
+
+Key parameters:
+
+<ParamField body="participant_code" type="string" required>
+  The Zero Hash participant code for the customer. Must be in `approved` status.
+</ParamField>
+
+<ParamField body="permission" type="string" required>
+  Must be `fwc` (Fund With Crypto) to authorize the Account Funding SDK.
+</ParamField>
+
+<ParamField body="reference_id" type="string">
+  Optional. An ID you supply that is echoed back in all subsequent webhook payloads and `GET /fund/transactions` responses. Use it to correlate SDK sessions with your internal records.
+</ParamField>
+
+<ParamField body="deposit_amount" type="string">
+  Optional. Pre-populates the deposit amount in the SDK flow. When set, the customer skips the amount selection screen and lands directly on the Review screen after choosing an asset. Only available when Classic Transfer is not enabled. Not evaluated against periodic transaction limits.
+</ParamField>
+
+## Step 4: Initialize and Embed the SDK
+
+Initialize the SDK in your React (or plain JavaScript) application with the JWT returned by your backend. The SDK renders as a modal overlay that Zero Hash controls entirely.
+
+```tsx
+import React, { useEffect } from "react";
+import { ZeroHashSDK } from "zh-web-sdk";
+
+const sdk = new ZeroHashSDK({
+  zeroHashAppsURL: "https://web-sdk.zerohash.com",
+  env: "prod",          // "prod" | "cert"
+  theme: "light",       // "light" | "dark" | "auto"
+});
+
+export function DepositButton({ jwt }: { jwt: string }) {
+  useEffect(() => {
+    // Listen for deposit lifecycle events
+    const handleMessage = (event: MessageEvent) => {
+      const { type, payload } = event.data ?? {};
+      switch (type) {
+        case "FUND_APP_LOADED":
+          console.log("Deposit widget loaded");
+          break;
+        case "FUND_COMPLETED":
+          console.log("Deposit initiated by customer", payload);
+          break;
+        case "FUND_FAILED":
+          console.error("Deposit flow failed", payload);
+          break;
+      }
+    };
+    window.addEventListener("message", handleMessage);
+    return () => window.removeEventListener("message", handleMessage);
+  }, []);
+
+  const openDeposit = () => {
+    sdk.setJWT(jwt);
+    sdk.openModal({ appIdentifier: "FUND" });
+  };
+
+  return (
+    <button onClick={openDeposit}>
+      Deposit Crypto
+    </button>
+  );
+}
+```
+
+<Tip>
+  You can change the SDK theme at runtime by calling `sdk.setTheme({ theme: "dark" })`. This is useful for platforms that support a user-controlled dark mode toggle.
+</Tip>
+
+### Customer experience inside the SDK
+
+Once launched, the SDK guides the customer through the following screens without any action required from your platform:
+
+<Steps>
+  <Step title="Accept terms">
+    The SDK presents the Zero Hash User Agreement, Privacy Policy, and Regulatory Disclosures. The customer must explicitly accept before proceeding.
+  </Step>
+  <Step title="Select asset and network">
+    The customer chooses the cryptocurrency or stablecoin they want to deposit, and the blockchain network to send it on. Zero Hash supports all major crypto and stablecoins across 19+ networks.
+  </Step>
+  <Step title="View deposit instructions">
+    The SDK displays the deposit address, applicable rate, and any fees. The customer copies the address and initiates a transfer from their external wallet (Coinbase, MetaMask, Phantom, etc.).
+  </Step>
+  <Step title="Transaction confirmed">
+    Once the on-chain transaction reaches the required confirmation count, the SDK automatically transitions to a confirmed receipt view showing the customer all key transaction details.
+  </Step>
+</Steps>
+
+## Step 5: Handle Deposit Webhooks
+
+Zero Hash sends a webhook to your configured endpoint for every Account Funding outcome — both success and failure scenarios.
+
+### Success
+
+```json
+{
+  "participant_code": "CUST01",
+  "fund_asset": "USDC",
+  "rate": "1",
+  "quoted_currency": "USD",
+  "source_address": "0xd3c5967d94d79F17bDc493401c33f7e8897c5f83",
+  "deposit_address": "0x34f53Aea3ba8b60B0ed19106baF43A4f3F73f244",
+  "quantity": "7.47",
+  "notional": "6.47",
+  "fund_id": "363b5b15-02bd-4797-892f-8baa4eec60d2",
+  "fund_timestamp": 1750404905186631445,
+  "deposit_timestamp": 1750404905037719568,
+  "transaction_id": "0xcd9e98ae631cf7cfcf4d351374337a55096abd01d9637303aaef31d5c0766562",
+  "account_label": "general",
+  "success": true,
+  "reference_id": "c098e59b-8023-4477-8b63-68fda3c53a39",
+  "deposit_fee_type": "flat"
+}
+```
+
+### Failure scenarios
+
+<Tabs>
+  <Tab title="Platform not enabled">
+    ```json
+    {
+      "participant_code": "CUST01",
+      "fund_asset": "USDC.ETH",
+      "success": false,
+      "reason": "Your platform is no longer configured to use this product. The deposit has not been converted to fiat and the crypto has been credited to the customer's account"
+    }
+    ```
+  </Tab>
+  <Tab title="Customer not approved">
+    ```json
+    {
+      "participant_code": "CUST01",
+      "fund_asset": "USDC.ETH",
+      "success": false,
+      "reason": "This participant is not in an approved state. The deposit has not been converted to fiat and the crypto has been credited to the customer's account"
+    }
+    ```
+  </Tab>
+  <Tab title="Deposit out of bounds">
+    ```json
+    {
+      "participant_code": "CUST01",
+      "fund_asset": "USDC",
+      "quantity": "26.900000",
+      "success": false,
+      "reason": "deposit above maximum threshold. The deposit has not been converted to fiat and the crypto has been credited to the customer's account"
+    }
+    ```
+    The same `reason` pattern applies for deposits below the minimum threshold.
+  </Tab>
+  <Tab title="Asset not supported">
+    ```json
+    {
+      "participant_code": "CUST01",
+      "fund_asset": "AAVE",
+      "success": false,
+      "reason": "asset deposited is not supported by the fund workflow. The deposit has not been converted to fiat and the crypto has been credited to the customer's account"
+    }
+    ```
+  </Tab>
+  <Tab title="Stablecoin depegged">
+    ```json
+    {
+      "participant_code": "CUST01",
+      "fund_asset": "USDC.DOTHUB",
+      "success": false,
+      "reason": "USDC.DOTHUB conversions are currently halted. The deposit has not been converted to fiat and the crypto has been credited to the customer's account"
+    }
+    ```
+  </Tab>
+</Tabs>
+
+<Info>
+  On all failure scenarios, the deposited crypto is credited to the customer's Zero Hash account rather than being converted. Zero Hash also sends the customer an email receipt for both success and failure outcomes.
+</Info>
+
+## Step 6: Query Deposit History
+
+Use `GET /fund/transactions` to retrieve all Account Funding events. This endpoint is useful for populating transaction history screens in your application.
+
+## Step 7: Reconcile and Receive Settlement
+
+Zero Hash sends a daily fiat settlement wire to your platform covering the sum of all converted deposits from the prior trading session. The session schedule is:
+
+| Session   | Start                  | End                      | Settlement Expected |
+|-----------|------------------------|--------------------------|---------------------|
+| Monday    | Mon 9:00 AM EST        | Tue 8:59:59 AM EST       | Tuesday EOD         |
+| Tuesday   | Tue 9:00 AM EST        | Wed 8:59:59 AM EST       | Wednesday EOD       |
+| Wednesday | Wed 9:00 AM EST        | Thu 8:59:59 AM EST       | Thursday EOD        |
+| Thursday  | Thu 9:00 AM EST        | Fri 8:59:59 AM EST       | Friday EOD          |
+| Friday    | Fri 9:00 AM EST        | Mon 8:59:59 AM EST       | Monday EOD          |
+
+Track your pending settlement balance by querying `GET /accounts` filtered to `participant_code=PLAT01`, `account_label=general`, `account_type=available`, and `asset=USD`. The `balance` field resets to `0` each time Zero Hash initiates the daily wire.
+
+To review historical settlements, query `GET /withdrawals/requests?participant_code=PLAT01`. Each daily settlement is represented as a withdrawal from your platform account.
+
+## Deposit Returns
+
+<Warning>
+  You **cannot** rely on the `source_address` in a webhook as the address to return funds to. Blockchain transactions are not bidirectional, and sending to a source address can result in permanent loss of funds. If you need to return a deposit, always collect a confirmed destination address from the customer and use `POST /withdrawals/requests`. Speak to your Zero Hash sales engineer before building a return flow.
+</Warning>

@@ -1,0 +1,192 @@
+---
+title: "Zero Hash Fees and Pricing Structure for Platforms"
+sidebarTitle: "Fees & Pricing"
+description: "Understand Zero Hash fee types: spread-based trading fees in bps, deposit fees, network fees, platform fee configuration options, and API-based reporting."
+---
+
+Zero Hash applies fees across several product areas: spread-based fees on trading activity, transaction fees on account funding deposits, and network fees for on-chain transfers. Platforms can configure spread and transaction fees through their Zero Hash account settings, and all fee data is available retroactively via the API for reporting, reconciliation, and automation. This page explains each fee type, how it appears in API responses, and how to access fee data programmatically.
+
+<Note>
+  Specific fee rates are negotiated directly with your Zero Hash representative. To discuss pricing, reach out to your existing contact over email or Slack, or fill out the [contact form](https://zerohash.com/contact/) if you are a new platform.
+</Note>
+
+## Fee Types
+
+<CardGroup cols={2}>
+  <Card title="Spread-based trading fees" icon="percent">
+    Applied as basis points (bps) on buy and sell trades. Configured per platform and visible in trade responses as `spread_bps` and `spread_notional`.
+  </Card>
+  <Card title="Transaction fees on deposits" icon="arrow-down-to-line">
+    Applied to Account Funding deposits. Returned in the `POST /fund/rfq` response as `deposit_fee_bps` and visible in deposit webhooks as `deposit_fee_notional`.
+  </Card>
+  <Card title="Network fees" icon="link">
+    Blockchain gas fees for on-chain withdrawals. Returned in quote responses as `network_fee_notional` and `network_fee_quantity`.
+  </Card>
+  <Card title="Platform-configured fees" icon="sliders">
+    Custom named fees that platforms attach to individual trades via the `fees` array in the quote request. Up to 5 named fees per trade.
+  </Card>
+</CardGroup>
+
+## Spread-Based Trading Fees
+
+Spread is expressed in basis points (bps) — 1 bps equals 0.01%. When your platform submits a quote request to `POST /convert_withdraw/rfq` or `POST /liquidity/rfq`, you pass the desired spread in the `spread` field. Zero Hash validates that the combination of spread plus all additional fees does not exceed the regulatory maximum for the participant's jurisdiction.
+
+**Regulatory fee maximums (United States):**
+- **New York (NY):** 7.5% (750 bps) maximum on the total combination of spread plus all fees as a percentage of `total_notional`
+- **All other US states:** No regulatory cap
+
+### Example: Quote with spread
+
+```json
+POST /convert_withdraw/rfq
+
+{
+  "side": "buy",
+  "participant_code": "CUST01",
+  "underlying": "ETH",
+  "quoted_currency": "USD",
+  "total": "100",
+  "withdrawal_address": "0x6E0C18D71f470cc5076A74FE34c19Ab51129C6F7",
+  "fee_inclusive": true,
+  "spread": "200"
+}
+```
+
+The response includes a breakdown of how the total is allocated:
+
+```json
+{
+  "message": {
+    "total_notional": "100",
+    "asset_cost_notional": "95.48",
+    "spread_notional": "1.9096",
+    "spread_bps": "200",
+    "network_fee_notional": "0.07",
+    "network_fee_quantity": "0.000031500000252",
+    "quantity": "0.0424217997337298",
+    "price": "2250.7295918443399046",
+    "quote_id": "021bdc37-ad2f-42aa-b15d-57a8a2785edd"
+  }
+}
+```
+
+## Platform-Configured Transaction Fees
+
+The Transaction Fees feature lets you attach named fees to individual trades. You define up to 5 fees per order in the `fees` array of the quote request, each with a `name` and `amount`.
+
+```json
+POST /convert_withdraw/rfq
+
+{
+  "side": "buy",
+  "participant_code": "CUST01",
+  "underlying": "ETH",
+  "quoted_currency": "USD",
+  "total": "100",
+  "withdrawal_address": "0x6E0C18D71f470cc5076A74FE34c19Ab51129C6F7",
+  "fee_inclusive": true,
+  "spread": "200",
+  "fees": [
+    {
+      "amount": "2.50",
+      "name": "processing-1"
+    },
+    {
+      "amount": "1.95",
+      "name": "processing-2"
+    }
+  ]
+}
+```
+
+Once you execute the quote with `POST /convert_withdraw/execute`, the fee definitions are permanently attached to the resulting `trade_id`.
+
+<Tip>
+  Named fees are useful for platforms embedding their onramp inside multiple third-party wallets where each wallet charges its own fee. You can query all fees for a time period via `GET /trades` and automate periodic fee settlement payments without manual intervention.
+</Tip>
+
+## Account Funding Deposit Fees
+
+When you call `POST /fund/rfq` to generate a deposit address, the response includes the fee configuration for that participant and asset:
+
+```json
+{
+  "deposit_fee_bps": 100,
+  "first_deposit_fee_floor": "1.00",
+  "subsequent_deposit_fee_floor": "1.00",
+  "minimum_deposit": "1",
+  "maximum_deposit": "500000"
+}
+```
+
+The deposit webhook confirms the actual fee amount charged:
+
+```json
+{
+  "raw_fee_bps": "100",
+  "deposit_fee_bps": "100",
+  "raw_fee_notional": "5.00",
+  "deposit_fee_notional": "5.00"
+}
+```
+
+## Network Fees
+
+Network fees are blockchain gas costs charged for on-chain withdrawals. They are included in the quote response and deducted from the transaction:
+
+<ResponseField name="network_fee_notional" type="string">
+  The USD-denominated cost of the network (gas) fee.
+</ResponseField>
+
+<ResponseField name="network_fee_quantity" type="string">
+  The amount of the asset consumed by the network fee.
+</ResponseField>
+
+## Querying Fee Data for Reporting
+
+All fee information is persisted on the trade record and queryable retroactively.
+
+### Query a single trade
+
+```bash
+GET /trades/{trade_id}
+```
+
+The response includes the full fee breakdown:
+
+```json
+{
+  "message": {
+    "trade_id": "3743e8a7-e5b3-4bc2-98d2-8053360dd88a",
+    "total_notional": "100.00",
+    "asset_cost_notional": "95.48",
+    "spread_notional": "1.9096",
+    "spread_bps": "200",
+    "network_fee_notional": "0.07",
+    "network_fee_quantity": "0.000031500000252",
+    "fees": [
+      {
+        "name": "processing-1",
+        "amount": "2.50"
+      },
+      {
+        "name": "processing-2",
+        "amount": "1.95"
+      }
+    ]
+  }
+}
+```
+
+### Bulk reporting via GET /trades
+
+Use `GET /trades` with date range filters to pull all trades within a period. Sum the `fees` arrays across trades to calculate total platform fee revenue for reconciliation and automated fee disbursement workflows.
+
+## Fee Visibility by Product
+
+| Fee Type | Where Configured | Returned In |
+|----------|-----------------|-------------|
+| Spread | Platform settings / quote request | `spread_bps`, `spread_notional` in quote response and trade record |
+| Transaction fees (named) | Quote request `fees` array | `fees` array in quote response, execute response, and trade record |
+| Network fee | Automatic (gas) | `network_fee_notional`, `network_fee_quantity` in quote response |
+| Account Funding deposit fee | Platform configuration | `deposit_fee_bps` in `POST /fund/rfq` response and deposit webhook |

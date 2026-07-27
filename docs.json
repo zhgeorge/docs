@@ -1,72 +1,178 @@
 {
   "$schema": "https://mintlify.com/docs.json",
-  "theme": "mint",
-  "name": "Mintlify Starter Kit",
-  "colors": {
-    "primary": "#16A34A",
-    "light": "#07C983",
-    "dark": "#15803D"
+  "name": "Zero Hash",
+  "theme": "luma",
+  "logo": {
+    "light": "https://media.brand.dev/f9a0349b-4218-4b54-89c7-134127412428.svg",
+    "dark": "https://media.brand.dev/f9a0349b-4218-4b54-89c7-134127412428.svg"
   },
   "favicon": "/favicon.svg",
-  "navigation": {
-    "pages": [
-      {
-        "group": "Getting Started",
-        "pages": [
-          "index",
-          "quickstart"
-        ]
-      }
-    ],
-    "global": {
-      "anchors": [
-        {
-          "anchor": "Documentation",
-          "href": "https://mintlify.com/docs",
-          "icon": "book-open-cover"
-        },
-        {
-          "anchor": "Blog",
-          "href": "https://mintlify.com/blog",
-          "icon": "newspaper"
-        }
-      ]
-    }
-  },
-  "logo": {
-    "light": "/logo/light.svg",
-    "dark": "/logo/dark.svg"
+  "colors": {
+    "primary": "#84f484",
+    "light": "#1c3e29",
+    "dark": "#bdecbe"
   },
   "navbar": {
-    "links": [
-      {
-        "label": "Support",
-        "href": "mailto:hi@mintlify.com"
-      }
-    ],
     "primary": {
       "type": "button",
-      "label": "Dashboard",
-      "href": "https://app.mintlify.com"
+      "label": "Get Access",
+      "href": "mailto:sales@zerohash.com"
     }
   },
-  "contextual": {
-    "options": [
-      "copy",
-      "view",
-      "chatgpt",
-      "claude",
-      "perplexity",
-      "mcp",
-      "cursor",
-      "vscode"
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "docs/getting-started",
+              "docs/get-platform-access",
+              "docs/generate-api-keys",
+              "docs/submit-first-api-call",
+              "docs/terminology"
+            ]
+          },
+          {
+            "group": "Core Concepts",
+            "pages": [
+              "docs/core-resources",
+              "docs/authentication",
+              "docs/api-security",
+              "docs/error-handling",
+              "docs/request-ids",
+              "docs/supported-assets-instruments"
+            ]
+          },
+          {
+            "group": "Participants & Accounts",
+            "pages": [
+              "docs/onboard-a-customer",
+              "docs/customer-accounts-guide",
+              "docs/customer-sub-accounts",
+              "docs/virtual-accounts",
+              "docs/account-management-guide",
+              "docs/participant-account-statuses-locking"
+            ]
+          },
+          {
+            "group": "Trading",
+            "pages": [
+              "docs/buysell",
+              "docs/request-for-quote",
+              "docs/submit-and-execute-quotes",
+              "docs/central-limit-order-book-3",
+              "docs/liquidity-models",
+              "docs/spreads-and-fees"
+            ]
+          },
+          {
+            "group": "Deposits & Withdrawals",
+            "pages": [
+              "docs/deposits-withdrawals",
+              "docs/generating-platform-deposit-addresses",
+              "docs/creating-a-withdrawal-account",
+              "docs/withdrawals-releasing-funds",
+              "docs/fiat",
+              "docs/getting-started-with-fiat-payments"
+            ]
+          },
+          {
+            "group": "Payments",
+            "pages": [
+              "docs/payins",
+              "docs/payouts",
+              "docs/streamlined-payouts",
+              "docs/fiat-remittances-stablecoin-sandwich",
+              "docs/instant-usd"
+            ]
+          },
+          {
+            "group": "Settlement",
+            "pages": [
+              "docs/settlements-as-a-service",
+              "docs/standard-settlement",
+              "docs/settlement-configurations",
+              "docs/settlement-reconciliation"
+            ]
+          },
+          {
+            "group": "SDKs",
+            "pages": [
+              "docs/sdk-index",
+              "docs/sdk",
+              "docs/onboarding-experience-sample",
+              "docs/fund-overview",
+              "docs/wallet-link-sdk-integration-guide",
+              "docs/mobile-sdks"
+            ]
+          },
+          {
+            "group": "Additional Features",
+            "pages": [
+              "docs/staking",
+              "docs/loyalty",
+              "docs/reporting-suite",
+              "docs/balances-websocket",
+              "docs/account-funding-reconciliation"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Integration Guides",
+        "groups": [
+          {
+            "group": "Onboarding",
+            "pages": [
+              "docs/onboarding",
+              "docs/eu-participant-creation",
+              "docs/application-review-process",
+              "docs/kyc-support-accepted-identification-documents",
+              "docs/sanction-screening"
+            ]
+          },
+          {
+            "group": "Payments Guides",
+            "pages": [
+              "docs/payins-integration-guide",
+              "docs/payouts-integration-guide",
+              "docs/rewards-integration-guide",
+              "docs/remittance-integration-guide",
+              "docs/enterprise-settlements-no-code-integration-guide"
+            ]
+          },
+          {
+            "group": "Fund Guides",
+            "pages": [
+              "docs/fund-integration-guide-api",
+              "docs/fund-integration-guide-sdk",
+              "docs/settlements-as-a-service-integration-guide"
+            ]
+          },
+          {
+            "group": "Compliance & Tax",
+            "pages": [
+              "docs/crypto-tax-overview",
+              "docs/tax-data-collection-kycaas",
+              "docs/w-9-implementation-guide",
+              "docs/fees"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Changelog",
+        "groups": [
+          {
+            "group": "Releases",
+            "pages": [
+              "changelog"
+            ]
+          }
+        ]
+      }
     ]
-  },
-  "footer": {
-    "socials": {
-      "x": "https://x.com/mintlify",
-      "github": "https://github.com/mintlify",
-      "linkedin": "https://linkedin.com/company/mintlify"
-    }
   }
 }

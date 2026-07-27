@@ -1,0 +1,255 @@
+---
+title: "Zero Hash Virtual Accounts: USD Ledgers for End Users"
+sidebarTitle: "Virtual Accounts"
+description: "Create isolated USD-denominated ledgers per end user for marketplaces, wallets, and neobanks. Fund, query, and manage virtual accounts via the API."
+---
+
+Zero Hash Virtual Accounts let you create unique, USD-denominated sub-accounts for each of your end users — whether they are individuals or businesses. Each virtual account acts as an isolated ledger within your overall platform balance, enabling you to track, fund, and manage user-specific balances with precision. Rather than maintaining separate banking relationships or building complex internal accounting systems, you can expose local bank account details (routing number and account number) directly to your users through a single integration with Zero Hash.
+
+<Info>
+  USD is supported at launch. Additional currencies and payment rails are planned for future releases.
+</Info>
+
+---
+
+## Use Cases
+
+<CardGroup cols={2}>
+  <Card title="Fiat On-Ramp to Stablecoins" icon="arrow-right-arrow-left">
+    Users deposit USD via ACH into a virtual account. Zero Hash automatically converts to stablecoins (USDC, PYUSD, USDT, RLUSD, and others) and delivers them to the user's on-chain wallet. This removes dependency on third-party exchanges.
+  </Card>
+  <Card title="Global Collections" icon="globe">
+    Assign virtual accounts to individuals or business units so they can receive USD via domestic rails. Later, aggregate or convert those funds into digital assets — all without managing multiple banking relationships.
+  </Card>
+  <Card title="Corporate Treasury & Float Management" icon="building-columns">
+    Segment funds by business line, region, or workflow. Virtual accounts improve treasury visibility and efficiency while unlocking yield opportunities on idle balances.
+  </Card>
+  <Card title="Programmable Payment Flows" icon="code">
+    Trigger real-time fund movements, auto-conversions, or on-chain transfers when deposits land. This enables automated reconciliation, escrow behaviors, and logic-based flows such as milestone payouts or royalty splits.
+  </Card>
+  <Card title="Marketplaces & Multi-User Platforms" icon="store">
+    Assign a unique virtual account to each seller, freelancer, or merchant. Track and pay out funds individually without managing physical bank accounts per user.
+  </Card>
+  <Card title="Developer-Friendly Payment Rails" icon="plug">
+    Expose local bank account details to users for easy ACH funding, abstracting away the complexity of settlement. Your platform feels local, trustworthy, and easy to use — without relying on cards or wire transfers.
+  </Card>
+</CardGroup>
+
+---
+
+## How Virtual Accounts Fit Into the Zero Hash Model
+
+A virtual account is scoped to a Zero Hash **participant** — either an individual (`POST /participants/customers/new`) or a business entity (`POST /participants/entity/new`). Before creating a virtual account, the participant must exist and carry an `approved` status. The virtual account then acts as a named ledger entry within that participant's overall balance, tagged with an `account_label` and isolated from other participants on your platform.
+
+<Steps>
+  <Step title="Onboard the end user as a participant">
+    Create an individual or business participant via the API. The response returns a `participant_code` (for example, `CUST01`). See [Onboard a Customer](/docs/onboard-a-customer) for full details.
+  </Step>
+  <Step title="Create the virtual account">
+    Use `POST /accounts` with the participant's `participant_code` and set `account_label` to your chosen virtual account identifier. This creates an isolated ledger for that user.
+  </Step>
+  <Step title="Generate a deposit address or funding token">
+    Use `POST /deposits/digital_asset_addresses` for crypto funding or the Account Funding SDK for fiat (ACH) funding. Include the `account_label` to ensure deposits credit the correct virtual account.
+  </Step>
+  <Step title="Fund the virtual account">
+    Your end user deposits USD (via ACH) or digital assets (via crypto rails) into the virtual account. Zero Hash processes the deposit and updates the ledger balance.
+  </Step>
+  <Step title="Query the balance">
+    Call `GET /accounts` with the participant's ZRN or `participant_code` to retrieve balances across all virtual accounts for that user.
+  </Step>
+  <Step title="Execute conversions or disbursements">
+    Trigger trades (fiat-to-crypto conversion), transfers (between virtual accounts), or withdrawals (to external addresses) as needed by your platform logic.
+  </Step>
+</Steps>
+
+---
+
+## Create a Virtual Account
+
+Virtual accounts are created via `POST /accounts`. Specify the participant, set the account tier, and provide an `account_label` that serves as the unique identifier for this virtual account in your platform.
+
+### Example Request
+
+```json POST /accounts — Request
+{
+  "participant_code": "CUST01",
+  "prefunded": false,
+  "tier": "pro",
+  "type": "individual",
+  "account_label": "user_wallet_7842"
+}
+```
+
+```json POST /accounts — Response
+{
+  "zrn": "zrn:zh:us:accounts:customer:c761fc96-5c44-40d4-8eb2-3fcd5d06754e",
+  "participant_code": "CUST01",
+  "prefunded": false,
+  "tier": "pro",
+  "type": "individual",
+  "account_label": "user_wallet_7842",
+  "account_group": "PLAT01"
+}
+```
+
+<Tip>
+  Store the full `zrn` returned in the response. You will use it for all subsequent operations on this virtual account — balance queries, locking, and trade reporting.
+</Tip>
+
+---
+
+## Fund a Virtual Account
+
+### Generate a Deposit Address (Crypto)
+
+To fund a virtual account with digital assets, generate a deposit address via `POST /deposits/digital_asset_addresses`. Include the `participant_code` and the target `asset`.
+
+```json POST /deposits/digital_asset_addresses — Request
+{
+  "participant_code": "CUST01",
+  "asset": "USDC"
+}
+```
+
+```json POST /deposits/digital_asset_addresses — Response
+{
+  "message": {
+    "created_at": 1590663417000,
+    "address": "0xd9aAEc86B65D86f6A7B5B1b0c42FFA531710b6CA",
+    "participant_code": "CUST01",
+    "platform_code": "PLAT01",
+    "asset": "USDC"
+  }
+}
+```
+
+Display this address in your UI or pass it directly to your user's on-chain workflow. Once the deposit confirms on-chain, Zero Hash credits the balance to the virtual account.
+
+### Use the Account Funding SDK (Fiat / ACH)
+
+For fiat (USD/ACH) funding, generate an access token that includes the `account_label` of the target virtual account, then invoke the Account Funding SDK. Zero Hash surfaces local bank routing and account numbers to your user:
+
+```json POST /access-tokens — Request
+{
+  "participant_code": "CUST01",
+  "permissions": ["fwc"],
+  "deposit_details": {
+    "account_label": "user_wallet_7842"
+  }
+}
+```
+
+---
+
+## Query Virtual Account Balances
+
+### Query by ZRN
+
+To retrieve all ledger accounts (one per asset) associated with a virtual account, call `GET /accounts` with the `zrn` query parameter:
+
+```
+GET /accounts?zrn=zh:us:accounts:customer:c761fc96-5c44-40d4-8eb2-3fcd5d06754e
+```
+
+```json Response
+{
+  "message": [
+    {
+      "zrn": "zrn:zh:us:accounts:ledger:ce819fe8-b1d7-43bb-961c-e09ede0988d3",
+      "asset": "USD",
+      "account_owner": "CUST01",
+      "account_type": "available",
+      "account_group": "PLAT01",
+      "account_label": "user_wallet_7842",
+      "balance": "250.00",
+      "account_id": "ce819fe8-b1d7-43bb-961c-e09ede0988d3",
+      "last_update": 1554395972174
+    },
+    {
+      "zrn": "zrn:zh:us:accounts:ledger:ce819fe8-b1d7-43bb-961c-e09ede0988d4",
+      "asset": "USDC",
+      "account_owner": "CUST01",
+      "account_type": "available",
+      "account_group": "PLAT01",
+      "account_label": "user_wallet_7842",
+      "balance": "0.00",
+      "account_id": "ce819fe8-b1d7-43bb-961c-e09ede0988d4",
+      "last_update": 1554395972174
+    }
+  ],
+  "page": 1,
+  "total_pages": 1
+}
+```
+
+### Query by Participant Code and Asset
+
+You can also filter `GET /accounts` by `participant_code` and `asset` to narrow results to a specific virtual account balance:
+
+```
+GET /accounts?participant_code=CUST01&asset=USD
+```
+
+---
+
+## Virtual Account Response Fields
+
+<ResponseField name="zrn" type="string">
+  The fully-qualified Zero Hash URN for this virtual account (customer subdomain).
+</ResponseField>
+
+<ResponseField name="participant_code" type="string">
+  The 6-character alphanumeric code identifying the participant (end user) who owns this virtual account.
+</ResponseField>
+
+<ResponseField name="account_label" type="string">
+  The platform-defined label that uniquely identifies this virtual account within the participant's balance.
+</ResponseField>
+
+<ResponseField name="account_group" type="string">
+  The platform code that this virtual account is associated with, representing the relationship between participant and platform.
+</ResponseField>
+
+<ResponseField name="asset" type="string">
+  The asset held in this ledger entry (for example, `USD`, `USDC`, `BTC`).
+</ResponseField>
+
+<ResponseField name="account_type" type="string">
+  The utilization type of this ledger entry. `available` balances are free for trading, withdrawals, or conversion.
+</ResponseField>
+
+<ResponseField name="balance" type="string">
+  The current balance as a decimal string.
+</ResponseField>
+
+<ResponseField name="last_update" type="integer">
+  Unix timestamp (milliseconds) of the most recent balance change.
+</ResponseField>
+
+---
+
+## Programmatic Flow Example: Fiat On-Ramp
+
+The following sequence illustrates a complete fiat-to-stablecoin flow using a virtual account:
+
+<Steps>
+  <Step title="User initiates a deposit">
+    Your platform calls `POST /access-tokens` with `account_label: "user_wallet_7842"` and presents the ACH funding UI to the user via the Account Funding SDK.
+  </Step>
+  <Step title="User sends USD via ACH">
+    The user initiates an ACH transfer to the routing and account number surfaced by the SDK. Zero Hash receives the funds.
+  </Step>
+  <Step title="Zero Hash credits the virtual account">
+    Zero Hash posts the USD balance to the ledger entry tagged with `account_label: "user_wallet_7842"` for `CUST01`.
+  </Step>
+  <Step title="Your platform triggers a conversion">
+    On receiving the deposit webhook, your platform calls `POST /trades` to convert USD to USDC. Include `account_label: "user_wallet_7842"` on the party record so the resulting USDC balance lands in the same virtual account.
+  </Step>
+  <Step title="Zero Hash delivers USDC on-chain">
+    Zero Hash settles the trade and disburses USDC to the user's linked on-chain wallet address.
+  </Step>
+</Steps>
+
+<Note>
+  Zero Hash sends webhooks at each stage of the deposit and payment lifecycle. Subscribe to the **Account Balance** and **Payments Status Changes** webhook topics to drive real-time updates in your platform.
+</Note>

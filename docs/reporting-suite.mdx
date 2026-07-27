@@ -1,0 +1,124 @@
+---
+title: "Zero Hash Reporting Suite: Portal and API Access"
+sidebarTitle: "Reporting"
+description: "Download CSV reports from the Zero Hash Client Portal or query live data via API for trades, balances, deposits, withdrawals, and network fees."
+---
+
+Zero Hash provides a full self-service reporting suite through the [Zero Hash Client Portal](https://portal.zerohash.com) and the same data is fully accessible via the REST API for programmatic consumption. The portal allows non-developer members of your finance, operations, and compliance teams to independently generate and download CSV reports without writing a single line of code. For automated workflows — such as daily reconciliation jobs, accounting integrations, or audit pipelines — every report category has a corresponding API endpoint.
+
+## Available Report Types
+
+The following report types are available in both the portal and via API:
+
+| Report | Description |
+|---|---|
+| **Account Balances** | Historical balances showing account state **after movements have occurred**. Use this report to reconstruct balance history at any point in time. |
+| **Deposits** | All crypto and fiat deposits into your Zero Hash account and your customers' accounts. |
+| **Withdrawals** | All withdrawal requests submitted from your platform, including status and timestamps. |
+| **Trades** | All trading activity on your platform, including trade details, parties, notional values, commissions, and settlement states. |
+| **Network Fees** | All network fees charged for on-chain transactions. Note: this report covers **non-ERC-20 assets** (e.g., BTC, SOL). ERC-20 network fees are embedded in trade data. |
+
+<Note>
+  The **Account Balances** report reflects balances **after** each movement. It does not show the balance in real time — use the Balances WebSocket feed for live balance data, or `GET /accounts` for a point-in-time snapshot.
+</Note>
+
+## Generating Reports in the Client Portal
+
+<Steps>
+  <Step title="Navigate to Reports">
+    Log in to [portal.zerohash.com](https://portal.zerohash.com) and select the **Reports** section from the main navigation menu.
+  </Step>
+  <Step title="Select a Report Type">
+    Choose the report you want to generate from the available list: Account Balances, Deposits, Withdrawals, Trades, or Network Fees.
+  </Step>
+  <Step title="Choose the Scope">
+    Select the data scope for your report:
+
+    - **Participant** — Returns data pertaining to your platform participant account only.
+    - **Platform** — Returns data for your platform participant account **plus all customer accounts** under your platform.
+
+    Choose **Platform** for reconciliation and audit use cases where you need a complete view of all activity.
+  </Step>
+  <Step title="Set the Date Range">
+    Enter a start date and end date for the report period. The start and end dates can be the same day for a single-day report. Some report types offer only a single date field — check the on-screen instructions for the specific report.
+  </Step>
+  <Step title="Generate the Report">
+    Click **Generate Report**. The portal processes the request and prepares the download.
+  </Step>
+  <Step title="Download the CSV">
+    Click **Download** to save the CSV file to your local machine. The file appears in the bottom-left of your browser window once ready.
+  </Step>
+</Steps>
+
+## API-Based Reporting
+
+For automated reporting pipelines, every data category has a corresponding REST API endpoint. Use these endpoints to build scheduled reconciliation jobs, feed your accounting system, or populate internal dashboards.
+
+<CardGroup cols={2}>
+  <Card title="Trade History" icon="chart-line">
+    Query all trades with flexible filtering by platform code, participant, timestamp range, trade state, or symbol.
+
+    ```http
+    GET /trades
+    GET /trades/{trade_id}
+    ```
+  </Card>
+  <Card title="Account Balances" icon="scale-balanced">
+    Retrieve current account balances for your platform and all customers, filtered by account type.
+
+    ```http
+    GET /accounts
+    GET /accounts/net_delivery_obligations
+    ```
+  </Card>
+  <Card title="Deposits" icon="arrow-down-to-line">
+    List all deposit records, filterable by participant, asset, and date range.
+
+    ```http
+    GET /fund/transactions
+    GET /deposits/digital_asset_addresses
+    ```
+  </Card>
+  <Card title="Withdrawals" icon="arrow-up-from-line">
+    List all withdrawal requests and their current status.
+
+    ```http
+    GET /withdrawals/requests
+    GET /withdrawals/requests/{id}
+    GET /payments
+    GET /payments/{payment_id}
+    ```
+  </Card>
+</CardGroup>
+
+## Choosing Portal vs. API
+
+<Tabs>
+  <Tab title="Use the Portal When...">
+    - A finance, compliance, or operations team member needs data without engineering support.
+    - You need a one-time or ad-hoc download for an audit, tax filing, or investor report.
+    - You want to quickly spot-check a date range without writing a query.
+    - Your team is more comfortable with spreadsheets than REST APIs.
+  </Tab>
+  <Tab title="Use the API When...">
+    - You are building an automated daily reconciliation job.
+    - You need to feed trade or balance data into an accounting system (e.g., QuickBooks, Netsuite).
+    - You want to trigger alerts or workflows based on specific data conditions.
+    - You need real-time or near-real-time data rather than a point-in-time snapshot.
+    - Your data volume exceeds what is practical to manage manually in CSV format.
+  </Tab>
+</Tabs>
+
+## Report Data Freshness
+
+| Report Type | Portal Freshness | API Freshness |
+|---|---|---|
+| Account Balances | After each settled movement | Real-time via `GET /accounts` |
+| Trades | Near real-time | Real-time via `GET /trades` |
+| Deposits | Near real-time | Real-time via `GET /fund/transactions` |
+| Withdrawals | Near real-time | Real-time via `GET /withdrawals/requests` |
+| Network Fees | Daily batch | Real-time via movement endpoints |
+
+<Tip>
+  For the most time-sensitive use cases — such as confirming a deposit before allowing a trade — always use the API directly or subscribe to the Balances WebSocket feed rather than relying on portal reports. Portal reports are best for historical analysis and reconciliation, not for operational real-time decisions.
+</Tip>

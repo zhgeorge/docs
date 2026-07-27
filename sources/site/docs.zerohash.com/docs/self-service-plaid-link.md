@@ -1,0 +1,158 @@
+# Source: https://docs.zerohash.com/docs/self-service-plaid-link
+
+# 
+
+Onboarding with Plaid
+
+To kick things off:
+
+1. Set up a Plaid production or sandbox account.
+2. Enable zerohash as an integration in your Plaid account settings (Developers > Integrations > search for Zero Hash). Your Plaid Account Manager can assist.
+
+_If you need an intro to Plaid please contact your zerohash relationship manager, who can expedite the agreement process._
+
+The most integral implementation lift is linking the end customer account and exchanging it for a token that is shareable with zerohash. This will require a series of Plaid calls\* for a platform:
+
+1. [/link/token/create](https://plaid.com/docs/api/tokens/#linktokencreate)
+ 1. [Plaid's Auth service](https://plaid.com/docs/auth/coverage/same-day/#implementation-steps) allows customers to sign in to their bank via the Plaid interface and authorize linking their bank account. This gives you tokenized access to the customer's bank account for debits and credits.
+ 2. Note: You can also offer [manual account linking](https://plaid.com/docs/auth/coverage/same-day/#default-manual-verification-flow) (account and routing number entry), which can take 1-2 days and requires slight changes to the Auth configuration.
+2. [/item/public\_token/exchange](https://plaid.com/docs/api/items/#itempublic_tokenexchange)
+3. [/processor/token/create](https://plaid.com/docs/api/processors/#processortokencreate)
+
+Once the processor token is created and shared with zerohash, via [Create external accounts](https://docs.zerohash.com/reference/post_payments-external-accounts) zerohash can connect the end customer bank account and initiate transactions.
+
+_\*The listed calls are the minimum calls required to Plaid. To take advantage of the partnerships, you must contract for balance and identity as well, but zerohash can handle the calls._
+
+Adding a bank account is a one-time process for an end customer that verifies account ownership, so it is not something a customer has to do every time they want to initiate an ACH transaction.
+
+# 
+
+Contract Plaid
+
+In order to use ACH or RTP via zerohash, platforms must have the following products enabled with Plaid. Auth and Identity calls are billed to platforms, but zerohash is permitted to access this data thanks to the processor token model.
+
+| Product name | Reason |
+| --- | --- |
+| [Auth](https://plaid.com/docs/auth/) | Enables platforms to connect end customer bank accounts. |
+| [Balance](https://plaid.com/docs/balance/) | Enables zerohash to check current and pending bank account balances prior to executing a transaction. This check is done by zerohash for each transaction request. If the platform also chooses to do balance checks, the platform will be charged for their check, and for the check by zerohash. |
+| [Identity](https://plaid.com/docs/identity/) | Enables zerohash to verify that the participant name matches the name on the bank account. This check is done by zerohash whenever an external account is linked. This check can also be done by platforms, and there will only be one charge to the platform from Plaid.<br>Also referred to as **identity match**. Note: This is different from identity verification, which is not a requirement. |
+
+# 
+
+Using the zerohash API
+
+Once a Plaid onboarding has been completed, platforms can use Plaid processor tokens to link end customers’ bank accounts through the zerohash API. zerohash uses the platform supplied Plaid processor token to set up an account via [Create external accounts](https://docs.zerohash.com/reference/post_payments-external-accounts). zerohash returns an `external_account_id` to the platform which can be used for later payment requests without needing to link another account. Platforms may also [Get external accounts](https://docs.zerohash.com/reference/get_payments-external-accounts) if the `external_account_id` is needed.
+
+> 📘
+> 
+> ### 
+> 
+> There is a limit on external accounts linked to a participant
+> 
+> There is a default limit of three accounts linked per participant. If you need to change this, please contact your account manager.
+
+## 
+
+zerohash API Calls
+
+**Request body**
+
+| Parameter | Description | Type |
+| --- | --- | --- |
+| participant\_code | The code of the participant that wants to create a new ACH transaction, required. | string |
+| account\_nickname | Name given to the account. This does not impact further zerohash functionality so it is purely for platform reference, required.<br>**For testing only:** To simulate identity checks and get a rejected account, use this content: '{"name":0, "email": 0, "address": 0}' | string |
+| plaid\_processor\_token | Token retrieved from Plaid that enables zerohash to make API calls on the platform’s behalf, required. | string |
+
+**Additional fields in response**
+
+| Parameter | Description | Type |
+| --- | --- | --- |
+| request\_id | The unique identifier generated by zerohash associated with the request. | string |
+| platform\_code | Platform unique identifier. | string |
+| external\_account\_id | The unique identifier generated by zerohash for the account. **This must be stored and used to make subsequent payment requests.** | string |
+| account\_type | Indicates if the account is checking or savings. | string |
+| created\_at | Timestamp when the account was created. | UNIX timestamp |
+
+## 
+
+Create, Link, and Manage Bank Accounts via zerohash API
+
+Platforms leveraging zerohash’s fiat products should subscribe to webhooks to stay notified of external account updates, and can fetch external account details at any time.
+
+### 
+
+Create an external account
+
+After end customers verify their bank account details through Plaid, the platform uses the returned `plaid_processor_token` to [create an external account via API](https://docs.zerohash.com/reference/post_payments-external-accounts).
+
+### 
+
+Querying accounts
+
+Platforms can fetch linked external accounts via API using the [GET /payments/external\_accounts](https://docs.zerohash.com/reference/get_payments-external-accounts) endpoint.
+
+### 
+
+Expired accounts
+
+When an external account has expired, platforms will receive the following webhook:
+
+TypeScript
+
+```
+{
+  "request_id": "0f68333e-2114-469d-b505-c850d776e063",
+  "participant_code": "CUST01",
+  "platform_code": "TES123",
+  "account_nickname": "",
+  "status": "expired",
+  "external_account_id": "0f68333e-2114-469d-b505-c850d776e063",
+  "created_at": "1975-08-19T23:15:30.000Z"
+}
+```
+
+Platforms can re-verify end customers bank account details through Plaid and use the returned `plaid_processor_token` to [create an external account via API](https://docs.zerohash.com/reference/post_payments-external-accounts)
+
+### 
+
+Revoked accounts
+
+When an external account has revoked, Platforms will receive the following webhook:
+
+TypeScript
+
+```
+{
+  "request_id": "0f68333e-2114-469d-b505-c850d776e063",
+  "participant_code": "CUST01",
+  "platform_code": "TES123",
+  "account_nickname": "",
+  "status": "revoked",
+  "external_account_id": "0f68333e-2114-469d-b505-c850d776e063",
+  "created_at": "1975-08-19T23:15:30.000Z"
+}
+```
+
+Platforms can re-verify end customers bank account details through Plaid and use the returned `plaid_processor_token` to [create an external account via API](https://docs.zerohash.com/reference/post_payments-external-accounts).
+
+### 
+
+Close an account
+
+Platforms can close linked external accounts via API with REST endpoint [POST payments/external\_accounts/{external\_account\_id}/close](https://docs.zerohash.com/reference/post_payments-external-accounts-external-account-id-close)
+
+Updated 4 months ago
+
+---
+
+### What’s Next
+
+- [Managing linked accounts API Workflow](https://docs.zerohash.com/docs/managing-linked-accounts-api-workflow)
+
+Did this page help you?
+
+Yes
+
+No
+
+Copy Page

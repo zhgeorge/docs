@@ -1,0 +1,116 @@
+---
+title: "Tax Data Collection via the Zero Hash KYC-as-a-Service SDK"
+sidebarTitle: "KYC Tax Collection"
+description: "Learn how Zero Hash collects W-9 and W-8BEN tax certification data within the KYC SDK onboarding flow for new and existing participants."
+---
+
+For platforms using Zero Hash's KYC-as-a-Service SDK, tax data collection is built directly into the onboarding experience. When you embed the Zero Hash KYC SDK, you do not need to build separate UI screens for W-9 or W-8BEN collection — Zero Hash handles it end-to-end, including the IRS-required certification language and electronic signature capture. This page describes exactly what the participant sees and what data is collected during the tax classification steps of the SDK flow.
+
+<Note>
+  Tax data collection within the SDK applies to **new participants** going through the Zero Hash KYC SDK. For participants who were onboarded before the tax data collection screens were introduced, Zero Hash provides a dedicated URL you can share with existing customers to complete their tax profile.
+</Note>
+
+## New Users: No Action Required from Your Platform
+
+For platforms using Zero Hash KYC services via the SDK, **no code changes are required** on your end to support tax data collection for new enrollments. The SDK automatically presents the required tax classification screens as part of the existing onboarding journey.
+
+## Tax Classification Screen
+
+Zero Hash introduces a **Tax Classification** selection on the existing *Residence and citizenship* screen. Participants choose the status that best describes them:
+
+- **( ) I am a U.S. Person** — U.S. citizen, resident alien, or other U.S. person. *(Form W-9)*
+- **( ) I am a Foreign Individual** — Non-U.S. person. *(Form W-8BEN)*
+
+Based on their selection, participants are routed to the corresponding tax certification flow.
+
+---
+
+## Option 1 — U.S. Tax Certification (W-9)
+
+Participants who identify as a U.S. Person proceed to a dedicated W-9 screen that collects the following information:
+
+### Taxpayer Identification
+
+- **Full Legal Name** — Pre-populated from the onboarding data already collected
+- **U.S. Taxpayer ID (SSN/ITIN)** — The participant's 9-digit tax identification number (masked in the UI)
+
+### Exemptions (Optional)
+
+- **Exempt Payee Code** — Dropdown to select codes 1–13 (most retail participants will not have an exemption)
+- **Exemption from FATCA Reporting Code** — Dropdown to select codes A–M (for participants exempt from FATCA reporting)
+
+### Backup Withholding Indicator
+
+- Checkbox: *"I am subject to backup withholding."* Participants check this only if they have been notified by the IRS that they are subject to backup withholding due to unreported interest or dividends.
+
+### W-9 Certification and Electronic Signature
+
+After completing the fields above, the participant reviews and signs the W-9 certification. Zero Hash displays the required IRS certification language verbatim:
+
+> *"Under penalties of perjury, I certify that:*
+> *1. The number shown on this form is my correct taxpayer identification number.*
+> *2. I am not subject to backup withholding (unless the box on the previous screen was checked).*
+> *3. I am a U.S. citizen or other U.S. person (including a U.S. resident alien).*
+> *4. The FATCA code(s) entered on this form (if any) indicating that I am exempt from FATCA reporting is correct.*
+>
+> *The Internal Revenue Service does not require your consent to any provision of this document other than the certifications required to avoid backup withholding."*
+
+The participant signs by:
+- Typing their full legal name in the signature field
+- Checking *"I agree to sign this document electronically"*
+- Confirming the displayed date and time of signature
+
+---
+
+## Option 2 — Foreign Tax Certification (W-8BEN)
+
+Participants who identify as a Foreign Individual proceed to the W-8BEN flow, which collects the following:
+
+### Identification of Beneficial Owner
+
+- **Full Legal Name** — Pre-populated
+- **Date of Birth** — Pre-populated (MM-DD-YYYY)
+- **U.S. Taxpayer ID (SSN or ITIN)** — Pre-populated if available
+
+### Foreign Tax Identifying Number
+
+- **Foreign Tax Identifying Number (FTIN)** — The participant's tax identification number issued by their country of residence
+- Alternatively: *"I confirm that an FTIN is not legally required"* — For participants in jurisdictions that do not issue tax IDs to residents
+
+### Claim of Tax Treaty Benefits
+
+The participant can optionally claim treaty benefits:
+
+- Checkbox: *"I certify that the beneficial owner is a resident of [pre-populated country] within the meaning of the income tax treaty between the United States and that country."*
+- If claiming treaty benefits: enter the applicable Article/Paragraph number and the reduced withholding rate percentage, along with the income type from a dropdown.
+
+### W-8BEN Certification and Electronic Signature
+
+Zero Hash displays the required W-8BEN certification language:
+
+> *"Under penalties of perjury, I declare that:*
+> *1. I am the individual that is the beneficial owner of all income or proceeds.*
+> *2. The person named is not a U.S. person.*
+> *3. This income is not effectively connected with a U.S. trade or business and is not subject to withholding taxes under section 1446(f).*
+> *4. I am an exempt foreign person for broker and barter transactions.*
+> *5. I will submit a new form within 30 days if any certification becomes incorrect.*
+>
+> *The Internal Revenue Service does not require your consent to any provisions of this document other than the certifications required to establish your status as a non-U.S. Person and if applicable, establish your FATCA status and obtain a reduced rate of withholding."*
+
+The participant signs by:
+- Checking *"I certify that I have the capacity to sign for the person identified"*
+- Typing their full legal name
+- Checking *"I agree to sign this document electronically"*
+- Confirming the displayed date and time of signature
+
+---
+
+## Existing Users
+
+For participants who were onboarded before the tax data collection screens were introduced, Zero Hash provides a dedicated URL that you can distribute to your existing customers. This URL opens directly to the relevant tax certification screen in the SDK, where the customer can provide their W-9 or W-8BEN data without re-completing the full onboarding flow.
+
+Contact your Zero Hash representative to obtain this URL for your platform.
+
+<Tip>
+  If you are managing tax data collection entirely via API (rather than the KYC SDK), see the [W-9 Implementation Guide](/docs/w-9-implementation-guide) for the full set of API fields and submission examples.
+</Tip>

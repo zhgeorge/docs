@@ -1,0 +1,184 @@
+---
+title: "Sanction Screening for End Users on Zero Hash"
+sidebarTitle: "Sanction Screening"
+description: "All end users must pass sanction screening before transacting. Learn Zero Hash's two implementation types, automated monitoring, and how matches are handled."
+---
+
+Every end user on the Zero Hash platform — whether they are a Customer, Beneficiary, or Sender — must pass a sanctions check before they can transact. Zero Hash also uses automated tooling to continuously monitor all end users after onboarding, so a clean initial screen does not exempt a user from future review. This page explains the two implementation models available, the status lifecycle for each, and what happens when a potential sanctions match is found.
+
+## Two Implementation Types
+
+Zero Hash supports two ways to handle sanctions screening, and the model you use depends on whether Zero Hash's compliance team permits your platform to run its own sanctions program.
+
+<CardGroup cols={2}>
+  <Card title="Platform Performs" icon="building-shield">
+    Your platform runs sanctions checks using your own approved tools and attests to the result when submitting each end user to Zero Hash.
+  </Card>
+  <Card title="Zero Hash Performs" icon="shield-halved">
+    Zero Hash runs real-time sanctions checks automatically when you submit or update a Beneficiary. This model applies primarily to the Payouts and Remittance products.
+  </Card>
+</CardGroup>
+
+---
+
+## Implementation Type 1: Platform Performs
+
+If the Zero Hash compliance team permits your platform to use its own sanctions program and tools, you must include two fields with every end user submission:
+
+- `sanction_screening`: must be `"pass"`
+- `sanction_screening_timestamp`: the Unix timestamp (in milliseconds) at which the check was performed
+
+**Example [POST /participants/customers/new](https://docs.zerohash.com/reference/post_participants-customers-new) request:**
+
+```json
+{
+  "first_name": "John",
+  "last_name": "Smith",
+  "email": "test@example.com",
+  "address_one": "123 Main St.",
+  "address_two": "Suite 1000",
+  "city": "Chicago",
+  "zip": "12345",
+  "date_of_birth": "1985-09-02",
+  "id_number_type": "us_passport",
+  "id_number": "123456789",
+  "signed_timestamp": 1603378501286,
+  "tax_id": "000-00-0000",
+  "kyc": "pass",
+  "kyc_timestamp": 1603378501286,
+  "onboarded_location": "US-FL",
+  "sanction_screening": "pass",
+  "sanction_screening_timestamp": 1603378501286,
+  "idv": "pass",
+  "liveness_check": "pass",
+  "phone_number": "15557778888",
+  "signed_agreements": [
+    {
+      "type": "user_agreement",
+      "region": "us",
+      "signed_timestamp": 1603378501286
+    }
+  ],
+  "jurisdiction_code": "US-IL",
+  "citizenship_code": "US"
+}
+```
+
+<Warning>
+  You must attest to a passing sanctions check for **every** end user submission. Zero Hash will reject submissions that omit `sanction_screening` or `sanction_screening_timestamp` when your platform is configured for the self-perform model.
+</Warning>
+
+---
+
+## Implementation Type 2: Zero Hash Performs
+
+When your platform is not permitted to run its own sanctions program, Zero Hash offers in-house sanctions screening. This model is primarily used for products that include the concept of a **Beneficiary** — specifically the **Payouts** and **Remittance** products.
+
+### Submit Beneficiary — Real-Time Sanctions Screen
+
+Each time you submit a Beneficiary for the first time via [POST /participants/beneficiaries/new](https://docs.zerohash.com/reference/post_participants-beneficiaries-new), Zero Hash automatically and immediately runs a sanctions check. The participant status reflects the result:
+
+| Action | Status |
+|--------|--------|
+| You submit a Beneficiary | `submitted` |
+| Beneficiary passes the sanctions check | `approved` |
+| Beneficiary is flagged as a potential match, pending manual review | `pending_approval` |
+| Beneficiary is confirmed as a sanctions match after manual review | `rejected` |
+
+<Note>
+  If a Beneficiary enters `pending_approval`, the Zero Hash compliance department is automatically alerted. Manual review takes up to 24 hours. Once the review is complete, Zero Hash will contact your platform — typically via email — with the outcome. The Beneficiary will move to either `approved` or `rejected`.
+</Note>
+
+### Update Beneficiary — Real-Time Sanctions Re-Screen
+
+Each time you update a Beneficiary via [PATCH /participants/beneficiaries/{participant_code}](https://docs.zerohash.com/reference/patch_participants-beneficiaries-participant-code), Zero Hash automatically re-runs the sanctions check:
+
+| Action | Status |
+|--------|--------|
+| You update a Beneficiary | `approved` or `pending_approval` |
+| The update does not resolve the flag | Remains `pending_approval` |
+| Update allows the Beneficiary to clear the sanctions check | `approved` |
+| After manual review, Beneficiary is confirmed as a match | `rejected` |
+
+<Note>
+  Zero Hash only re-runs the sanctions check if the Beneficiary is in `approved` or `pending_approval` status. A `rejected` status is terminal — the Beneficiary will not be re-screened and their status cannot change. Treat `rejected` as a permanent state.
+</Note>
+
+### Continuous Monitoring
+
+Beyond the real-time checks at submission and update, Zero Hash uses automated tooling to **continuously monitor** all end users' sanctions standing. If a previously-approved Beneficiary is flagged during continuous monitoring, their status progresses through the following lifecycle:
+
+```
+approved → locked → pending_disabled → disabled → closed
+```
+
+You will receive webhook notifications at each status transition. Build your integration to handle this progression gracefully — for example, by halting any in-flight payouts for a Beneficiary that moves to `locked`.
+
+---
+
+## Resolving a `pending_approval` Status
+
+If a Beneficiary enters `pending_approval`, the most effective steps you can take to help resolve it are:
+
+<Steps>
+  <Step title="Add or update date of birth">
+    The most effective field for disambiguating potential sanctions matches. Update via [PATCH /participants/beneficiaries/{participant_code}](https://docs.zerohash.com/reference/patch_participants-beneficiaries-participant-code):
+    ```json
+    {
+      "participant_code": "BENEF1",
+      "date_of_birth": "1985-09-02"
+    }
+    ```
+  </Step>
+  <Step title="Update address fields">
+    Providing `address_one` and `address_two` helps narrow the identity match, though it is less effective than date of birth:
+    ```json
+    {
+      "participant_code": "BENEF1",
+      "address_1": "1 seville st",
+      "address_2": "2403"
+    }
+    ```
+  </Step>
+  <Step title="Provide additional last name components">
+    In regions where compound last names are common (such as Mexico), submitting a legally accurate full last name can reduce false positives:
+    ```json
+    {
+      "participant_code": "BENEF1",
+      "last_name": "Lopez Martinez"
+    }
+    ```
+  </Step>
+</Steps>
+
+After each update, Zero Hash re-runs the sanctions check automatically. The compliance team will review and reach out to your platform with the result within 24 hours.
+
+---
+
+## Remittance Beneficiary: Required Fields
+
+For Remittance-specific Beneficiaries, Zero Hash requires the following data points:
+
+<ParamField body="first_name" type="string" required>
+  Beneficiary's legal first name.
+</ParamField>
+
+<ParamField body="last_name" type="string" required>
+  Beneficiary's legal last name. In jurisdictions with compound surnames, include the full legal last name.
+</ParamField>
+
+<ParamField body="jurisdiction_code" type="string" required>
+  ISO 3166-2 jurisdiction code for the Beneficiary's location (e.g., `MX-CMX`).
+</ParamField>
+
+<ParamField body="address_one" type="string">
+  Street address. Optional in most jurisdictions, but **required in high-risk jurisdictions**.
+</ParamField>
+
+<ParamField body="address_two" type="string">
+  Secondary address line. Optional.
+</ParamField>
+
+<ParamField body="date_of_birth" type="string">
+  ISO 8601 date (e.g., `1985-09-02`). Optional but **strongly recommended** — providing this field significantly reduces the likelihood of a `pending_approval` status.
+</ParamField>

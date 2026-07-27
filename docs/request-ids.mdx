@@ -1,0 +1,146 @@
+---
+title: "Using X-REQUEST-ID for Zero Hash Request Traceability"
+sidebarTitle: "Request IDs"
+description: "How to generate and send the X-REQUEST-ID header for end-to-end request traceability, safe retries, duplicate prevention, and faster support resolution."
+---
+
+The `X-REQUEST-ID` header is a client-generated unique identifier that you attach to every API request. Zero Hash echoes this identifier in the response header and uses it to trace your request across its internal distributed systems. Including `X-REQUEST-ID` is not strictly required for most endpoints, but it is strongly recommended — and for certain endpoints, it directly affects retry safety and duplicate prevention.
+
+## Why You Should Always Send X-REQUEST-ID
+
+<CardGroup cols={3}>
+  <Card title="Traceability" icon="magnifying-glass">
+    Every request you tag with a unique ID can be traced through Zero Hash's internal services, logs, and infrastructure. When something goes wrong, the ID is the thread that connects all the dots.
+  </Card>
+  <Card title="Debugging" icon="bug">
+    When you contact Zero Hash support with an issue, providing an `X-REQUEST-ID` allows the support team to locate the specific request immediately — no need to search by timestamp or payload content.
+  </Card>
+  <Card title="Idempotency" icon="rotate">
+    For retries, reusing the same `X-REQUEST-ID` helps Zero Hash identify that a request is a retry of a previous attempt, preventing unintended duplicate processing on supported endpoints.
+  </Card>
+</CardGroup>
+
+## How to Generate a Request ID
+
+Use a **version 4 UUID** (randomly generated) as your request ID. Most languages have a built-in or widely available library for this.
+
+- Example: `4b5ef19e-4ad5-4750-8bf6-3e5238b976ec`
+
+Generate a new UUID for each distinct logical operation. When retrying a failed request, reuse the same ID from the original attempt.
+
+## Adding the Header to Your Requests
+
+Include the `X-REQUEST-ID` header in every API call. The header name is case-insensitive.
+
+```
+X-REQUEST-ID: 4b5ef19e-4ad5-4750-8bf6-3e5238b976ec
+```
+
+<CodeGroup>
+  ```bash curl
+  curl -X POST https://api.cert.zerohash.com/participants/customers/new \
+    -H "X-REQUEST-ID: 4b5ef19e-4ad5-4750-8bf6-3e5238b976ec" \
+    -H "X-SCX-API-KEY: your_api_key" \
+    -H "X-SCX-SIGNED: your_signature" \
+    -H "X-SCX-TIMESTAMP: your_timestamp" \
+    -H "X-SCX-PASSPHRASE: your_passphrase" \
+    -H "Accept: application/json" \
+    -H "Content-Type: application/json" \
+    -d '{ ... }'
+  ```
+
+  ```javascript Node.js
+  const axios = require('axios');
+  const { v4: uuidv4 } = require('uuid');
+
+  // Generate a unique request ID — store this for retry use
+  const requestId = uuidv4();
+
+  axios.post(
+    'https://api.cert.zerohash.com/participants/customers/new',
+    data,
+    {
+      headers: {
+        'X-REQUEST-ID': requestId,
+        'X-SCX-API-KEY': apiKey,
+        'X-SCX-SIGNED': signature,
+        'X-SCX-TIMESTAMP': timestamp,
+        'X-SCX-PASSPHRASE': passphrase,
+        'Content-Type': 'application/json',
+      }
+    }
+  );
+  ```
+
+  ```python Python
+  import uuid
+  import requests
+
+  # Generate a unique request ID — store this for retry use
+  request_id = str(uuid.uuid4())
+
+  headers = {
+      "X-REQUEST-ID": request_id,
+      "X-SCX-API-KEY": api_key,
+      "X-SCX-SIGNED": signature,
+      "X-SCX-TIMESTAMP": timestamp,
+      "X-SCX-PASSPHRASE": passphrase,
+      "Content-Type": "application/json",
+  }
+
+  response = requests.post(
+      "https://api.cert.zerohash.com/participants/customers/new",
+      headers=headers,
+      json=payload,
+  )
+  ```
+</CodeGroup>
+
+## Server Behavior
+
+- Zero Hash echoes your `X-REQUEST-ID` back in the response headers so you can confirm it was received.
+- If you omit the header, the server may automatically assign a request ID, but you will not have it available for logging or support requests.
+
+<Note>
+  `X-REQUEST-ID` is a request tracking mechanism only. It is **not** used for authentication and does not replace any of the four authentication headers (`X-SCX-API-KEY`, `X-SCX-SIGNED`, `X-SCX-TIMESTAMP`, `X-SCX-PASSPHRASE`).
+</Note>
+
+## Best Practices
+
+- **Always log the request ID** on your side before sending the request. If the call fails or hangs, you already have the ID you need for debugging.
+- **Generate a new ID for each new operation.** Do not reuse IDs across unrelated requests.
+- **Reuse the same ID when retrying.** If a request fails with a transient error and you retry, send the exact same `X-REQUEST-ID` as the original attempt.
+- **Include the ID in your support requests.** When contacting Zero Hash support, always provide the `X-REQUEST-ID` of the problematic request. This allows the team to locate the exact request in internal systems and resolve the issue faster.
+
+## Idempotency on Specific Endpoints
+
+For certain endpoints, `X-REQUEST-ID` interacts directly with Zero Hash's duplicate-prevention logic.
+
+### Transfers — `client_transfer_id`
+
+For `POST /transfers`, the `client_transfer_id` field in the request body serves as the idempotency key, independent of the `X-REQUEST-ID` header.
+
+<Warning>
+  `client_transfer_id` must be **unique across your Platform for a rolling 72-hour window**. Zero Hash enforces this to prevent duplicate transfers. If you submit a `POST /transfers` request with a `client_transfer_id` that already belongs to a successfully created transfer within that window, the API rejects the request with:
+
+  ```json
+  {"error": true, "message": "Request does not contain an unique client_transfer_id"}
+  ```
+</Warning>
+
+**Retry logic for `POST /transfers`:**
+
+Because the transfer may have been created on the Zero Hash side even if your request timed out, you must not automatically retry with the same `client_transfer_id` without first checking.
+
+<Steps>
+  <Step title="Initial failure or timeout">
+    Do not immediately retry `POST /transfers` with the same `client_transfer_id`.
+  </Step>
+  <Step title="Query the transfer status">
+    Call `GET /transfers?client_transfer_id=<your_client_transfer_id>` to check whether the transfer was created on the Zero Hash side.
+  </Step>
+  <Step title="Decide whether to retry">
+    - **Transfer exists and succeeded:** The original request worked. No further action needed.
+    - **No transfer found:** The request truly failed or was never received. You may retry `POST /transfers` with the original `client_transfer_id`.
+  </Step>
+</Steps>

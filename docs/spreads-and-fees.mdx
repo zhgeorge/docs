@@ -1,0 +1,290 @@
+---
+title: "Spreads and Fees: Commission Configuration Reference"
+sidebarTitle: "Spreads & Fees"
+description: "Configure spread-based fees, custom spreads, notional or bps fees, tranche-based tiers, and CLOB commission structures across Zero Hash execution models."
+---
+
+Zero Hash supports a flexible range of commission configurations across both the RFQ service and the CLOB, so you can align your fee structure with your product model and customer segments. Fees are embedded in the quoted price on RFQ — customers see an all-in execution price — and applied via FIX tags on CLOB orders.
+
+<Note>
+  All commission configurations are set up by the Zero Hash team during your integration process and must be confirmed before going live. Contact [support@zerohash.com](mailto:support@zerohash.com) to configure your fee structure.
+</Note>
+
+## RFQ Fees
+
+On the RFQ service, commissions are applied by adjusting the quoted bid or ask price using a basis points (bps) spread. This means customers see a single all-in price with fees already included — no separate line-item fee is charged at settlement.
+
+### Spread-Based Fees
+
+- Spreads are applied per trading instrument.
+- You can configure a default spread for each instrument at the platform level.
+- You can also pass a per-request `spread` value to override the default for a specific quote.
+
+The RFQ response includes the following fee-related fields so you can verify and display the breakdown:
+
+| Response Field | Description |
+|---|---|
+| `spread_bps` | The spread applied to this quote in basis points |
+| `spread_notional` | The notional value of the spread fee in the `quoted_currency` |
+| `asset_cost_notional` | The cost of the underlying asset, excluding the spread fee |
+| `total_notional` | The total cost including all fees |
+
+### Custom Spread Per Request
+
+You can pass a custom `spread` value (in basis points) on any individual RFQ request by including it in the `POST /liquidity/rfq` payload. This lets you adjust commissions dynamically — for example, to run a promotion, differentiate by customer segment, or respond to market conditions.
+
+<Warning>
+  Zero Hash validates submitted `spread` values against a maximum threshold based on regulatory requirements. In the United States, the following limits apply:
+  - **New York (NY):** 750 bps (7.5%) maximum — the combination of spread and all fees (excluding network fee) as a percentage of `total_notional` must not exceed this threshold.
+  - **All other US states:** No limit currently set.
+
+  Quotes that exceed the threshold for the customer's jurisdiction will be rejected.
+</Warning>
+
+#### Sample Request — Custom Spread
+
+```json
+{
+  "side": "buy",
+  "participant_code": "PLAT01",
+  "account_label": "general",
+  "underlying": "BTC",
+  "quoted_currency": "USD",
+  "quantity": 100,
+  "spread": "50",
+  "quote_expiry": "5s"
+}
+```
+
+---
+
+## Fees on Liquidity Requests
+
+Zero Hash lets you include explicit fee objects in RFQ payloads in addition to or instead of a spread. Fees are defined as either a notional amount or a basis points value applied to the quote notional.
+
+<Tabs>
+  <Tab title="Notional Fee">
+    Include a fee object with `"type": "notional"` and set `"amount"` to the dollar value you want to charge. For example, `"amount": "0.05"` charges $0.05 on the trade.
+
+    If no `type` is provided, `notional` is applied as the default.
+
+    #### Sample Request
+
+    ```json
+    {
+      "side": "buy",
+      "underlying": "BTC",
+      "quoted_currency": "USD",
+      "total": "100",
+      "participant_code": "PLAT01",
+      "fees": [
+        {
+          "name": "test",
+          "amount": "0.05",
+          "type": "notional"
+        }
+      ]
+    }
+    ```
+
+    #### Sample Response
+
+    ```json
+    {
+      "message": {
+        "request_id": "d4334ac4-3ec2-4ba4-9c7e-1c46ee2a3173",
+        "participant_code": "PLAT01",
+        "quoted_currency": "USD",
+        "side": "buy",
+        "quantity": "0.00085099",
+        "price": "117451.4389123256442496",
+        "quote_id": "5e5b6f4e-eedc-45c6-a79f-0c2f8d33992f",
+        "expire_ts": 1755897279421,
+        "account_group": "00SCXM",
+        "account_label": "general",
+        "total_notional": "100",
+        "underlying": "BTC",
+        "asset_cost_notional": "99.95",
+        "spread_notional": "0",
+        "spread_bps": "0",
+        "fees": [
+          {
+            "name": "test",
+            "amount": "0.05"
+          }
+        ]
+      }
+    }
+    ```
+  </Tab>
+  <Tab title="Basis Points Fee">
+    Include a fee object with `"type": "bps"` and set `"amount"` to the bps value. For example, `"amount": "10"` charges 10 bps on the trade notional.
+
+    #### Sample Request
+
+    ```json
+    {
+      "side": "buy",
+      "underlying": "BTC",
+      "quoted_currency": "USD",
+      "total": "100",
+      "participant_code": "PLAT01",
+      "fees": [
+        {
+          "name": "test",
+          "type": "bps",
+          "amount": "10"
+        }
+      ]
+    }
+    ```
+
+    #### Sample Response
+
+    ```json
+    {
+      "message": {
+        "request_id": "d4334ac4-3ec2-4ba4-9c7e-1c46ee2a3173",
+        "participant_code": "PLAT01",
+        "quoted_currency": "USD",
+        "side": "buy",
+        "quantity": "0.00085099",
+        "price": "117451.4389123256442496",
+        "quote_id": "5e5b6f4e-eedc-45c6-a79f-0c2f8d33992f",
+        "expire_ts": 1755897279421,
+        "account_group": "00SCXM",
+        "account_label": "general",
+        "total_notional": "100",
+        "underlying": "BTC",
+        "asset_cost_notional": "99.90",
+        "spread_notional": "0",
+        "spread_bps": "0",
+        "fees": [
+          {
+            "name": "test",
+            "amount": "0.10"
+          }
+        ]
+      }
+    }
+    ```
+  </Tab>
+</Tabs>
+
+---
+
+## Tranche-Based Fees
+
+Zero Hash supports tranche-based fee configurations, where different fee rules apply to different notional ranges. Tranche fees can be calculated using two methods:
+
+- **Tier:** The trade notional falls within a single tranche, and only that tranche's fee applies.
+- **Progressive:** Each tranche contributes a fee for its portion of the trade notional, and the fees are summed.
+
+### Sample Tranche Configuration
+
+| Tranche Start | Tranche End | Fee | Fee Type |
+|---|---|---|---|
+| $0.01 | $10.00 | 0.01 | notional |
+| $10.01 | $20.00 | 25 | bps |
+| $20.01 | $50.00 | 0.05 | notional |
+| $50.01 | $100.00 | 15 | bps |
+| $100.01 | System Limit | 0.15 | notional |
+
+### Tier Calculation Example
+
+For a $50 trade notional, the tier calculation finds the matching tranche ($20.01–$50.00) and applies its fee of $0.05.
+
+- `total_notional`: `50`
+- `asset_cost_notional`: `49.95`
+- Fee applied: `{ "name": "tranche", "amount": "0.05" }`
+
+### Progressive Calculation Example
+
+For a $50 trade notional, the progressive calculation applies each tranche's fee to its respective interval and sums the results:
+
+- Tranche 1 ($0.01–$10.00): notional fee = $0.01
+- Tranche 2 ($10.01–$20.00): bps fee = $0.02
+- Tranche 3 ($20.01–$50.00): notional fee = $0.05
+
+**Total fee: $0.08**
+
+- `total_notional`: `50`
+- `asset_cost_notional`: `49.92`
+- Fee applied: `{ "name": "tranche", "amount": "0.08" }`
+
+### Adding Fees on Top of Tranche Fees
+
+If you include an additional fee object in the RFQ payload alongside a configured tranche, both fees appear in the response. For example, if the tranche fee is $0.08 and you submit a custom fee of $0.02, the response includes both:
+
+```json
+"fees": [
+  { "name": "tranche", "amount": "0.08" },
+  { "name": "custom", "amount": "0.02" }
+]
+```
+
+### Bypassing Tranche Fees
+
+To waive the tranche fee for a specific quote, pass `"name": "tranche"` and `"amount": "0"` in the fees array. Note: if tranche fees are not configured on your platform and you pass this combination, the quote will be rejected.
+
+---
+
+## CLOB Commission Structures
+
+On the Central Limit Order Book, commissions are passed per order via FIX tags. Use FIX tag `<13>` for commission type and tag `<12>` for the commission value.
+
+Zero Hash supports the following CLOB commission types:
+
+<CardGroup cols={2}>
+  <Card title="Standard Basis Points" icon="percent">
+    A percentage fee applied to the notional value of the trade. You can configure different bps rates for makers and takers.
+  </Card>
+  <Card title="Flat Fee" icon="dollar-sign">
+    A fixed fee charged per unit of quantity traded. For example, a flat fee of $20 USD per 1 ETH traded.
+  </Card>
+  <Card title="Minimum Notional" icon="arrow-down-to-line">
+    Sets a floor on the commission collected. If the standard bps fee is smaller than this minimum, the minimum notional amount is charged instead.
+  </Card>
+  <Card title="Maximum Notional" icon="arrow-up-to-line">
+    Caps the commission collected at a defined notional value, regardless of trade size.
+  </Card>
+</CardGroup>
+
+<Info>
+  The **Maximum Percentage** guardrail prevents commissions on small notional trades from becoming disproportionately large as a percentage of the trade value. This helps protect your customers from excessive fees on small orders.
+</Info>
+
+## CLOB Commission Tiering
+
+Zero Hash supports commission tiering on the CLOB, letting you apply different fee models to different types of customers — for example, institutional accounts vs. retail users.
+
+Tiers are assigned at the account level and control how commissions are applied and how market data is delivered.
+
+| Tier | Typical Use |
+|---|---|
+| `gold` | Institutional or high-volume customers. Typically charged a transparent, separate fee (e.g., 10 bps shown alongside the execution price). |
+| `silver` | High-volume customers. |
+| `bronze` (default) | Retail or casual traders. An empty tier array `[]` defaults to `bronze`. |
+
+Assign tiers when creating or updating a CLOB account:
+
+```json
+{
+  "participant_code": "CUST01",
+  "prefunded": true,
+  "account_label": "custom-account-label-1",
+  "account_tier": ["gold"]
+}
+```
+
+Use `POST /clob/accounts` to create an account with a tier, or `PATCH /clob/accounts` to update an existing account's tier.
+
+## Commission Corrections
+
+Zero Hash supports post-trade commission corrections. If a commission needs to be adjusted after execution, submit the correction via SFTP file drop. Zero Hash will:
+
+- Update the trade record.
+- Adjust the corresponding ledger movements.
+- Reflect net settlement changes as needed.
+
+Corrections can increase or decrease the commission amount and are fully validated before being applied.

@@ -1,0 +1,168 @@
+---
+title: "Settlement Reconciliation Guide for Zero Hash Platforms"
+sidebarTitle: "Reconciliation"
+description: "Match trade-level data to settlement outcomes, identify breaks using API queries and portal reports, and maintain accurate accounting records."
+---
+
+Settlement reconciliation is the process of verifying that your internal trade records match the settlement outcomes Zero Hash has calculated and executed. This guide walks your technical and finance teams through querying trade history via the API, downloading settlement reports from the Client Portal, and interpreting the key fields that determine whether your books are in balance. Catching breaks early — before the 12:00 PM EST settlement deadline — prevents NDO accrual and keeps your operations running cleanly.
+
+## Prerequisites
+
+Before you begin reconciliation, confirm these two things are in place.
+
+<Steps>
+  <Step title="Float Account Funded">
+    Your float account must be funded before trading begins. Wire funds to Zero Hash with the memo `{platform_code}-FLOAT`. The float balance underpins all daily settlement activity.
+  </Step>
+  <Step title="Trading Session Cut-Off Confirmed">
+    Know your cut-off time. The default is **12:00:00 AM EST to 11:59:59 PM EST, Monday through Friday**. Your solutions engineer will confirm your specific configuration if it differs.
+  </Step>
+</Steps>
+
+## Step 1: Retrieve Trades for the Session
+
+Query `GET /trades` to pull all trades that occurred within the settlement window. Apply timestamp filters to scope the query precisely to the trading session you are reconciling.
+
+```http
+GET /trades?platform_code=00SCXM
+  &transaction_timestamp[gte]=<session_start>
+  &transaction_timestamp[lt]=<session_end>
+```
+
+<Tabs>
+  <Tab title="Tuesday – Friday">
+    Set the lookback to **24 hours** before your session cut-off:
+
+    ```json
+    {
+      "platform_code": "00SCXM",
+      "transaction_timestamp[gte]": "<yesterday_cutoff_ms>",
+      "transaction_timestamp[lt]": "<today_cutoff_ms>"
+    }
+    ```
+  </Tab>
+  <Tab title="Monday (Weekend Coverage)">
+    Set the lookback to **72 hours** to capture Friday, Saturday, and Sunday activity:
+
+    ```json
+    {
+      "platform_code": "00SCXM",
+      "transaction_timestamp[gte]": "<friday_cutoff_ms>",
+      "transaction_timestamp[lt]": "<monday_cutoff_ms>"
+    }
+    ```
+  </Tab>
+</Tabs>
+
+## Step 2: Calculate the Net Settlement Amount
+
+Once you have the full trade list for the session, apply this calculation to derive the net USD obligation:
+
+**Buy amount** = Sum of (`total_notional` + `commission`) for all trades where your customer is on the `buy` side
+
+**Sell amount** = Sum of (`total_notional` − `commission`) for all trades where your customer is on the `sell` side
+
+**Net amount** = Buy amount − Sell amount
+
+| Net Result | Action Required |
+|---|---|
+| Positive (net buy) | Your platform wires Zero Hash the net amount by 12:00 PM EST |
+| Negative (net sell) | Zero Hash wires your platform the net amount by 12:00 PM EST |
+
+## Step 3: Cross-Reference Against the NDO
+
+For an independent check, query the Net Delivery Obligations endpoint and compare the returned amount against your calculated figure.
+
+```http
+GET /accounts/net_delivery_obligations
+```
+
+Filter the response where:
+- `account_group` = your platform code
+- `account_label` = `general`
+- `asset` = `USD`
+
+If the NDO amount matches your calculated net, your reconciliation is clean. A discrepancy means there is a break that requires investigation before the wire deadline.
+
+<Note>
+  If no NDO record appears in the response, you have no outstanding payable. This is expected on days when Zero Hash owes your platform a net sell wire.
+</Note>
+
+## Step 4: Download Settlement Reports from the Client Portal
+
+For finance teams who prefer CSV-based reconciliation, the Zero Hash Client Portal offers downloadable reports at [portal.zerohash.com](https://portal.zerohash.com).
+
+<Steps>
+  <Step title="Navigate to Reports">
+    Log in to the portal and select the **Reports** section from the main navigation.
+  </Step>
+  <Step title="Select the Trades Report">
+    Choose the **Trades** report type to view all trading activity for your platform.
+  </Step>
+  <Step title="Choose Scope">
+    Select **Platform** to include your participant account and all customer accounts, or **Participant** for your platform account only.
+  </Step>
+  <Step title="Set Date Range">
+    Enter the start and end dates corresponding to the settlement session you are reconciling.
+  </Step>
+  <Step title="Generate and Download">
+    Click **Generate Report**, then click **Download** to save the CSV to your machine.
+  </Step>
+</Steps>
+
+## Key Fields for Reconciliation
+
+The following fields are the most important for matching your internal records to Zero Hash's settlement data.
+
+<ResponseField name="trade_id" type="string">
+  Zero Hash's unique identifier for the trade. This is your primary key for matching trades between systems and looking up individual trades via `GET /trades/{trade_id}`.
+</ResponseField>
+
+<ResponseField name="client_trade_id" type="string">
+  Your platform's own trade reference, submitted when the trade was created via `POST /trades`. Use this to cross-reference trades against your internal order management system.
+</ResponseField>
+
+<ResponseField name="trade_state" type="string">
+  The lifecycle state of the trade. `terminated` confirms the trade has been fully settled. Any other state indicates the trade is still in progress.
+</ResponseField>
+
+<ResponseField name="settlement_state" type="string">
+  Per-party settlement status within the trade. `settled` confirms that specific party's obligation has been met. Monitor for `obligations_outstanding` states that may indicate a break.
+</ResponseField>
+
+<ResponseField name="total_notional" type="string">
+  The USD notional value of the trade. This is the base figure used in your net settlement calculation.
+</ResponseField>
+
+<ResponseField name="commission" type="string">
+  The commission amount charged on the trade in `commission_asset`. Add to `total_notional` for buy-side positions; subtract for sell-side positions.
+</ResponseField>
+
+<ResponseField name="session_id" type="string">
+  The trading session identifier. Use this field to group and reconcile all trades belonging to the same settlement cycle.
+</ResponseField>
+
+<ResponseField name="settled_timestamp" type="integer">
+  Unix millisecond timestamp of when the trade settled. Use this to confirm trades settled within the expected window.
+</ResponseField>
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Reconcile Before the Wire Deadline" icon="clock">
+    Run your reconciliation query and compare it against the NDO before 11:00 AM EST to give yourself an hour of buffer before the 12:00 PM EST wire deadline.
+  </Card>
+  <Card title="Use the Settlement Email as a Check" icon="envelope">
+    Cross-reference your calculated net against Zero Hash's daily settlement email to your platform admins. A mismatch signals a recon break that needs investigation.
+  </Card>
+  <Card title="Handle Weekend Lookback Correctly" icon="calendar">
+    On Mondays, always extend your `GET /trades` query to 72 hours. Missing the Friday–Sunday window is the most common cause of Monday reconciliation breaks.
+  </Card>
+  <Card title="Store client_trade_id at Creation" icon="database">
+    Always persist the `client_trade_id` when submitting trades. This field is your bridge between Zero Hash records and your internal order management system and is essential for dispute resolution.
+  </Card>
+</CardGroup>
+
+<Warning>
+  If your calculated net and the Zero Hash NDO do not match, do not submit the wire until you identify the cause of the discrepancy. Contact your Zero Hash solutions engineer for support. Sending an incorrect wire amount can result in an over- or under-funded settlement account.
+</Warning>

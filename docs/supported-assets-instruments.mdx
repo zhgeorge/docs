@@ -1,0 +1,123 @@
+---
+title: "Zero Hash Supported Assets, Instruments, and Testnets"
+sidebarTitle: "Assets & Instruments"
+description: "Understand assets vs. instruments, how to query available assets via API, testnet faucets in the Cert environment, and New York participant restrictions."
+---
+
+Zero Hash distinguishes between **assets** (individual digital or fiat currencies the platform can custody, deposit, and withdraw) and **instruments** (tradable pairs made up of two assets). Not every supported asset is available as a trading instrument — an asset may be supported for custody and on-chain transfers without being available for RFQ or CLOB execution. Understanding this distinction prevents confusion when you are setting up deposit flows, trade flows, or querying available options.
+
+## Assets vs. Instruments
+
+<CardGroup cols={2}>
+  <Card title="Assets" icon="coins">
+    Any currency or digital token that Zero Hash can custody, receive as a deposit, or send as a withdrawal — regardless of whether it is actively traded. Examples include `BTC`, `ETH`, `USDC`, `USD`, `SOL`, and others.
+
+    Assets are identified by their symbol (e.g., `BTC`) or a chain-qualified symbol for multi-chain tokens (e.g., `USDC.ETH`, `USDC.SOL`, `USDC.POLYGON`).
+  </Card>
+  <Card title="Instruments" icon="arrow-right-arrow-left">
+    Tradable asset pairs supported for execution via CLOB (Central Limit Order Book) or RFQ (Request for Quote). An instrument is expressed as `BASE/QUOTE` — for example, `BTC/USD` or `ETH/USD`.
+
+    Instruments are a subset of supported assets. An asset being on the supported list does not automatically mean it has a tradable instrument pair.
+  </Card>
+</CardGroup>
+
+## Environments
+
+Zero Hash maintains separate asset and instrument lists for each environment. The Cert environment uses testnet blockchains and test tokens — never real funds — while Prod operates on mainnet.
+
+| | Cert (Sandbox) | Prod (Live) |
+|---|---|---|
+| **Blockchain** | Testnet (e.g., BTC Testnet, ETH Sepolia, Solana DevNet) | Mainnet |
+| **Funds** | Test tokens from faucets — no real value | Real funds |
+| **Asset list** | [Supported Assets — Cert](https://docs.zerohash.com/page/cert-environment-assets) | [Supported Assets — Prod](https://docs.zerohash.com/page/what-assets-do-you-support) |
+| **Instrument list (RFQ)** | [Supported Instruments — Cert](https://docs.zerohash.com/page/certification-environment-instruments) | [Supported Instruments — Prod](https://docs.zerohash.com/page/production-environment) |
+
+<Note>
+  The asset and instrument lists in Cert and Prod differ. Always verify that an asset or instrument you need for Prod is available before beginning development — do not assume Cert availability implies Prod availability, or vice versa.
+</Note>
+
+## Querying Available Assets via API
+
+You can query the list of supported assets programmatically using the `GET /assets` endpoint. This endpoint returns current asset configuration data including minimum withdrawal amounts, which you should use when validating withdrawal requests.
+
+```bash
+curl --request GET \
+  --url https://api.cert.zerohash.com/assets \
+  --header "X-SCX-API-KEY: your_api_key" \
+  --header "X-SCX-SIGNED: your_signature" \
+  --header "X-SCX-TIMESTAMP: your_timestamp" \
+  --header "X-SCX-PASSPHRASE: your_passphrase" \
+  --header "accept: application/json"
+```
+
+<Tip>
+  Always use the values returned by `GET /assets` for minimum withdrawal amounts rather than hardcoding them. Minimums can change over time as network fees fluctuate.
+</Tip>
+
+## Instrument Execution Methods
+
+Zero Hash supports two execution methods for tradable instruments:
+
+<Tabs>
+  <Tab title="RFQ (Request for Quote)">
+    The RFQ model provides a firm, time-limited quote for a specific quantity before execution. It is the most common integration pattern for retail-facing products.
+
+    - Request a quote: `GET /liquidity/rfq`
+    - Execute the quote: `POST /liquidity/execute`
+
+    See [Supported Instruments — RFQ](https://docs.zerohash.com/docs/supported-instruments-1) for the current RFQ instrument list.
+  </Tab>
+  <Tab title="CLOB (Central Limit Order Book)">
+    The CLOB model supports limit and market orders on a live order book. It is suited for more advanced trading integrations.
+
+    See [Supported Instruments — CLOB](https://docs.zerohash.com/docs/supported-instruments) for the current CLOB instrument list.
+  </Tab>
+</Tabs>
+
+## Testnet Support in Cert
+
+In the Cert environment, Zero Hash integrates testnet blockchains so you can test complete deposit and withdrawal flows end-to-end using test tokens with no real-world value. Test tokens are available from public faucets — Zero Hash does not supply them directly.
+
+| Cert Asset | Testnet Network | Faucet |
+|---|---|---|
+| BTC | BTC Testnet | [bitcoinfaucet.uo1.net](https://bitcoinfaucet.uo1.net/send.php), [coinfaucet.eu](https://coinfaucet.eu/en/btc-testnet/), [testnet-faucet.mempool.co](https://testnet-faucet.mempool.co/) |
+| ETH | Sepolia | [infura.io/faucet/sepolia](https://www.infura.io/faucet/sepolia) |
+| USDC.ETH | Sepolia | [faucet.circle.com](https://faucet.circle.com/) |
+| USDC.SOL | DevNet | [faucet.circle.com](https://faucet.circle.com/) |
+| USDC.POLYGON | Amoy | [faucet.circle.com](https://faucet.circle.com/) |
+| SOL | DevNet | [solfaucet.com](https://solfaucet.com/) |
+| XRP | Ripple Testnet | [xrpl.org/xrp-testnet-faucet.html](https://xrpl.org/xrp-testnet-faucet.html) |
+| AVAX | Fuji | [faucet.avax.network](https://faucet.avax.network/) |
+| MATIC.POLYGON | Amoy | [faucet.polygon.technology](https://faucet.polygon.technology/) |
+| USDT.ETH | Sepolia | [gho.aave.com/faucet](https://gho.aave.com/faucet/) |
+| LTC | LTC Testnet | [litecointf.salmen.website](http://litecointf.salmen.website/) |
+| ADA | ADA Testnet | [testnets.cardano.org/faucet](https://testnets.cardano.org/en/testnets/cardano/tools/faucet/) |
+| ALGO | ALGO Testnet | [testnet.algoexplorer.io/dispenser](https://testnet.algoexplorer.io/dispenser) |
+| BCH | BCH Testnet | [tbch.googol.cash](https://tbch.googol.cash/) |
+| DOGE | Doge Testnet | [shibe.technology](https://shibe.technology/) |
+| DOT | Westend | [matrix.to (Westend Faucet)](https://matrix.to/#/#westend_faucet:matrix.org) |
+| LINK.ETH | Sepolia | [faucets.chain.link](https://faucets.chain.link/) |
+
+## Deposits and Withdrawals
+
+- **Fiat assets:** All fiat assets support institutional deposits and withdrawals. Retail end-user fiat deposits and withdrawals are also supported.
+- **Crypto assets:** All crypto assets support withdrawals for retail end users.
+- **Smart contract deposit addresses:** Some blockchains use smart contracts to generate deposit addresses. See the [Create2 smart contract address deployments](https://docs.zerohash.com/changelog/create2-smart-contract-powered-address-deployments) changelog entry for details.
+
+## Rounding
+
+When you calculate trade notional and settlement values using the Zero Hash API, you must apply **banker's rounding** (round half to even) on a per-trade basis. Zero Hash rounds each individual trade obligation and then sums the results — not the other way around.
+
+Banker's rounding rules:
+- If the value is less than 0.5 away from the nearest integer: round to the nearest integer.
+- If the value is exactly 0.5 away from the nearest integer: round to the nearest **even** integer.
+
+## New York Participants
+
+The New York Department of Financial Services (NYDFS) maintains a Greenlist of pre-approved tokens for New York customers. Zero Hash only supports assets that meet **both** the NYDFS criteria for custody and listing — assets approved for only one category are not supported for NY participants.
+
+Supported assets for NY participants are marked in the Prod asset list. For the official NYDFS guidance, see [dfs.ny.gov/virtual_currency_businesses](https://www.dfs.ny.gov/virtual_currency_businesses).
+
+## Supported Blockchains
+
+For the full list of production-environment blockchain networks supported for deposits and withdrawals, see [Production Environment Blockchains](https://docs.zerohash.com/docs/production-environment-blockchains).

@@ -1,0 +1,118 @@
+---
+title: "Zero Hash API Security: Rate Limits and IP Allowlisting"
+sidebarTitle: "API Security"
+description: "Understand Zero Hash API security layers: HMAC authentication, rate limiting thresholds, IP allowlisting, and per-key permission scoping."
+---
+
+Zero Hash employs multiple layers of security to protect the API and your Platform's data. Understanding these layers — and configuring them correctly — reduces your attack surface and ensures your integration stays within the platform's operational boundaries.
+
+## Authentication
+
+Every Zero Hash API request (except `GET /time`) is authenticated using HMAC-SHA256 request signing. The signature is derived from your private key and the specific details of each request, ensuring that:
+
+- Requests cannot be sent by anyone who does not possess your private key.
+- Requests cannot be replayed or modified in transit.
+- The Zero Hash API can independently verify the integrity of every payload it receives.
+
+See [Authentication](/docs/authentication) for the full signing recipe and code examples.
+
+## Rate Limiting
+
+Zero Hash enforces rate limits on a per-IP-address basis across all API endpoints. The limits are identical in both Cert and Prod environments.
+
+| Threshold | Window | Scope |
+|---|---|---|
+| 2,000 requests | Rolling 10 seconds | All endpoints combined, per IP address |
+
+When you exceed 2,000 requests within a 10-second rolling window, Zero Hash rejects all subsequent requests from that IP for the remainder of the window.
+
+<Warning>
+  **HTTP 429 Too Many Requests** is returned when you breach the rate limit. You must wait 10 seconds from the time of the first rejected request before your API access is restored.
+</Warning>
+
+**Example:** If you send `GET /liquidity/rfq` 1,000 times and `GET /trades` 1,001 times within a 5-second period, you will be rate-limited for the next 10 seconds. After 11 seconds from the first rate-limited request, access is restored.
+
+### Best Practices for Avoiding Rate Limits
+
+- Implement client-side request queuing and throttling to spread requests evenly across time.
+- Use webhooks and WebSocket subscriptions for event-driven updates instead of polling endpoints at high frequency.
+- Cache responses from read-heavy endpoints (`GET /accounts`, `GET /trades`, etc.) where near-real-time data is acceptable.
+- Monitor your request rate and set up alerting before you approach the 2,000-request threshold.
+
+## IP Allowlisting
+
+Zero Hash uses a two-layer IP allowlisting system. Both layers must be satisfied for a request to be accepted.
+
+### Layer 1 — Global Platform Allowlist
+
+Zero Hash must have a record of every IP address from which your Platform will interact with the API. This is a platform-wide safeguard managed by the Zero Hash team.
+
+<Steps>
+  <Step title="Identify all outbound IPs">
+    Collect every static IP address your services will use when calling the Zero Hash API. This includes production servers, CI/CD systems, and any other infrastructure that needs API access.
+  </Step>
+  <Step title="Submit IPs to Zero Hash">
+    Communicate the complete list to your Zero Hash representative via your assigned Slack channel or by contacting [support](https://zerohash.com/contact). The team will add them to your Platform's global allowlist.
+
+    <Note>
+      The global allowlist is being moved to self-service in the Client Portal. Your Zero Hash representative can confirm the current process for your Platform.
+    </Note>
+  </Step>
+</Steps>
+
+**Accepted IP formats:**
+- Static IPv4 addresses (e.g., `203.0.113.42`)
+- Static IPv6 addresses
+
+**Not accepted:**
+- Public VPN IP addresses
+- Dynamic IPs
+- Individual or personal IPs
+
+### Layer 2 — Per-Key IP Allowlist
+
+Within the global allowlist, you can further restrict individual API keys to a subset of IP addresses. This per-key restriction is configured when you create an API key in the Client Portal under **Administration → API Keys**.
+
+| Setting | Behavior |
+|---|---|
+| **Allowed IPs specified** | Zero Hash validates the originating IP against the key's allowlist. Requests from IPs not in the list are rejected. |
+| **Allowed IPs left blank** | No per-key IP validation is applied. The global platform allowlist still applies. |
+
+**Constraints:**
+- Supported formats: IPv4 and IPv6
+- Maximum of 10 IP addresses per key
+
+<Tip>
+  Binding sensitive or write-capable keys to specific IPs provides defense-in-depth. Even if a key is leaked, it is unusable from any IP not on the list.
+</Tip>
+
+## API Key Configuration
+
+Beyond IP restrictions, the Client Portal lets you scope each key's capabilities:
+
+### API Permissions
+
+You can restrict a key to specific Zero Hash products. If your integration only uses a subset of features (for example, only trading with no withdrawals), scoping the key's permissions limits the potential impact of a compromised key.
+
+You can also designate a key as **read-only**, which is appropriate for use cases like:
+- Client-side monitoring and dashboards
+- Alerting pipelines
+- Reporting and audit workloads
+
+### Key Approval Workflow
+
+By default, all newly created API keys require two approvals from authorized Platform users before becoming active. Your Platform can be configured to require a different number of approvals — contact a Zero Hash representative to adjust this setting.
+
+### Key Expiration
+
+Setting an expiration date on a key enforces a rotation cadence. Zero Hash recommends rotating keys on a schedule (for example, every 90 or 180 days) as a security hygiene practice.
+
+### Audit Trail
+
+The Client Portal maintains an audit trail for every key. Click the **Details** button next to any key to view its full history of creation, approval, and modification events.
+
+## Cloudflare Access Denied (Error 1020)
+
+If your requests are blocked with an **Error 1020 Access Denied** response, a Cloudflare firewall rule has been triggered. This is distinct from a standard 403 and indicates that your originating IP is not recognized.
+
+Contact Zero Hash support and provide the specific IP addresses that need to be added to the platform allowlist to resolve this.

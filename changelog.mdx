@@ -1,0 +1,185 @@
+---
+title: "Zero Hash Platform Product Changelog — Recent Updates"
+sidebarTitle: "Changelog"
+description: "Recent Zero Hash product updates: new SDK version, single API call payouts, ETH staking, standardized error codes, AUTH enhancements, and new assets."
+---
+
+The Zero Hash changelog tracks product updates, new features, breaking changes, and informational releases across the platform. Entries are listed in reverse chronological order. Use the type labels — **Added**, **Changed**, **Fixed**, and **Action Required** — to quickly identify the nature and impact of each release.
+
+---
+
+## July 20, 2026
+
+<CardGroup cols={1}>
+  <Card title="AUTH Connect: Webhook Fees, Configurable Asset Precision, Staged Exchange Testing, and Preset Deposit Amount" icon="plug">
+    **Added** — Five updates to the AUTH (Account Funding + Connect) integration surface:
+
+    1. **Fees in Connect webhooks.** The `connect_deposit.status_changed` and `connect_withdrawal.status_changed` webhook payloads now include a `fees` object containing fee amount, fee asset, and payment model. Deposit fees are populated for deposits without conversion; withdrawal fees follow the `NETTED` or `ADDITIVE` payment model.
+
+    2. **Configurable asset precision for AUTH transfers.** Platforms can now set a maximum decimal precision per asset and network. Deposits and withdrawals with more decimal places than the configured value are rejected, preventing sub-precision dust accumulation on your ledger. Contact your Zero Hash representative to enable this feature.
+
+    3. **Staged exchange rollouts.** Platforms can restrict a new AUTH exchange integration to a defined list of participants for production QA before making it available to all users. Contact your Zero Hash representative to enable staged rollouts.
+
+    4. **Preset deposit amount for the AUTH Fund flow.** Pass `deposit_amount` inside `deposit_details` on the `POST /client_auth_token` request to preset the fund amount for the end user. The user sees a prefilled amount and only sees accounts with sufficient balances to cover it. Enforcement uses existing FWC min/max deposit limits.
+
+    5. **Gemini whitelisting instruction enhancements.** The Gemini AUTH flow now includes clearer whitelisting instructions, reducing transfer failures and support volume.
+
+    **Endpoints impacted:** `connect_deposit.status_changed` webhook, `connect_withdrawal.status_changed` webhook, `POST /client_auth_token` (new optional `deposit_details.deposit_amount` field).
+  </Card>
+</CardGroup>
+
+---
+
+## June 24, 2026
+
+<CardGroup cols={1}>
+  <Card title="Single API Call Payouts — New Payout Product" icon="bolt">
+    **Added** — Zero Hash has introduced **Single API Call Payouts**, a streamlined payout product designed for licensed financial institutions and organizations managing nested payors. It is best suited for platforms that do not need to build a custom payout UI or track payout state internally.
+
+    The original Payouts product has been renamed to **Modular Payouts** to distinguish it from this new offering. Modular Payouts remains the right choice for platforms that want full ownership of the payout experience, complex creator or seller networks, and complete control over state, UX, and compliance tracking.
+
+    **Endpoints added:**
+    - `POST /payouts` — Submit a single-call payout
+    - `GET /payouts` — Retrieve payout history
+    - Single API Call Payouts webhooks
+
+    No action is required for platforms using Modular Payouts. The rename is informational only.
+  </Card>
+</CardGroup>
+
+---
+
+## June 9, 2026
+
+<CardGroup cols={1}>
+  <Card title="HYPE, USDC.HYPE, and USDT.HYPE Now Available" icon="coins">
+    **Added** — Three new assets on HyperEVM are now live in both CERT and PROD environments:
+
+    | Asset Name | Symbol | Notes |
+    |------------|--------|-------|
+    | HYPE on HyperEVM | `HYPE` | Not available in NY or EU |
+    | USDC on HyperEVM | `USDC.HYPE` | Not available in NY or EU |
+    | USDT on HyperEVM | `USDT.HYPE` | Not available in NY or EU |
+
+    **Availability by product:**
+
+    | Asset | RFQ | CLOB | Custody | Fund | Payments |
+    |-------|-----|------|---------|------|----------|
+    | `HYPE` | ✓ | ✓ | ✓ | ✓ | ✓ |
+    | `USDC.HYPE` | ✓ | — | ✓ | ✓ | ✓ |
+    | `USDT.HYPE` | ✓ | — | ✓ | ✓ | ✓ |
+
+    All three assets are immediately available using the symbols above. Geographic restriction: **not available in New York or EU** at this time.
+
+    **Endpoints impacted:** `POST /liquidity/rfq`, `POST /liquidity/execute`, `POST /convert_withdraw/rfq`, `POST /convert_withdraw/execute`, `POST /deposits/digital_asset_address`, `POST /withdrawals/requests`, `POST /fund/rfq`, `GET /fund/transactions`, and CLOB order management endpoints.
+  </Card>
+</CardGroup>
+
+---
+
+## May 29, 2026
+
+<CardGroup cols={1}>
+  <Card title="Standardized Error Codes for Account Funding and Payins Webhooks" icon="triangle-exclamation">
+    **Added** — Zero Hash has published the full, official set of `status_reason_code` values returned on webhooks for the **Account Funding** and **Payins** products. Each product maintains its own discrete set of codes, allowing platforms to build deterministic error handling logic against a stable, predictable set of values.
+
+    No changes have been made to webhook structure, delivery behavior, or existing success (`true`) status codes.
+
+    - [Account Funding error codes](https://docs.zerohash.com/reference/fund-transaction-update)
+    - [Payins error codes](https://docs.zerohash.com/reference/payins-transaction-updates)
+  </Card>
+</CardGroup>
+
+---
+
+## May 26, 2026
+
+<CardGroup cols={1}>
+  <Card title="SDK Version 3.0.0 — New Architecture and Refreshed UI" icon="sparkles">
+    **Added** — Zero Hash has released SDK version `3.0.0` (`zh-web-sdk@3`). This release introduces a new architecture and a fully refreshed UI across all SDKs. Key changes:
+
+    - **Unified look and feel** across the full SDK suite (Buy, Sell, Fund, Onboarding, Payouts, and all others)
+    - **Light and dark mode support** — configure `'light'`, `'dark'`, or `'auto'` at initialization or change theme at runtime via `sdk.setTheme()`
+    - **Public API is unchanged** — all `AppIdentifier` values, `openModal`, `closeModal`, `setJWT`, `setFilters`, `isModalOpen`, and all `postMessage` event names and payloads remain identical
+
+    **Installation:**
+
+    ```bash
+    npm install zh-web-sdk@3
+    # or
+    yarn add zh-web-sdk@3
+    ```
+
+    **Setting a theme:**
+
+    ```typescript
+    const sdk = new ZeroHashSDK({
+      zeroHashAppsURL: "https://web-sdk.zerohash.com",
+      env: "prod",
+      theme: "dark"  // 'light' | 'dark' | 'auto'
+    });
+
+    // Change theme at runtime
+    sdk.setTheme({ theme: "auto" });
+    ```
+
+    **Deprecation timeline:**
+    - **Now through August 31, 2026** — v2.x and v3.x are supported in parallel
+    - **August 31, 2026** — v2.x (all versions up to and including 2.17.0) is fully deprecated; continued support is not guaranteed past this date
+
+    **SDKs included in this upgrade:** `crypto-withdrawals`, `crypto-buy`, `crypto-sell`, `fiat-deposits`, `fiat-withdrawals`, `fiat-account-link`, `crypto-account-link`, `crypto-pay`, `crypto-payouts`, `onboarding`, `fwc` (Account Funding), `participant-profile`, `update-participant`, `recovery`.
+
+    Contact your dedicated Relationship Manager for upgrade support.
+  </Card>
+</CardGroup>
+
+---
+
+## May 21, 2026
+
+<CardGroup cols={1}>
+  <Card title="ETH Staking Now Available via API" icon="layer-group">
+    **Added** — Zero Hash has launched staking, starting with Ethereum. Platforms can now enable users to stake ETH end-to-end through the API, covering discovery, execution, monitoring, rewards, and unstaking.
+
+    **New `/stakes` API surface:**
+    - `POST /stakes` — Submit a stake
+    - `POST /stakes/{stake_id}/cancel` — Cancel a pre-broadcast stake
+    - `GET /stakes/{stake_id}/status` — Monitor stake status
+    - `POST /stakes/unstake` — Submit an unstake
+    - `GET /stakes/{participant_code}` — View portfolio
+    - `GET /stakes/{participant_code}/rewards` — View reward history
+
+    **Discovery endpoints:**
+    - `GET /assets?staking_enabled=true` — List stakeable assets
+    - `GET /assets/{asset}/staking_info` — Get estimated APY, activation time, and unstaking period
+
+    **Account types for staking lifecycle:**
+    - `available` — tradeable and withdrawable balances
+    - `collateral` — pending activation or unstaking
+    - `staked` — actively earning rewards
+
+    **Lifecycle:** Stakes move `Submitted → Broadcasted → Confirmed → Staked`. Unstakes follow `Submitted → Broadcasted → Confirmed → Unstaked`. Cancellation is only possible before broadcast.
+
+    **Prerequisites:** KYC verification complete, staking permitted in the participant's jurisdiction, and staking terms accepted per participant. Staking is currently **not available** in CA, MD, NJ, WI, or WA.
+
+    SOL staking is targeted for Q3 2026. Contact your dedicated Relationship Manager for platform fee configuration and UX implementation requirements.
+  </Card>
+
+  <Card title="Updated Jurisdiction List — 2026 Annual Update" icon="map">
+    **Action Required** — Zero Hash has updated its list of Prohibited/Restricted Jurisdictions and Permitted Higher Risk Jurisdictions, effective June 20, 2026.
+
+    **Prohibited/Restricted Jurisdictions — Additions:**
+    - **Singapore** — Platforms must ensure no new participants located in Singapore are submitted to Zero Hash immediately. Existing participants in Singapore must sell or withdraw all assets held with Zero Hash by **June 20, 2026**.
+
+    **Prohibited/Restricted Jurisdictions — Removals:**
+    - Guatemala, Guinea, Guinea-Bissau, Pakistan, and Zimbabwe — all moved to Permitted Higher Risk Geographies for a minimum of one year.
+
+    **Permitted Higher Risk Jurisdictions — Additions:**
+    - Guatemala, Guinea, Guinea-Bissau, Kuwait, Pakistan, Papua New Guinea, and Zimbabwe
+
+    **Permitted Higher Risk Jurisdictions — Removals:**
+    - Burkina Faso and Mozambique
+
+    Platforms must implement controls to prevent submission of participants from newly restricted jurisdictions. Zero Hash will decline any such submissions.
+  </Card>
+</CardGroup>

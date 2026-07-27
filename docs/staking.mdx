@@ -1,0 +1,278 @@
+---
+title: "Crypto Staking API Integration Guide for Zero Hash"
+sidebarTitle: "Staking"
+description: "Integrate native crypto staking for your users via the Zero Hash API — covering prerequisites, lifecycle states, endpoints, and webhook events."
+---
+
+Zero Hash offers a comprehensive staking API that lets you enable native crypto staking for your users without managing your own validator infrastructure. Zero Hash operates the validator nodes, handles network submissions, distributes rewards daily, and provides the webhook events your platform needs to drive real-time user experiences. Staking is currently available via **API only** — there is no SDK integration path — and Zero Hash does not offer liquid staking. Staked positions are illiquid for the duration of the network's unstake period and cannot be represented by a transferable receipt token.
+
+<Warning>
+  Staking is currently **prohibited** for participants residing in the following states: **California (CA), Maryland (MD), New Jersey (NJ), and Washington (WA)**. Suppress all staking UI for users in these jurisdictions. Zero Hash is actively working with regulators to expand availability.
+</Warning>
+
+## Prerequisites
+
+Before enabling staking in your integration, confirm all five of the following requirements are met for each user.
+
+<Steps>
+  <Step title="KYC-Approved Participant">
+    End users must be fully KYC-approved Zero Hash participants. Staking is blocked for participants in `pending` or `restricted` status. Check participant status via `GET /participant/{participant_code}/full_info`.
+  </Step>
+  <Step title="Jurisdiction Eligibility">
+    The participant's resident jurisdiction must appear on the staking-permitted list. At launch, staking is unavailable in CA, MD, NJ, and WA. For restricted jurisdictions, do not surface any staking UI.
+  </Step>
+  <Step title="Staking Agreement Accepted">
+    Each participant must have an active `signed_agreement` of `type: "staking"` on file. A single acceptance enables staking across all supported assets for that participant. Update acceptance status via `PATCH /participants/customers/{participant_code}`.
+  </Step>
+  <Step title="Webhook Endpoint Configured">
+    Your integration must expose a signature-verified webhook endpoint to receive staking lifecycle events. Configure the endpoint with the full list of staking event types before submitting any stakes.
+  </Step>
+  <Step title="Funded Available Balance">
+    The participant must hold a sufficient `available` balance of the asset to be staked. Validate the balance via `GET /accounts?account_type=available` before presenting the stake confirmation screen.
+  </Step>
+</Steps>
+
+## Core Concepts
+
+Understanding these terms is essential before building your staking integration.
+
+| Term | Definition |
+|---|---|
+| **Activation Queue** | New validators must wait in a network-defined queue before becoming active. Queue length affects how long it takes for newly staked funds to start earning rewards. |
+| **Activation Time** | The delay between submitting a stake and the position becoming active. Includes blockchain confirmation plus the network-specific activation queue. For ETH, expect 1–4 weeks. |
+| **Est. APY (Net)** | Annualized percentage yield expressed net of your configured platform fee. This is always an estimate — actual rewards vary with network conditions and validator performance. |
+| **Unstake Period** | The mandatory waiting period between initiating an unstake and the funds returning to the `available` account. Users **continue to earn rewards** during this period until the unstaking period completes. |
+| **Validator** | The node that produces blocks and attests to network state in exchange for rewards. Zero Hash manages this infrastructure on behalf of platforms. |
+| **Consensus Rewards** | The base protocol-level rewards paid to validators for attestation and block proposal. |
+| **MEV Rewards** | Additional rewards from Maximal Extractable Value capture (priority fees, block ordering). Reported separately from consensus rewards. |
+
+## Supported Assets
+
+<CardGroup cols={2}>
+  <Card title="ETH (Ethereum)" icon="ethereum">
+    Live and available today. Use `GET /assets?staking_enabled=true` to confirm current availability.
+  </Card>
+  <Card title="SOL (Solana)" icon="circle-dot">
+    Targeted for Q3 2026. Additional assets are on the roadmap — check `GET /assets?staking_enabled=true` for the current list.
+  </Card>
+</CardGroup>
+
+## Platform Fee Model
+
+You set your own end-user staking fee. Zero Hash recommends a platform fee of **25–35%** of gross network rewards (meaning users receive 65–75%), but you control pricing.
+
+| Component | Example Amount | % of Gross Rewards |
+|---|---|---|
+| Gross network rewards | $100 | 100% |
+| User reward (pass-through) | $70 | 70% |
+| Platform fee | $30 | 30% |
+
+The `apy_net` value returned by `GET /assets/{asset}/staking_info` is **platform-specific** — it already reflects your configured fee deduction. Different platforms querying the same asset will see different `apy_net` values. Contact your Relationship Manager to set or adjust your platform fee.
+
+## Account Types and Balance Flow
+
+Zero Hash uses three account types to track staking lifecycle states. Balances move between accounts as a stake progresses.
+
+| `account_type` | Description |
+|---|---|
+| `available` | Funds usable for trading, transfers, withdrawals, or initiating new stakes |
+| `collateral` | Funds pending activation (during staking) or pending unstake period (during unstaking) |
+| `staked` | Funds actively staked and earning rewards |
+
+**During staking:** `available` → `collateral` (on submission) → `staked` (on confirmation)
+
+**During unstaking:** `staked` → `collateral` (on submission) → `available` (on completion)
+
+<Note>
+  There are no platform-imposed minimums. Users can stake or unstake any amount they hold in the relevant account type.
+</Note>
+
+## Staking Lifecycle and States
+
+The stake and unstake workflows each follow a defined state machine. Use webhooks for real-time updates and API polling as a fallback.
+
+### Stake States
+
+```
+submitted → broadcasted → confirmed → staked (terminal, earning rewards)
+         ↘ canceled (terminal)
+         ↘ failed (terminal, resubmit required)
+```
+
+| State | Meaning |
+|---|---|
+| `submitted` | Request accepted and queued for blockchain broadcast |
+| `broadcasted` | Transaction signed and sent to the network |
+| `confirmed` | Stake entered the consensus activation queue |
+| `staked` | Terminal active state — position is earning rewards |
+| `canceled` | Terminal — user canceled before broadcast |
+| `failed` | Terminal — transaction rejected, requires resubmission |
+
+### Unstake States
+
+```
+submitted → broadcasted → confirmed → unstaked (terminal, funds available)
+         ↘ canceled (terminal)
+         ↘ failed (terminal, resubmit required)
+```
+
+| State | Meaning |
+|---|---|
+| `submitted` | Unstake request accepted and queued |
+| `broadcasted` | Unstake transaction sent to network |
+| `confirmed` | Unstake entered the exit queue; waiting period underway |
+| `unstaked` | Terminal — funds returned to `available` account |
+| `canceled` | Terminal — user canceled before broadcast |
+| `failed` | Terminal — unstake rejected, requires resubmission |
+
+<Warning>
+  Once a stake or unstake has been broadcasted to the blockchain, cancellation is no longer possible. Users must wait for the process to complete.
+</Warning>
+
+## API Endpoints
+
+### Staking Endpoints
+
+| Endpoint | Description |
+|---|---|
+| `GET /assets?staking_enabled=true` | List assets currently available for staking |
+| `GET /assets/{asset}/staking_info` | Get estimated APY (net of platform fee) and staking parameters |
+| `POST /stakes` | Submit a new stake request |
+| `POST /stakes/{stake_id}/cancel` | Cancel a stake that has not yet been broadcasted |
+| `GET /stakes/{stake_id}/status` | Poll the current status of a specific stake |
+| `GET /stakes/{participant_code}` | List all staking positions for a participant |
+| `GET /stakes/{participant_code}/rewards` | Retrieve detailed reward history for a participant |
+| `POST /stakes/unstake` | Submit an unstake request |
+| `POST /stakes/unstake/{unstake_id}/cancel` | Cancel an unstake that has not yet been broadcasted |
+| `GET /stakes/unstake/{unstake_id}/status` | Poll the current status of a specific unstake |
+
+### Participant and Balance Endpoints
+
+| Endpoint | Description |
+|---|---|
+| `GET /participant/{participant_code}/full_info` | Check KYC status and signed agreement presence |
+| `PATCH /participants/customers/{participant_code}` | Update staking terms acceptance |
+| `GET /accounts?account_type=available` | Check spendable balance before staking |
+| `GET /accounts?account_type=staked` | Check staked balance before unstaking |
+| `GET /accounts?account_type=collateral` | Monitor in-flight balances during activation or unstake |
+
+## Worked Example: Stake 10.5 ETH
+
+The following example traces a complete stake from submission to the `staked` state.
+
+<Steps>
+  <Step title="Check Staking Parameters">
+    ```http
+    GET /assets/ETH/staking_info
+    ```
+
+    ```json
+    {
+      "asset": "ETH",
+      "staking_enabled": true,
+      "apy_net": "3.85",
+      "unstake_period_days": 5,
+      "activation_estimate_days": 7
+    }
+    ```
+  </Step>
+  <Step title="Verify Terms and Balance">
+    ```http
+    GET /participant/CUST01/full_info
+    ```
+
+    Confirm the `signed_agreements` array contains an entry with `"type": "staking"`. Then check available balance:
+
+    ```http
+    GET /accounts?account_type=available&participant_code=CUST01&asset=ETH
+    ```
+  </Step>
+  <Step title="Submit the Stake">
+    ```http
+    POST /stakes
+    ```
+
+    ```json
+    {
+      "participant_code": "CUST01",
+      "asset": "ETH",
+      "amount": "10.5"
+    }
+    ```
+
+    **Response:**
+    ```json
+    {
+      "stake_id": "c761fc96-5c44-40d4-8eb2-3fcd5d06754e",
+      "status": "submitted",
+      "asset": "ETH",
+      "amount": "10.5"
+    }
+    ```
+
+    Store the `stake_id` — you need it for all subsequent operations.
+  </Step>
+  <Step title="Receive Webhook Events">
+    Your endpoint receives the following events as the stake progresses:
+
+    ```json
+    { "event_type": "stake.submitted",   "stake_id": "c761fc96-...", "status": "submitted" }
+    { "event_type": "stake.broadcasted", "stake_id": "c761fc96-...", "status": "broadcasted" }
+    { "event_type": "stake.confirmed",   "stake_id": "c761fc96-...", "status": "confirmed", "tx_hash": "0xabc..." }
+    { "event_type": "stake.staked",      "stake_id": "c761fc96-...", "status": "staked" }
+    ```
+  </Step>
+  <Step title="Monitor Rewards">
+    Once in the `staked` state, daily reward events arrive:
+
+    ```json
+    {
+      "event_type": "staking_reward.received",
+      "distribution_id": "dist_abc123",
+      "asset": "ETH",
+      "reward_amount": "0.025",
+      "cumulative_rewards_amount": "0.125"
+    }
+    ```
+
+    Query the full reward history at any time:
+
+    ```http
+    GET /stakes/CUST01/rewards
+    ```
+  </Step>
+</Steps>
+
+## Webhook Configuration
+
+Register your webhook endpoint with the full list of staking event types:
+
+```json
+{
+  "webhook_url": "https://yourapi.com/webhooks/staking",
+  "events": [
+    "stake.submitted", "stake.canceled", "stake.broadcasted",
+    "stake.confirmed", "stake.staked", "stake.failed",
+    "staking_reward.received",
+    "unstake.submitted", "unstake.canceled", "unstake.broadcasted",
+    "unstake.confirmed", "unstake.unstaked", "unstake.failed"
+  ]
+}
+```
+
+**Webhook best practices:**
+- Return `200 OK` immediately upon receipt to acknowledge delivery.
+- Process events asynchronously outside the request cycle.
+- Implement idempotency using `stake_id` + `status` for stake/unstake events, and `distribution_id` for reward events.
+- Keep webhook event logs for auditing and debugging.
+- Implement polling via `GET /stakes/{stake_id}/status` as a fallback if webhook delivery fails.
+
+## Common Errors
+
+| Error Code | HTTP Status | Cause | Resolution |
+|---|---|---|---|
+| `TERMS_NOT_ACCEPTED` | 400 | User has not accepted the staking agreement | Redirect user to terms acceptance flow |
+| `INSUFFICIENT_BALANCE` | 400 | `available` balance is below the requested stake amount | Display current balance and prompt deposit |
+| `JURISDICTION_RESTRICTED` | 400 | Participant resides in a prohibited state | Display jurisdiction unavailability message and hide staking UI |
+| `INVALID_TOKEN` | 401 | API token expired or invalid | Re-authenticate and retry |
+| `INTERNAL_SERVER_ERROR` | 500 | Unexpected server error | Retry with exponential backoff |

@@ -1,0 +1,170 @@
+---
+title: "Central Limit Order Book (CLOB): Real-Time Order Matching"
+sidebarTitle: "CLOB"
+description: "Access Zero Hash's CLOB via FIX 5.0 for real-time, price-time priority order matching across a growing range of digital asset pairs."
+---
+
+Zero Hash's Central Limit Order Book (CLOB) gives your platform access to deep digital asset liquidity with real-time order matching based on price-time priority. You can place limit orders, market orders, and advanced order types, and your customers benefit from a fair and orderly market backed by top market makers — without you needing to manage LP relationships or build matching infrastructure.
+
+<Note>
+  The CLOB is accessed via the FIX 5.0 protocol. Zero Hash's team will work closely with you during onboarding to configure your FIX session and ensure a smooth integration. Contact [support@zerohash.com](mailto:support@zerohash.com) to begin the onboarding process.
+</Note>
+
+## How the CLOB Works
+
+The CLOB operates on strict **price-time priority**: orders at better prices execute first, and among orders at the same price, earlier orders execute first. This ensures a fair and predictable execution environment.
+
+When you submit an order:
+
+1. The order enters the order book with the status **Open**.
+2. If matching liquidity is available, the order fills immediately (full or partial).
+3. A partial fill leaves the remaining quantity **resting** on the book until it fills, expires, or you cancel it.
+4. Once fully filled or cancelled, the order reaches a terminal state.
+
+<Info>
+  Zero Hash provides depth-of-book market data so your application can display live bid/ask levels to your customers. Market data delivery is governed by account tier — see [Commission Tiering](/docs/spreads-and-fees) for details.
+</Info>
+
+## Order Lifecycle
+
+```
+Submitted → Open → [Partially Filled] → Filled
+                                      → Cancelled
+```
+
+| State | Description |
+|---|---|
+| **Open** | Order is live on the book and eligible for matching |
+| **Partially Filled** | One or more fills have occurred; residual quantity remains on the book |
+| **Filled** | Order fully executed |
+| **Cancelled** | Order removed from the book, either by you or by an expiry rule (e.g., IOC, DAY) |
+
+## Supported Order Types
+
+Zero Hash supports four order types on the CLOB. Each supports both quantity-based and notional-based entry.
+
+<Tabs>
+  <Tab title="Limit">
+    A limit order executes at your specified price or better. Execution is not guaranteed — the order rests on the book until a counterparty matches your price. Partial fills are possible.
+
+    | Attribute | Detail |
+    |---|---|
+    | Quantity supported | Yes |
+    | Notional supported | Yes |
+    | Supported TIFs | GTC, FOK, IOC, DAY, GTT |
+  </Tab>
+  <Tab title="Market-to-Limit">
+    Executes immediately at the best available price. Any unfilled portion becomes a limit order at the last executed price. Multiple fills at different prices are possible. This is the only order type that supports notional entry at market conditions.
+
+    | Attribute | Detail |
+    |---|---|
+    | Quantity supported | Yes |
+    | Notional supported | Yes |
+    | Supported TIFs | IOC, FOK, DAY, GTT |
+  </Tab>
+  <Tab title="Stop">
+    A stop order is held until the market trades through the designated stop price, at which point it becomes a market order and executes at the best available price.
+
+    | Attribute | Detail |
+    |---|---|
+    | Quantity supported | Yes |
+    | Notional supported | Yes |
+    | Supported TIFs | GTC, DAY, GTT |
+  </Tab>
+  <Tab title="Stop Limit">
+    Combines a stop and a limit order. Once the stop price is reached, the order becomes a limit order at your specified limit price. Partial fills are possible.
+
+    | Attribute | Detail |
+    |---|---|
+    | Quantity supported | Yes |
+    | Notional supported | Yes |
+    | Supported TIFs | GTC, DAY, GTT |
+  </Tab>
+</Tabs>
+
+## Time in Force (TIF) Options
+
+TIF parameters control how long your order remains active and how it behaves if it cannot fill immediately.
+
+| TIF | Full Name | Behavior |
+|---|---|---|
+| **GTC** | Good Till Canceled | Order remains open until fully filled or explicitly cancelled. Persists through market maintenance windows. Partial fills allowed. |
+| **IOC** | Immediate or Cancel | Executes immediately; any unfilled portion is cancelled instantly. Partial fills allowed. |
+| **FOK** | Fill or Kill | Must fill in its entirety immediately or is cancelled in full. No partial fills. |
+| **DAY** | Day | Active for the current trading day. Cancelled daily at 4 PM EST, including weekends. Partial fills allowed. |
+| **GTT** | Good Till Date/Time | Active until the date and time you specify (UTC). Partial fills allowed. |
+
+## Special Order Behaviors (`ExecInst`)
+
+Use FIX tag `ExecInst (18)` to apply special execution instructions to an order.
+
+| Value | Behavior |
+|---|---|
+| `18=6` | **Post Only** (Participate Don't Initiate): the order will not take liquidity. If it would cross the book, it is rejected or price-adjusted per venue behavior. |
+| `18=c` | **Ignore Price/Validity Checks** *(liquidations only)*: allows execution that may be below instrument minimums, for example in a forced liquidation scenario. |
+
+<Warning>
+  The `18=c` instruction is intended for account liquidation purposes only. Misuse outside of liquidation workflows is not supported.
+</Warning>
+
+## FIX API Integration
+
+The CLOB is accessible via the **FIX 5.0 protocol**, a widely adopted messaging standard in financial services. Zero Hash provides full integration support, including FIX session configuration and testing.
+
+<Steps>
+  <Step title="Contact Zero Hash">
+    Reach out to [support@zerohash.com](mailto:support@zerohash.com) or visit [zerohash.com](https://www.zerohash.com) and click "Let's Talk" to begin the onboarding conversation.
+  </Step>
+  <Step title="Review the FIX specification">
+    Review the [CLOB FIX API specification](https://docs.zerohash.com/reference/central-limit-order-book) to understand message types, tags, and session requirements.
+  </Step>
+  <Step title="Configure your FIX session">
+    Zero Hash's team will work with you to configure your FIX session, including authentication, sequence number management, and connectivity settings.
+  </Step>
+  <Step title="Test in sandbox">
+    Validate order submission, fills, cancellations, and market data in the Zero Hash sandbox environment before going live.
+  </Step>
+  <Step title="Go live">
+    Promote your FIX session to production and begin submitting live orders.
+  </Step>
+</Steps>
+
+## Account Management Endpoints
+
+CLOB customer accounts are created and managed via REST API. Use these endpoints to provision accounts and assign commission tiers.
+
+| Endpoint | Description |
+|---|---|
+| `POST /clob/accounts` | Create a new CLOB account for a participant |
+| `PATCH /clob/accounts` | Update an existing CLOB account, including account tier assignment |
+
+### Sample: Create a CLOB Account
+
+```json
+{
+  "participant_code": "CUST01",
+  "prefunded": true,
+  "account_label": "custom-account-label-1",
+  "account_tier": ["gold"]
+}
+```
+
+<Tip>
+  Account tiers (`gold`, `silver`, `bronze`) control how commissions are applied and how market data is delivered to each customer. See [Spreads and Fees](/docs/spreads-and-fees) for the full tier reference.
+</Tip>
+
+## Support
+
+Zero Hash offers multiple channels to support your CLOB integration.
+
+<CardGroup cols={3}>
+  <Card title="Email" icon="envelope">
+    [support@zerohash.com](mailto:support@zerohash.com)
+  </Card>
+  <Card title="Phone" icon="phone">
+    (855) 744-7333 — leave a voicemail and the team will call you back.
+  </Card>
+  <Card title="Support Ticket" icon="ticket">
+    [Submit a ticket](https://zerohash.com/contact/) for tracked issue resolution.
+  </Card>
+</CardGroup>

@@ -1,0 +1,162 @@
+---
+title: "Payouts: Send Crypto and Stablecoins to User Wallets"
+sidebarTitle: "Payouts"
+description: "Send stablecoins or crypto to end customer wallets anywhere in the world — fast, cheap, globally accessible, and available 24/7 with no chargebacks."
+---
+
+Payouts enable your platform to send crypto or stablecoins directly to your end customers' personal wallets. Payouts work alongside traditional payment rails — wire, ACH, and RTP — as a parallel disbursement option. Because on-chain transactions settle 24/7 at low cost with no chargeback exposure, payouts are especially well-suited for gig workers, international contractors, creators, and any use case that demands fast, global, low-friction disbursements.
+
+## Use Cases
+
+<CardGroup cols={2}>
+  <Card title="Gig Economy Payouts" icon="person-digging">
+    Instantly pay freelancers, creators, and contractors in stablecoins or crypto — no more waiting days for bank transfers to clear.
+  </Card>
+  <Card title="Marketplace Payouts" icon="store">
+    Let sellers withdraw earnings in stablecoins or crypto for faster, global, low-fee access to their funds.
+  </Card>
+  <Card title="Cross-Border Payroll" icon="earth-americas">
+    Pay remote teams or international employees without the friction of correspondent banking, currency conversion, or SWIFT delays.
+  </Card>
+  <Card title="Creator Economy" icon="star">
+    Enable streaming platforms, music apps, and influencer platforms to pay creators in real-time using stablecoins or crypto.
+  </Card>
+  <Card title="Affiliate & Partner Rewards" icon="handshake">
+    Instantly settle commissions and partner earnings globally with fewer currency conversion headaches.
+  </Card>
+  <Card title="DeFi and Crypto-Native Platforms" icon="link">
+    Distribute funds or earnings from dApps or web3 tools directly to user wallets using stablecoin or crypto payouts.
+  </Card>
+</CardGroup>
+
+## Key Features
+
+| Feature | Detail |
+|---------|--------|
+| **Available anytime** | 24/7/365 instant account funding — no banking hours or holiday cutoffs. |
+| **Lightning fast** | Transactions settle on-chain quickly, allowing for near-instant balance updates. |
+| **No chargebacks** | Irreversible on-chain transactions eliminate chargeback risk entirely. |
+| **Globally accessible** | Onboard customers worldwide without managing multiple local fiat payment rails. |
+| **Cost effective** | Transfer fees are lower than ACH, card, wire, and SWIFT transactions. |
+
+## Asset Support
+
+- **USDC** — across 15 different blockchain networks
+- **USDT** — across 4 different blockchain networks
+- **PYUSD** — on Solana and Ethereum
+- **RLUSD** — on Solana and XRPL
+- **Bitcoin, Ethereum, Solana** — and 30+ additional crypto assets
+
+## Payout Product Types
+
+Zero Hash offers two payout products to fit different platform architectures and workflow preferences.
+
+<Tabs>
+  <Tab title="Modular Payouts">
+    Modular Payouts is a 4-step workflow that gives your platform full ownership and visibility into the payout state at every stage. Choose this option when you need complete control over the UX, want to build a custom workflow, or have complex compliance requirements.
+
+    ### The 4-Step Workflow
+
+    <Steps>
+      <Step title="Onboard Payor">
+        Register the payer (if applicable). The Payor is typically the business entity on whose behalf the payout is sent.
+      </Step>
+      <Step title="Onboard Beneficiary">
+        Register the payout recipient — the natural person who will receive the funds.
+      </Step>
+      <Step title="Link Beneficiary External Account">
+        Connect the beneficiary to a blockchain wallet or external account by creating an external account record in Zero Hash.
+      </Step>
+      <Step title="Initiate Payout">
+        Execute the transaction using the Zero Hash payments API or SDK.
+      </Step>
+    </Steps>
+
+    ### When to choose Modular Payouts
+    - Platforms that want to own the full UX/UI experience
+    - Teams that need to move quickly — Modular Payouts supports an SDK and a no-code solution
+    - Use cases where your platform must maintain state and control transaction timing
+  </Tab>
+  <Tab title="Single API Call Payouts">
+    Single API Call Payouts compresses the entire payout workflow into just 2 steps. After a one-time Payor registration, every subsequent payout requires a single API call. Zero Hash orchestrates participant verification, compliance checks, and account linking internally.
+
+    ### The 2-Step Workflow
+
+    <Steps>
+      <Step title="Onboard Payor (one-time)">
+        Register the Payor once. Zero Hash validates and stores the Payor's information for all future payouts.
+      </Step>
+      <Step title="Initiate Payout (per transaction)">
+        Send a single API call containing complete payor and beneficiary details. Zero Hash handles all intermediary steps and routes the funds to the beneficiary.
+      </Step>
+    </Steps>
+
+    ### When to choose Single API Call Payouts
+    - Licensed financial institutions managing multiple nested payors
+    - Teams building simple, stateless payout workflows
+    - Platforms that are not building a custom payout UX
+    - High-volume batch payouts at scale
+
+    See the [Single API Call Payouts guide](/docs/streamlined-payouts) for the full integration walkthrough.
+  </Tab>
+</Tabs>
+
+## Payout Status Lifecycle
+
+Once a payout is initiated, it progresses through the following statuses:
+
+| Status | Description |
+|--------|-------------|
+| `submitted` | The payout has been started. |
+| `posted` | The payout has been converted to the destination asset and broadcast on-chain. |
+| `crypto_settled` | The crypto leg has settled on-chain. |
+| `fiat_settled` | The crypto leg has been converted to local fiat and delivered to the beneficiary's bank account. (Applies to fiat remittance payouts.) |
+
+## Initiating a Payout via API
+
+To initiate a payout in the Modular flow, call `POST /payments/execute` after obtaining an FX quote:
+
+```json
+// POST /payments/execute
+{
+  "quote_id": "cffcafdb-8275-4cf0-d7a2-83a6a216d906"
+}
+```
+
+**Response:**
+```json
+{
+  "request_id": "0f68333e-2114-469d-b505-c850d776e063",
+  "transaction_id": "0f68333e-2114-469d-b505-c850d776e063",
+  "status": "pending"
+}
+```
+
+<Note>
+  Zero Hash does not return a blockchain hash on the initial `POST /payments/execute` response. The hash appears in all subsequent webhook messages associated with that payment.
+</Note>
+
+## Email Receipt Requirements
+
+Zero Hash requires that the Payor receives an email receipt for every payout. The receipt must include:
+
+| Receipt Field | Description | API Source |
+|---------------|-------------|------------|
+| Order Number | Unique order identifier | `payment_id` from `GET /payments` |
+| Order Type | Must read "Payout Transmission" (verbatim) | Hard-coded |
+| Transmission Amount | Amount in quoted currency | `total` from `GET /payments` |
+| Amount Received by Beneficiary | Amount in underlying currency | `total` from `GET /payments` |
+| Fees | Processing or network fees, or "No Fees" if none | `network_fee_notional` from `GET /payments` |
+| Date/Time | Timestamp of the payout transmission | `created_at` from `GET /payments` |
+| Account ID | Beneficiary's participant code | `participant_code` from `GET /payments` |
+
+The receipt must also include adequate support contact information for your platform and Zero Hash's contact details:
+
+```
+Zero Hash LLC (NMLS ID 1699379)
+327 N Aberdeen St
+Chicago, IL 60607
+855-744-7333
+support@zerohash.com
+www.zerohash.com
+```

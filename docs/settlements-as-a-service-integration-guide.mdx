@@ -1,0 +1,233 @@
+---
+title: "Settlements as a Service Integration Guide for Platforms"
+sidebarTitle: "Settlements SaaS"
+description: "Integrate Zero Hash Settlements as a Service: onboard participants, generate deposit addresses, submit trades, confirm DVP settlement, and withdraw assets."
+---
+
+Zero Hash Settlements as a Service enables platforms to settle post-trade obligations between retail counterparties using Zero Hash's infrastructure. Rather than managing custody, reconciliation, and delivery versus payment (DVP) settlement internally, you submit verified participant data and trade details to Zero Hash via API, and Zero Hash handles the movement of assets between parties. This guide walks through the complete integration flow from participant onboarding to final asset withdrawal.
+
+<Info>
+  Settlements as a Service is designed for platforms that have already executed a trade off-platform and need Zero Hash to settle the resulting asset exchange between two counterparties.
+</Info>
+
+## Prerequisites
+
+Before submitting any settlement trades, complete the following setup steps:
+
+<CardGroup cols={2}>
+  <Card title="Platform configured" icon="building">
+    Your platform must be set up with Zero Hash and assigned a `platform_code` before any API calls can be made.
+  </Card>
+  <Card title="Participants onboarded" icon="users">
+    All counterparties to a settlement must have a Zero Hash customer record in `approved` status before a trade can be submitted.
+  </Card>
+  <Card title="Deposit addresses created" icon="wallet">
+    The party receiving the digital asset must have a deposit address provisioned before funds are sent on-chain.
+  </Card>
+  <Card title="Exact amounts required" icon="calculator">
+    The deposited amount must exactly equal the quantity specified in the trade. Do not net out network fees from the settlement amount.
+  </Card>
+</CardGroup>
+
+## Step 1: Onboard Participants
+
+Every counterparty to a settlement must be an approved Zero Hash customer. Use `POST /participants/customers/new` to create a new individual participant, or `POST /participants/entity/new` for an entity.
+
+```bash
+POST /participants/customers/new
+GET  /participant/{participant_code}/basic_info
+```
+
+After submission, confirm the participant is in the correct state before proceeding:
+
+```json
+{
+  "participant_code": "CUST01",
+  "status": "approved"
+}
+```
+
+<Warning>
+  The `status` in the `GET /participant/{participant_code}/basic_info` response must be `approved` before you can generate a deposit address or submit a trade for that participant. Attempting to settle for a participant in `submitted` or any other non-approved state will fail.
+</Warning>
+
+## Step 2: Create a Deposit Address
+
+To initiate post-trade settlement for the digital asset leg, you must generate an on-chain deposit address for the participant who will receive the asset. Each address is unique per asset and participant.
+
+```bash
+POST /deposits/digital_asset_addresses
+```
+
+### Request
+
+```json
+{
+  "participant_code": "CUST01",
+  "platform_code": "PLAT01",
+  "asset": "BTC",
+  "account_label": "general"
+}
+```
+
+### Response
+
+```json
+{
+  "message": {
+    "created_at": 1590663417000,
+    "address": "2NCgV7BXXafJZ86utcYFs5m3tCpkcpLafeG",
+    "participant_code": "CUST01",
+    "platform_code": "PLAT01",
+    "asset": "BTC"
+  }
+}
+```
+
+Provide the `address` to the sending counterparty. The sending party then initiates the blockchain transfer to this address for the exact settlement amount.
+
+<Warning>
+  The deposited amount must equal the quantity specified in the trade you will submit in the next step. If the received amount is less than required — due to network fees or any other deduction — the trade cannot be settled.
+</Warning>
+
+## Step 3: Submit the Trade
+
+Once the funds have arrived on-chain at the deposit address, submit the trade that defines the payment terms of the settlement. The trade record establishes which participant owes which asset and in which direction.
+
+```bash
+POST /trades
+```
+
+### Request
+
+```json
+{
+  "symbol": "BTC/USD",
+  "trade_price": "7000.00000",
+  "product_type": "spot",
+  "trade_type": "regular",
+  "trade_reporter": "reporter@platform.com",
+  "platform_code": "PLAT01",
+  "client_trade_id": "test1",
+  "physical_delivery": true,
+  "parties_anonymous": false,
+  "transaction_timestamp": 1569014063570,
+  "parties": [
+    {
+      "participant_code": "ABCDEF",
+      "asset": "BTC",
+      "amount": "0.5",
+      "side": "buy",
+      "settling": true
+    },
+    {
+      "participant_code": "PLAT01",
+      "asset": "USD",
+      "amount": "3500.0000",
+      "side": "sell",
+      "settling": false
+    }
+  ]
+}
+```
+
+### Key field reference
+
+<ResponseField name="trade_id" type="string">
+  Unique identifier assigned by Zero Hash for this trade. Use it to poll for settlement status.
+</ResponseField>
+
+<ResponseField name="physical_delivery" type="boolean">
+  Set to `true` to indicate the digital asset will be physically delivered on-chain rather than cash-settled.
+</ResponseField>
+
+<ResponseField name="settling" type="boolean">
+  Set to `true` for the party that is actively delivering the asset. The counterparty receiving USD typically has `settling: false`.
+</ResponseField>
+
+<ResponseField name="client_trade_id" type="string">
+  Your internal identifier for this trade. Useful for cross-referencing with your own records.
+</ResponseField>
+
+## Step 4: Confirm Settlement
+
+Trades are processed as soon as they are submitted, but you should poll for completion before taking any downstream action such as initiating a withdrawal.
+
+```bash
+GET /trades/{trade_id}
+```
+
+The trade is fully settled when the response contains both of the following field values:
+
+```json
+{
+  "trade_state": "terminated",
+  "settlement_state": "settled"
+}
+```
+
+These values confirm that legal ownership of the digital asset has been transferred to the buyer. You can perform an optional balance verification using `GET /accounts?participant_code={participant_code}` to confirm the crypto has been credited to the recipient's account.
+
+<Steps>
+  <Step title="Submit trade">
+    Call `POST /trades` with the full trade record including both parties and asset amounts.
+  </Step>
+  <Step title="Poll for settlement">
+    Call `GET /trades/{trade_id}` periodically until `settlement_state` equals `settled`.
+  </Step>
+  <Step title="Verify account balance (optional)">
+    Call `GET /accounts?participant_code={participant_code}` to confirm the asset balance has been credited.
+  </Step>
+  <Step title="Initiate withdrawal">
+    Once settled, call `POST /withdrawals/requests` to send the asset to the customer's external address.
+  </Step>
+</Steps>
+
+## Step 5: Withdraw the Settled Asset
+
+After settlement, send the assets to the customer's external wallet by submitting a withdrawal request.
+
+```bash
+POST /withdrawals/requests
+```
+
+### Request
+
+```json
+{
+  "address": "customer's external wallet address",
+  "participant_code": "ABCDEF",
+  "amount": "0.5",
+  "asset": "BTC",
+  "account_group": "PLAT01"
+}
+```
+
+<Tip>
+  Zero Hash will settle what it can. If a customer has 0.05 BTC and you submit a withdrawal for 0.07 BTC, Zero Hash settles 0.05 BTC and processes that withdrawal rather than rejecting the entire request.
+</Tip>
+
+### Monitoring withdrawal status
+
+Query the withdrawal status using `GET /withdrawals/requests` filtered by the customer's `participant_code`:
+
+```bash
+GET /withdrawals/requests?participant_code=ABCDEF
+```
+
+The response includes the `status` field (look for `SETTLED`) and the on-chain `transaction_id` once the transfer is broadcast.
+
+## Full Integration Summary
+
+The following table maps each integration step to its corresponding API endpoint:
+
+| Step | Action | Endpoint |
+|------|--------|----------|
+| 1 | Create customer | `POST /participants/customers/new` |
+| 1 | Verify customer status | `GET /participant/{participant_code}/basic_info` |
+| 2 | Generate deposit address | `POST /deposits/digital_asset_addresses` |
+| 3 | Submit trade | `POST /trades` |
+| 4 | Confirm settlement | `GET /trades/{trade_id}` |
+| 4 | Verify account balance | `GET /accounts` |
+| 5 | Withdraw assets | `POST /withdrawals/requests` |
+| 5 | Monitor withdrawal | `GET /withdrawals/requests` |

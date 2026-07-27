@@ -1,0 +1,201 @@
+{
+  "projectType": "api-service",
+  "projectName": "Zero Hash",
+  "projectDescription": "Zero Hash is a regulated B2B crypto-as-a-service platform that enables fintechs, brokerages, and payment companies to embed crypto trading, stablecoin payments, digital asset custody, staking, and cross-border settlement into their products via REST API and drop-in SDKs.",
+  "theme": "luma",
+  "primaryColor": "#84f484",
+  "lightColor": "#1c3e29",
+  "darkColor": "#bdecbe",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "docs/getting-started",
+              "docs/get-platform-access",
+              "docs/generate-api-keys",
+              "docs/submit-first-api-call",
+              "docs/terminology"
+            ]
+          },
+          {
+            "group": "Core Concepts",
+            "pages": [
+              "docs/core-resources",
+              "docs/authentication",
+              "docs/api-security",
+              "docs/error-handling",
+              "docs/request-ids",
+              "docs/supported-assets-instruments"
+            ]
+          },
+          {
+            "group": "Participants & Accounts",
+            "pages": [
+              "docs/onboard-a-customer",
+              "docs/customer-accounts-guide",
+              "docs/customer-sub-accounts",
+              "docs/virtual-accounts",
+              "docs/account-management-guide",
+              "docs/participant-account-statuses-locking"
+            ]
+          },
+          {
+            "group": "Trading",
+            "pages": [
+              "docs/buysell",
+              "docs/request-for-quote",
+              "docs/submit-and-execute-quotes",
+              "docs/central-limit-order-book-3",
+              "docs/liquidity-models",
+              "docs/spreads-and-fees"
+            ]
+          },
+          {
+            "group": "Deposits & Withdrawals",
+            "pages": [
+              "docs/deposits-withdrawals",
+              "docs/generating-platform-deposit-addresses",
+              "docs/creating-a-withdrawal-account",
+              "docs/withdrawals-releasing-funds",
+              "docs/fiat",
+              "docs/getting-started-with-fiat-payments"
+            ]
+          },
+          {
+            "group": "Payments",
+            "pages": [
+              "docs/payins",
+              "docs/payouts",
+              "docs/streamlined-payouts",
+              "docs/fiat-remittances-stablecoin-sandwich",
+              "docs/instant-usd"
+            ]
+          },
+          {
+            "group": "Settlement",
+            "pages": [
+              "docs/settlements-as-a-service",
+              "docs/standard-settlement",
+              "docs/settlement-configurations",
+              "docs/settlement-reconciliation"
+            ]
+          },
+          {
+            "group": "SDKs",
+            "pages": [
+              "docs/sdk-index",
+              "docs/sdk",
+              "docs/onboarding-experience-sample",
+              "docs/fund-overview",
+              "docs/wallet-link-sdk-integration-guide",
+              "docs/mobile-sdks"
+            ]
+          },
+          {
+            "group": "Additional Features",
+            "pages": [
+              "docs/staking",
+              "docs/loyalty",
+              "docs/reporting-suite",
+              "docs/balances-websocket",
+              "docs/account-funding-reconciliation"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Integration Guides",
+        "groups": [
+          {
+            "group": "Onboarding",
+            "pages": [
+              "docs/onboarding",
+              "docs/eu-participant-creation",
+              "docs/application-review-process",
+              "docs/kyc-support-accepted-identification-documents",
+              "docs/sanction-screening"
+            ]
+          },
+          {
+            "group": "Payments Guides",
+            "pages": [
+              "docs/payins-integration-guide",
+              "docs/payouts-integration-guide",
+              "docs/rewards-integration-guide",
+              "docs/remittance-integration-guide",
+              "docs/enterprise-settlements-no-code-integration-guide"
+            ]
+          },
+          {
+            "group": "Fund Guides",
+            "pages": [
+              "docs/fund-integration-guide-api",
+              "docs/fund-integration-guide-sdk",
+              "docs/settlements-as-a-service-integration-guide"
+            ]
+          },
+          {
+            "group": "Compliance & Tax",
+            "pages": [
+              "docs/crypto-tax-overview",
+              "docs/tax-data-collection-kycaas",
+              "docs/w-9-implementation-guide",
+              "docs/fees"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Changelog",
+        "groups": [
+          {
+            "group": "Releases",
+            "pages": [
+              "changelog"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Request for Quote (RFQ) crypto trading with firm quotes",
+    "Central Limit Order Book (CLOB) for real-time price-time priority matching",
+    "Stablecoin and crypto payins and payouts",
+    "ACH/Plaid-powered fiat on-ramp and off-ramp",
+    "Drop-in SDKs for KYC onboarding, trading, deposits, and withdrawals",
+    "Settlements-as-a-Service for off-exchange and OTC trade clearing",
+    "Native crypto staking via API",
+    "Crypto rewards and loyalty programs",
+    "Virtual accounts and sub-accounts per end user",
+    "Comprehensive reporting suite via portal and API",
+    "Regulatory compliance umbrella (FinCEN MSB, money transmitter in all 50 states)",
+    "Real-time balances WebSocket feed",
+    "Sanction screening and KYC-as-a-Service"
+  ],
+  "publicApiSurface": [
+    "GET /time — health check / server timestamp",
+    "POST /liquidity/rfq — request a quote",
+    "POST /liquidity/execute — execute a quote",
+    "POST /participants — create a participant",
+    "GET /participants/{participant_code} — retrieve participant",
+    "POST /accounts — create an account",
+    "GET /accounts — list accounts with balances",
+    "POST /deposits — initiate a deposit",
+    "POST /withdrawals — initiate a withdrawal",
+    "POST /transfers — transfer between accounts",
+    "POST /trades — submit a trade (CLOB)",
+    "POST /orders — submit a limit/market order",
+    "POST /rewards — issue crypto reward",
+    "POST /staking/stakes — initiate a staking position",
+    "DELETE /staking/stakes/{id} — unstake",
+    "GET /staking/rewards — get staking rewards",
+    "GET /balances — get platform/participant balances",
+    "WebSocket: Balances Feed",
+    "WebSocket: Prices Feed"
+  ]
+}

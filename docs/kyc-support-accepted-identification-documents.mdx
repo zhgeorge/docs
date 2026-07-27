@@ -1,0 +1,168 @@
+---
+title: "KYC Identity Verification: Accepted Identification Documents"
+sidebarTitle: "KYC Documents"
+description: "Learn which government-issued IDs Zero Hash accepts, what KYC tiers exist, what data each tier requires, and how identity verification is conducted."
+---
+
+Zero Hash may require your end users to provide a government-issued photo ID as part of the identity verification process. The specific documents required — and when they are required — depend on the KYC tier applicable to that user's transaction type and volume. This page explains the baseline requirements for accepted documents, the KYC tiers used across Zero Hash products, and how identity verification is conducted.
+
+## Baseline Document Requirements
+
+Regardless of document type, every accepted ID must meet the following baseline criteria:
+
+- **Visible, extractable data:** The document must contain data that can be read and processed — either by automated systems or manual review.
+- **Clear portrait:** The document must include a photograph of the holder.
+- **Not expired:** Zero Hash does not accept expired identification documents.
+
+## Globally Accepted Document Types
+
+The most commonly accepted ID types across all Zero Hash products are:
+
+<CardGroup cols={3}>
+  <Card title="Driver's License" icon="id-card">
+    Issued by a government authority with a photo, name, date of birth, and address. Many jurisdictions require front and back for full data extraction.
+  </Card>
+  <Card title="Passport" icon="passport">
+    The most universally accepted document globally. Single-page upload is typically sufficient. Machine-readable zone (MRZ) data supports automated processing.
+  </Card>
+  <Card title="State / National ID" icon="address-card">
+    Similar to a driver's license but without driving privileges. Accepted in many countries as a primary government-issued photo ID.
+  </Card>
+</CardGroup>
+
+## Full List of Supported Document Types by Region
+
+When you submit documents via the [POST /participant/documents](https://docs.zerohash.com/reference/post_participants-documents) endpoint, you specify the `document_type` field. The following values are supported:
+
+<Tabs>
+  <Tab title="EU">
+    | `document_type` value | Upload requirement |
+    |----------------------|-------------------|
+    | `eu_passport` | Single side |
+    | `eu_id_card` | Front **and** back |
+    | `eu_drivers_license` | Front **and** back |
+    | `eu_address_verification` | Single side (address proof) |
+  </Tab>
+  <Tab title="US">
+    | `document_type` value | Upload requirement |
+    |----------------------|-------------------|
+    | `us_passport` | Single side |
+    | `us_passport_card` | Front **and** back |
+    | `us_id_card` | Front **and** back |
+    | `us_drivers_license` | Front **and** back |
+  </Tab>
+  <Tab title="Non-US / Other">
+    | `document_type` value | Upload requirement |
+    |----------------------|-------------------|
+    | `non_us_passport` | Single side |
+  </Tab>
+</Tabs>
+
+## KYC Tiers
+
+Zero Hash uses a tiered KYC model. The tier that applies to a given end user is determined by their product type, transaction size, and cumulative spend. Higher tiers require progressively more identity data and supporting documentation.
+
+### Shopper Tiers (Payins Product)
+
+The Payins product uses four tiers for shoppers, with requirements varying by whether the merchant sells **Perishable**, **Non-Transferable**, or **Transferable** goods. The tier is determined by the merchant's `merchant_category_code`.
+
+<Tabs>
+  <Tab title="Perishables">
+    **Tier 1 — Transaction size: up to $50 / Daily limit: $50**
+
+    Required fields:
+    - `phone_number` OR `email`
+
+    No document upload required.
+  </Tab>
+  <Tab title="Non-Transferables">
+    **Tier 1** — Transactions under $2,100 AND lifetime spend ≤ $30,000
+
+    Required fields: `phone_number` or `email`, `first_name`, `last_name`, `address_one`, `city`, `zip`, `jurisdiction_code`, `date_of_birth`
+
+    ---
+
+    **Tier 2** — Transactions $1,000–$49,999 AND lifetime spend ≤ $150,000
+
+    All Tier 1 fields, plus: `tax_id`, `id_number`, `id_number_type`, `liveness_check`
+
+    Document upload: ✅ Required via [POST /participants/documents](https://docs.zerohash.com/reference/post_participants-documents)
+
+    ---
+
+    **Tier 3** — Transactions $50,000–$499,999 AND lifetime spend under $500,000
+
+    All Tier 2 fields, plus: `source_of_funds`, `employment_status`, `industry`
+
+    Document upload: ✅ Required
+
+    ---
+
+    **Tier 4** — Transactions ≥ $500,000 OR lifetime spend ≥ $500,000
+
+    All Tier 3 fields. Additional documents: `source_of_funds_for_purchase`, `proof_of_employment_status`, `proof_of_industry`, `miscellaneous`
+
+    Manual approval by Zero Hash: ✅ Always required
+  </Tab>
+  <Tab title="Transferables">
+    **Tier 1** — Transactions under $1,000 AND lifetime spend ≤ $30,000
+
+    Required fields: `phone_number` or `email`, `first_name`, `last_name`, `address_one`, `city`, `zip`, `jurisdiction_code`, `date_of_birth`
+
+    ---
+
+    **Tier 2** — Transactions $2,100–$49,999 AND lifetime spend ≤ $150,000
+
+    All Tier 1 fields, plus: `tax_id`, `id_number`, `id_number_type`, `liveness_check`
+
+    Document upload: ✅ Required
+
+    ---
+
+    **Tier 3** — Transactions $50,000–$499,999 AND lifetime spend under $500,000
+
+    All Tier 2 fields, plus: `source_of_funds`, `employment_status`, `industry`
+
+    Document upload: ✅ Required
+
+    ---
+
+    **Tier 4** — Transactions ≥ $500,000 OR lifetime spend ≥ $500,000
+
+    All Tier 3 fields. Additional documents required. Manual approval always required.
+  </Tab>
+</Tabs>
+
+### Sender Tiers (Remittance Product)
+
+The Remittance product uses three tiers based on transaction volume over rolling time windows:
+
+| Tier | 24-hour limit | 30-day limit | Lifetime limit | Required data |
+|------|--------------|--------------|----------------|---------------|
+| Tier 1 | Up to $999 | Up to $3,000 | Up to $9,000 | Name, email/phone, DOB, address, jurisdiction |
+| Tier 2 | Up to $2,999 | Up to $9,999 | Up to $60,000 | Tier 1 + `id_number`, `id_number_type`, `liveness_check`, document upload |
+| Tier 3 | Up to $10,000 | Up to $20,000 | Up to $60,000 (180d) | Tier 2 + `source_of_funds`, `employment_status`, `industry` |
+
+## How Identity Verification Is Conducted
+
+<Steps>
+  <Step title="Data collection">
+    Your platform collects the required PII fields from the end user and submits them via [POST /participants/customers/new](https://docs.zerohash.com/reference/post_participants-customers-new).
+  </Step>
+  <Step title="Document upload (when required)">
+    For tiers that require document verification, you upload the ID document via [POST /participant/documents](https://docs.zerohash.com/reference/post_participants-documents). For documents requiring both sides, upload the front and back as separate calls, referencing the same participant.
+  </Step>
+  <Step title="Automated review">
+    Zero Hash's system automatically processes the submitted data and documents. For supported document types, the system can approve the participant without human review if the document passes all automated checks.
+  </Step>
+  <Step title="Manual review (if needed)">
+    If automated checks cannot verify the document — due to image quality, data mismatches, or sanctions flags — the participant enters a `pending_approval` status and a Zero Hash compliance reviewer is alerted. Manual reviews typically complete within 24 hours.
+  </Step>
+  <Step title="Status update">
+    The participant transitions to `approved` or `rejected`. You receive a webhook notification reflecting the final status. Only participants in `approved` status can transact on the Zero Hash platform.
+  </Step>
+</Steps>
+
+<Note>
+  If your platform performs its own KYC under a Zero Hash-approved program, you can attest to a passing KYC result on the `POST /participants/customers/new` request using the `kyc`, `kyc_timestamp`, `idv`, and `liveness_check` fields, rather than uploading documents to Zero Hash directly. Confirm this arrangement with your Zero Hash compliance contact before implementation.
+</Note>
