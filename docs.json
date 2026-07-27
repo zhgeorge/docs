@@ -1,14 +1,14 @@
 {
   "$schema": "https://mintlify.com/docs.json",
-  "name": "Zero Hash",
-  "theme": "luma",
+  "name": "zerohash",
+  "theme": "mint",
   "logo": {
     "light": "https://media.brand.dev/f9a0349b-4218-4b54-89c7-134127412428.svg",
     "dark": "https://media.brand.dev/f9a0349b-4218-4b54-89c7-134127412428.svg"
   },
   "favicon": "/favicon.svg",
   "colors": {
-    "primary": "#84f484",
+    "primary": "#00381d",
     "light": "#1c3e29",
     "dark": "#bdecbe"
   },
