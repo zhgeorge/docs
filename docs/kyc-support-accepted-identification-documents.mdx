@@ -32,7 +32,7 @@ The most commonly accepted ID types across all Zero Hash products are:
 
 ## Full List of Supported Document Types by Region
 
-When you submit documents via the [POST /participant/documents](https://docs.zerohash.com/reference/post_participants-documents) endpoint, you specify the `document_type` field. The following values are supported:
+When you submit documents via the [POST /participants/documents](https://docs.zerohash.com/reference/post_participants-documents) endpoint, you specify the `document_type` field. The following values are supported:
 
 <Tabs>
   <Tab title="EU">
@@ -150,7 +150,7 @@ The Remittance product uses three tiers based on transaction volume over rolling
     Your platform collects the required PII fields from the end user and submits them via [POST /participants/customers/new](https://docs.zerohash.com/reference/post_participants-customers-new).
   </Step>
   <Step title="Document upload (when required)">
-    For tiers that require document verification, you upload the ID document via [POST /participant/documents](https://docs.zerohash.com/reference/post_participants-documents). For documents requiring both sides, upload the front and back as separate calls, referencing the same participant.
+    For tiers that require document verification, you upload the ID document via [POST /participants/documents](https://docs.zerohash.com/reference/post_participants-documents). For documents requiring both sides, upload the front and back as separate calls, referencing the same participant.
   </Step>
   <Step title="Automated review">
     Zero Hash's system automatically processes the submitted data and documents. For supported document types, the system can approve the participant without human review if the document passes all automated checks.

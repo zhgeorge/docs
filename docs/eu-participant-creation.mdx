@@ -8,7 +8,7 @@ When you onboard participants in the EU system using the reliance KYC model, Zer
 
 ## Identity Verification Documents
 
-You submit participant documents via the [POST /participant/documents](https://docs.zerohash.com/reference/post_participants-documents) endpoint. The following document types support **automatic system approval** — meaning the system will approve the participant without manual review if one of these documents is successfully uploaded and validated:
+You submit participant documents via the [POST /participants/documents](https://docs.zerohash.com/reference/post_participants-documents) endpoint. The following document types support **automatic system approval** — meaning the system will approve the participant without manual review if one of these documents is successfully uploaded and validated:
 
 <Tabs>
   <Tab title="EU Documents">
@@ -43,7 +43,7 @@ By default, EU participants require a proof-of-address document upload before th
 
 - `eu_address_verification`
 
-You upload this document via the same [POST /participant/documents](https://docs.zerohash.com/reference/post_participants-documents) endpoint used for identity documents.
+You upload this document via the same [POST /participants/documents](https://docs.zerohash.com/reference/post_participants-documents) endpoint used for identity documents.
 
 ### Alternative: Proof-of-Address Coordinates
 
@@ -105,7 +105,7 @@ Before you submit an EU participant, confirm you have the following ready:
     Call [POST /participants/customers/new](https://docs.zerohash.com/reference/post_participants-customers-new) with all required fields, including the `phone_number` in E.164 format.
   </Step>
   <Step title="Upload documents">
-    Call [POST /participant/documents](https://docs.zerohash.com/reference/post_participants-documents) to upload the identity document and, if required, the address verification document.
+    Call [POST /participants/documents](https://docs.zerohash.com/reference/post_participants-documents) to upload the identity document and, if required, the address verification document.
   </Step>
   <Step title="Confirm approval">
     Poll [GET /participants](https://docs.zerohash.com/reference/get_participants) or listen for the participant status webhook. The participant must reach `approved` status before they can transact.
