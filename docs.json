@@ -3,8 +3,8 @@
   "name": "zerohash",
   "theme": "mint",
   "logo": {
-    "light": "https://media.brand.dev/f9a0349b-4218-4b54-89c7-134127412428.svg",
-    "dark": "/images/ZHdeveloperlogo.svg"
+    "light": "/images/zhdeveloper.svg",
+    "dark": "/images/zhdeveloperdarkmode.svg"
   },
   "favicon": "/favicon.svg",
   "colors": {
