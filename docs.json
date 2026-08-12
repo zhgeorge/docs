@@ -4,7 +4,7 @@
   "theme": "mint",
   "logo": {
     "light": "https://media.brand.dev/f9a0349b-4218-4b54-89c7-134127412428.svg",
-    "dark": "https://media.brand.dev/f9a0349b-4218-4b54-89c7-134127412428.svg"
+    "dark": "/images/ZHdeveloperlogo.svg"
   },
   "favicon": "/favicon.svg",
   "colors": {
