@@ -1,0 +1,286 @@
+/* zerohash docs landing page — all rules scoped under .zh-landing */
+
+.zh-landing {
+  --zh-evergreen: #00381d;
+  --zh-green: #ccffd0;
+  --zh-offblack: #1c1b1c;
+  --zh-gray-light: #ebebe9;
+  --zh-gray-med: #cccccc;
+  --zh-ink: #1c1b1c;
+  --zh-surface: #ffffff;
+  --zh-card-border: #ebebe9;
+  font-size: 16px;
+  color: var(--zh-ink);
+  background: var(--zh-surface);
+}
+
+.dark .zh-landing {
+  --zh-ink: #ebebe9;
+  --zh-surface: #1c1b1c;
+  --zh-card-border: #333333;
+}
+
+.zh-landing .zh-container {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+/* ---------- hero ---------- */
+
+.zh-landing .zh-hero {
+  background:
+    radial-gradient(1200px 500px at 80% -10%, rgba(204, 255, 208, 0.16), transparent 60%),
+    var(--zh-evergreen);
+  color: #ffffff;
+  padding: 96px 0 88px;
+}
+
+.zh-landing .zh-hero-grid {
+  display: grid;
+  grid-template-columns: 1.1fr 0.9fr;
+  gap: 56px;
+  align-items: center;
+}
+
+.zh-landing .zh-eyebrow {
+  color: var(--zh-green);
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-size: 12px;
+  font-weight: 600;
+  margin: 0 0 16px;
+}
+
+.zh-landing .zh-h1 {
+  font-size: clamp(34px, 4.4vw, 52px);
+  line-height: 1.08;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  margin: 0 0 18px;
+  color: #ffffff;
+}
+
+.zh-landing .zh-sub {
+  font-size: 18px;
+  line-height: 1.55;
+  color: rgba(255, 255, 255, 0.78);
+  margin: 0 0 28px;
+  max-width: 46ch;
+}
+
+.zh-landing .zh-cta-row {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.zh-landing .zh-btn {
+  display: inline-block;
+  padding: 12px 22px;
+  border-radius: 999px;
+  font-size: 15px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: transform 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+}
+
+.zh-landing .zh-btn:hover { transform: translateY(-1px); }
+
+.zh-landing .zh-btn-primary {
+  background: var(--zh-green);
+  color: var(--zh-evergreen);
+}
+.zh-landing .zh-btn-primary:hover { background: #b8f5bd; }
+
+.zh-landing .zh-btn-ghost {
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+}
+.zh-landing .zh-btn-ghost:hover { border-color: var(--zh-green); color: var(--zh-green); }
+
+.zh-landing .zh-hero-badges {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 32px;
+}
+
+.zh-landing .zh-badge {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(204, 255, 208, 0.35);
+  border-radius: 999px;
+  padding: 6px 14px;
+}
+
+/* hero code card */
+
+.zh-landing .zh-hero-code {
+  background: rgba(10, 26, 17, 0.75);
+  border: 1px solid rgba(204, 255, 208, 0.22);
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
+}
+
+.zh-landing .zh-code-bar {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 12px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.zh-landing .zh-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.zh-landing .zh-code-title {
+  margin-left: 10px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.55);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.zh-landing .zh-code {
+  margin: 0;
+  padding: 20px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 13px;
+  line-height: 1.65;
+  color: var(--zh-green);
+  overflow-x: auto;
+  white-space: pre;
+}
+
+/* ---------- product grid ---------- */
+
+.zh-landing .zh-section {
+  padding: 80px 0;
+  background: var(--zh-surface);
+}
+
+.zh-landing .zh-h2 {
+  font-size: clamp(26px, 3vw, 34px);
+  font-weight: 650;
+  letter-spacing: -0.015em;
+  margin: 0 0 10px;
+  color: var(--zh-ink);
+}
+
+.zh-landing .zh-section-sub {
+  color: color-mix(in srgb, var(--zh-ink) 65%, transparent);
+  font-size: 16px;
+  margin: 0 0 36px;
+  max-width: 60ch;
+}
+
+.zh-landing .zh-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 18px;
+}
+
+.zh-landing .zh-card {
+  position: relative;
+  display: block;
+  border: 1px solid var(--zh-card-border);
+  border-radius: 14px;
+  padding: 24px 24px 44px;
+  text-decoration: none;
+  color: var(--zh-ink);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.zh-landing .zh-card:hover {
+  border-color: var(--zh-evergreen);
+  box-shadow: 0 8px 28px rgba(0, 56, 29, 0.1);
+  transform: translateY(-2px);
+}
+
+.dark .zh-landing .zh-card:hover {
+  border-color: var(--zh-green);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.4);
+}
+
+.zh-landing .zh-card h3 {
+  font-size: 17px;
+  font-weight: 650;
+  margin: 0 0 8px;
+  color: var(--zh-ink);
+}
+
+.zh-landing .zh-card p {
+  font-size: 14.5px;
+  line-height: 1.55;
+  margin: 0;
+  color: color-mix(in srgb, var(--zh-ink) 68%, transparent);
+}
+
+.zh-landing .zh-card-arrow {
+  position: absolute;
+  left: 24px;
+  bottom: 16px;
+  font-size: 16px;
+  color: var(--zh-evergreen);
+  opacity: 0;
+  transform: translateX(-4px);
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.dark .zh-landing .zh-card-arrow { color: var(--zh-green); }
+
+.zh-landing .zh-card:hover .zh-card-arrow {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+/* ---------- CTA band ---------- */
+
+.zh-landing .zh-cta-band {
+  background: var(--zh-green);
+  padding: 64px 0;
+}
+
+.zh-landing .zh-cta-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 32px;
+  flex-wrap: wrap;
+}
+
+.zh-landing .zh-cta-band .zh-h2,
+.zh-landing .zh-cta-band p {
+  color: var(--zh-evergreen);
+  margin: 0;
+}
+
+.zh-landing .zh-cta-band .zh-h2 { margin-bottom: 6px; }
+
+.zh-landing .zh-btn-dark {
+  background: var(--zh-evergreen);
+  color: var(--zh-green);
+}
+.zh-landing .zh-btn-dark:hover { background: #00512b; }
+
+.zh-landing .zh-btn-outline-dark {
+  color: var(--zh-evergreen);
+  border: 1.5px solid var(--zh-evergreen);
+}
+
+/* ---------- responsive ---------- */
+
+@media (max-width: 900px) {
+  .zh-landing .zh-hero { padding: 64px 0 56px; }
+  .zh-landing .zh-hero-grid {
+    grid-template-columns: 1fr;
+    gap: 36px;
+  }
+  .zh-landing .zh-section { padding: 56px 0; }
+}

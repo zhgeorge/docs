@@ -1,74 +1,102 @@
 ---
-title: "Zero Hash Developer Documentation"
+title: "zerohash Developer Documentation"
 sidebarTitle: "Home"
 description: "Regulated crypto-as-a-service for fintechs and brokerages. Integrate crypto trading, stablecoin payments, and digital asset settlement via REST API."
+mode: "custom"
 ---
 
-Zero Hash gives your platform regulated access to digital assets — crypto trading via RFQ and CLOB, stablecoin payments, cross-border settlement, staking, and more — through a single REST API and a suite of drop-in SDKs. Zero Hash handles the regulatory complexity (FinCEN MSB, money transmission licenses in all 50 US states) so you can focus on your product.
+<div className="zh-landing">
 
-<CardGroup cols={2}>
-  <Card title="Get Started" icon="rocket" href="/docs/getting-started">
-    Set up your platform, get API keys, and make your first authenticated API call in minutes.
-  </Card>
-  <Card title="Authentication" icon="lock" href="/docs/authentication">
-    Learn how to sign requests with HMAC-SHA256 and manage your API credentials securely.
-  </Card>
-  <Card title="Trading" icon="chart-line" href="/docs/buysell">
-    Offer crypto buy/sell to your customers via RFQ quotes or the Central Limit Order Book.
-  </Card>
-  <Card title="Payments" icon="money-bill-transfer" href="/docs/payouts">
-    Disburse stablecoins and crypto to end-user wallets globally, 24/7/365.
-  </Card>
-  <Card title="SDKs" icon="layer-group" href="/docs/sdk-index">
-    Drop-in front-end SDKs for KYC onboarding, trading, deposits, and withdrawals.
-  </Card>
-  <Card title="Settlement" icon="handshake" href="/docs/settlements-as-a-service">
-    Clear and settle off-exchange OTC and on-ramp trades with DVP finality.
-  </Card>
-</CardGroup>
+  <section className="zh-hero">
+    <div className="zh-container zh-hero-grid">
+      <div className="zh-hero-copy">
+        <p className="zh-eyebrow">zerohash developer platform</p>
+        <h1 className="zh-h1">Embed regulated digital assets into your product</h1>
+        <p className="zh-sub">
+          Crypto trading, stablecoin payments, custody, and settlement — one REST API,
+          drop-in SDKs, and the licenses handled for you.
+        </p>
+        <div className="zh-cta-row">
+          <a className="zh-btn zh-btn-primary" href="/docs/getting-started">Get started</a>
+          <a className="zh-btn zh-btn-ghost" href="/docs/submit-first-api-call">Make your first API call</a>
+        </div>
+        <div className="zh-hero-badges">
+          <span className="zh-badge">MSB · 50 US states + DC</span>
+          <span className="zh-badge">VASP · EU &amp; Australia</span>
+          <span className="zh-badge">24/7/365 settlement</span>
+        </div>
+      </div>
+      <div className="zh-hero-code">
+        <div className="zh-code-bar">
+          <span className="zh-dot" /><span className="zh-dot" /><span className="zh-dot" />
+          <span className="zh-code-title">POST /trades — execute a quote</span>
+        </div>
+        <pre className="zh-code">{'curl -X POST https://api.cert.zerohash.com/execute \\\n' +
+'  -H "X-SCX-API-KEY: $API_PUBLIC_KEY" \\\n' +
+'  -H "X-SCX-SIGNED: $SIGNATURE" \\\n' +
+'  -d \'{\n' +
+'    "quote_id": "8ba2f...c41",\n' +
+'    "underlying": "BTC",\n' +
+'    "quoted_currency": "USD",\n' +
+'    "side": "buy",\n' +
+'    "quantity": "0.025"\n' +
+'  }\'\n' +
+'\n' +
+'{ "trade_status": "accepted", "settled": "t+0" }'}</pre>
+      </div>
+    </div>
+  </section>
 
-## How Zero Hash Works
+  <section className="zh-section">
+    <div className="zh-container">
+      <h2 className="zh-h2">Build with any product, or all of them</h2>
+      <p className="zh-section-sub">Every capability is a set of endpoints on the same platform — mix and match behind your own UX.</p>
+      <div className="zh-grid">
+        <a className="zh-card" href="/docs/request-for-quote">
+          <h3>Trading — RFQ &amp; Order Book</h3>
+          <p>Firm quotes from top market makers, or price-time priority matching on the CLOB.</p>
+          <span className="zh-card-arrow">→</span>
+        </a>
+        <a className="zh-card" href="/docs/payouts">
+          <h3>Stablecoin Payments</h3>
+          <p>Accept payins and send payouts to wallets globally, in seconds, around the clock.</p>
+          <span className="zh-card-arrow">→</span>
+        </a>
+        <a className="zh-card" href="/docs/sdk-index">
+          <h3>Drop-in SDKs</h3>
+          <p>Front-end SDKs for KYC onboarding, trading, deposits, and withdrawals.</p>
+          <span className="zh-card-arrow">→</span>
+        </a>
+        <a className="zh-card" href="/docs/fiat">
+          <h3>Fiat On/Off Ramps</h3>
+          <p>ACH deposits and withdrawals with Plaid bank linking built in.</p>
+          <span className="zh-card-arrow">→</span>
+        </a>
+        <a className="zh-card" href="/docs/settlements-as-a-service">
+          <h3>Settlement</h3>
+          <p>Clear and settle off-exchange OTC and on-ramp trades with DVP finality.</p>
+          <span className="zh-card-arrow">→</span>
+        </a>
+        <a className="zh-card" href="/docs/staking">
+          <h3>Staking &amp; More</h3>
+          <p>Native staking, custody, and asset support across major chains.</p>
+          <span className="zh-card-arrow">→</span>
+        </a>
+      </div>
+    </div>
+  </section>
 
-Zero Hash sits between your platform and the regulated digital asset ecosystem. You integrate once via API or SDK; Zero Hash handles custody, compliance, liquidity, and settlement on the back end.
+  <section className="zh-cta-band">
+    <div className="zh-container zh-cta-inner">
+      <div>
+        <h2 className="zh-h2">Ready to build?</h2>
+        <p>Provision Cert environment access and make your first signed request today.</p>
+      </div>
+      <div className="zh-cta-row">
+        <a className="zh-btn zh-btn-dark" href="/docs/get-platform-access">Get platform access</a>
+        <a className="zh-btn zh-btn-outline-dark" href="mailto:sales@zerohash.com">Talk to sales</a>
+      </div>
+    </div>
+  </section>
 
-<Steps>
-  <Step title="Get Platform Access">
-    Contact the Zero Hash team to provision your Cert (sandbox) and Prod environments. You'll receive API credentials for both. See [Get Platform Access](/docs/get-platform-access).
-  </Step>
-  <Step title="Generate API Keys">
-    Log in to the [Client Portal](https://portal.zerohash.com) to create and manage API keys. Keys are scoped to your platform and used to sign every request. See [Generate API Keys](/docs/generate-api-keys).
-  </Step>
-  <Step title="Onboard Customers">
-    Create participant records for your end users via the Onboarding API or the drop-in Onboarding SDK. Zero Hash handles KYC and compliance disclosures. See [Onboard a Customer](/docs/onboard-a-customer).
-  </Step>
-  <Step title="Build Your Use Case">
-    Choose your integration path — crypto trading via [RFQ](/docs/request-for-quote) or [CLOB](/docs/central-limit-order-book-3), [stablecoin payouts](/docs/payouts), [fiat ACH deposits](/docs/fiat), [staking](/docs/staking), or [settlement](/docs/settlements-as-a-service).
-  </Step>
-</Steps>
-
-## Explore by Product Area
-
-<CardGroup cols={3}>
-  <Card title="RFQ Trading" icon="arrow-right-arrow-left" href="/docs/request-for-quote">
-    Request firm quotes from top market makers and execute in 5 or 30 seconds.
-  </Card>
-  <Card title="Order Book" icon="book-open" href="/docs/central-limit-order-book-3">
-    Price-time priority matching with deep liquidity for real-time trading.
-  </Card>
-  <Card title="Stablecoin Payins" icon="arrow-down" href="/docs/payins">
-    Accept stablecoin and crypto deposits from your end users.
-  </Card>
-  <Card title="Stablecoin Payouts" icon="arrow-up" href="/docs/payouts">
-    Send stablecoins and crypto to wallets globally in seconds.
-  </Card>
-  <Card title="Fiat Payments" icon="building-columns" href="/docs/fiat">
-    ACH deposits and withdrawals powered by Plaid bank linking.
-  </Card>
-  <Card title="Staking" icon="coins" href="/docs/staking">
-    Enable native crypto staking for your users via the staking API.
-  </Card>
-</CardGroup>
-
-<Note>
-  Zero Hash operates two environments: **Cert** (sandbox, no real funds) and **Prod** (live). Always test in Cert before going live. To request access to either environment, [contact the Zero Hash team](mailto:sales@zerohash.com).
-</Note>
+</div>
