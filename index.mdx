@@ -8,93 +8,126 @@ mode: "custom"
 <div className="zh-landing">
 
   <section className="zh-hero">
-    <div className="zh-container zh-hero-grid">
-      <div className="zh-hero-copy">
-        <p className="zh-eyebrow">zerohash developer platform</p>
-        <h1 className="zh-h1">Embed regulated digital assets into your product</h1>
-        <p className="zh-sub">
-          Crypto trading, stablecoin payments, custody, and settlement — one REST API,
-          drop-in SDKs, and the licenses handled for you.
-        </p>
-        <div className="zh-cta-row">
-          <a className="zh-btn zh-btn-primary" href="/docs/getting-started">Get started</a>
-          <a className="zh-btn zh-btn-ghost" href="/docs/submit-first-api-call">Make your first API call</a>
+    <div className="zh-hero-grid-bg" />
+    <div className="zh-hero-glow" />
+    <div className="zh-container zh-hero-inner">
+      <p className="zh-eyebrow"><span className="zh-eyebrow-dot" />zerohash developer platform</p>
+      <h1 className="zh-h1">Embed regulated <span className="zh-accent-word">digital assets</span> into your product</h1>
+      <p className="zh-sub">
+        Crypto trading, stablecoin payments, custody, and settlement — one REST API,
+        drop-in SDKs, and the licenses handled for you.
+      </p>
+      <div className="zh-cta-row">
+        <a className="zh-btn zh-btn-primary" href="/docs/getting-started">Get started</a>
+        <a className="zh-btn zh-btn-secondary" href="/docs/submit-first-api-call">Make your first API call</a>
+      </div>
+      <p className="zh-trust">MSB · 50 US states + DC<span className="zh-trust-sep" />VASP · EU &amp; Australia<span className="zh-trust-sep" />24/7/365 settlement</p>
+      <div className="zh-terminal">
+        <div className="zh-term-bar">
+          <span className="zh-dot" /><span className="zh-dot" /><span className="zh-dot" />
+          <span className="zh-term-title">execute-trade.sh</span>
+          <span className="zh-term-env"><span className="zh-env-dot" />cert</span>
         </div>
-        <div className="zh-hero-badges">
-          <span className="zh-badge">MSB · 50 US states + DC</span>
-          <span className="zh-badge">VASP · EU &amp; Australia</span>
-          <span className="zh-badge">24/7/365 settlement</span>
+        <div className="zh-term-body">
+          <div className="zh-ln"><span className="zh-tk-cmd">{'curl'}</span><span className="zh-tk-flag">{' -X POST'}</span>{' https://api.cert.zerohash.com/execute '}<span className="zh-tk-dim">{'\\'}</span></div>
+          <div className="zh-ln">{'  '}<span className="zh-tk-flag">{'-H'}</span>{' '}<span className="zh-tk-str">{'"X-SCX-API-KEY: '}<span className="zh-tk-var">{'$API_PUBLIC_KEY'}</span>{'"'}</span>{' '}<span className="zh-tk-dim">{'\\'}</span></div>
+          <div className="zh-ln">{'  '}<span className="zh-tk-flag">{'-H'}</span>{' '}<span className="zh-tk-str">{'"X-SCX-SIGNED: '}<span className="zh-tk-var">{'$SIGNATURE'}</span>{'"'}</span>{' '}<span className="zh-tk-dim">{'\\'}</span></div>
+          <div className="zh-ln">{'  '}<span className="zh-tk-flag">{'-d'}</span>{' '}<span className="zh-tk-dim">{"'{"}</span></div>
+          <div className="zh-ln">{'    '}<span className="zh-tk-key">{'"quote_id"'}</span><span className="zh-tk-dim">{':'}</span>{' '}<span className="zh-tk-str">{'"8ba2f...c41"'}</span><span className="zh-tk-dim">{','}</span></div>
+          <div className="zh-ln">{'    '}<span className="zh-tk-key">{'"underlying"'}</span><span className="zh-tk-dim">{':'}</span>{' '}<span className="zh-tk-str">{'"BTC"'}</span><span className="zh-tk-dim">{','}</span></div>
+          <div className="zh-ln">{'    '}<span className="zh-tk-key">{'"side"'}</span><span className="zh-tk-dim">{':'}</span>{' '}<span className="zh-tk-str">{'"buy"'}</span><span className="zh-tk-dim">{','}</span></div>
+          <div className="zh-ln">{'    '}<span className="zh-tk-key">{'"quantity"'}</span><span className="zh-tk-dim">{':'}</span>{' '}<span className="zh-tk-str">{'"0.025"'}</span></div>
+          <div className="zh-ln">{'  '}<span className="zh-tk-dim">{"}'"}</span></div>
+          <div className="zh-ln zh-ln-gap"><span className="zh-tk-com">{'# response · settled t+0'}</span></div>
+          <div className="zh-ln"><span className="zh-tk-dim">{'{'}</span>{' '}<span className="zh-tk-key">{'"trade_status"'}</span><span className="zh-tk-dim">{':'}</span>{' '}<span className="zh-tk-ok">{'"accepted"'}</span>{' '}<span className="zh-tk-dim">{'}'}</span></div>
         </div>
       </div>
-      <div className="zh-hero-code">
-        <div className="zh-code-bar">
-          <span className="zh-dot" /><span className="zh-dot" /><span className="zh-dot" />
-          <span className="zh-code-title">POST /trades — execute a quote</span>
-        </div>
-        <pre className="zh-code">{'curl -X POST https://api.cert.zerohash.com/execute \\\n' +
-'  -H "X-SCX-API-KEY: $API_PUBLIC_KEY" \\\n' +
-'  -H "X-SCX-SIGNED: $SIGNATURE" \\\n' +
-'  -d \'{\n' +
-'    "quote_id": "8ba2f...c41",\n' +
-'    "underlying": "BTC",\n' +
-'    "quoted_currency": "USD",\n' +
-'    "side": "buy",\n' +
-'    "quantity": "0.025"\n' +
-'  }\'\n' +
-'\n' +
-'{ "trade_status": "accepted", "settled": "t+0" }'}</pre>
+    </div>
+  </section>
+
+  <section className="zh-quicklinks">
+    <div className="zh-container">
+      <div className="zh-ql-grid">
+        <a className="zh-ql" href="/docs/getting-started">
+          <span className="zh-ql-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z" /><path d="M12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z" /></svg></span>
+          <span className="zh-ql-label">Quickstart</span>
+          <span className="zh-ql-arrow">→</span>
+        </a>
+        <a className="zh-ql" href="/docs/authentication">
+          <span className="zh-ql-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg></span>
+          <span className="zh-ql-label">Authentication</span>
+          <span className="zh-ql-arrow">→</span>
+        </a>
+        <a className="zh-ql" href="/docs/submit-first-api-call">
+          <span className="zh-ql-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polyline points="4 17 10 11 4 5" /><line x1="12" y1="19" x2="20" y2="19" /></svg></span>
+          <span className="zh-ql-label">First API call</span>
+          <span className="zh-ql-arrow">→</span>
+        </a>
+        <a className="zh-ql" href="/docs/sdk-index">
+          <span className="zh-ql-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z" /><path d="M2 17l10 5 10-5" /><path d="M2 12l10 5 10-5" /></svg></span>
+          <span className="zh-ql-label">SDKs</span>
+          <span className="zh-ql-arrow">→</span>
+        </a>
       </div>
     </div>
   </section>
 
   <section className="zh-section">
     <div className="zh-container">
+      <p className="zh-label">Products</p>
       <h2 className="zh-h2">Build with any product, or all of them</h2>
       <p className="zh-section-sub">Every capability is a set of endpoints on the same platform — mix and match behind your own UX.</p>
       <div className="zh-grid">
         <a className="zh-card" href="/docs/request-for-quote">
+          <span className="zh-card-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M8 3L4 7l4 4" /><path d="M4 7h16" /><path d="M16 21l4-4-4-4" /><path d="M20 17H4" /></svg></span>
           <h3>Trading — RFQ &amp; Order Book</h3>
           <p>Firm quotes from top market makers, or price-time priority matching on the CLOB.</p>
-          <span className="zh-card-arrow">→</span>
+          <span className="zh-card-more">Explore trading<span className="zh-card-arrow">→</span></span>
         </a>
         <a className="zh-card" href="/docs/payouts">
+          <span className="zh-card-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><path d="M12 7v10" /><path d="M8.5 14.5c0 1.38 1.57 2.5 3.5 2.5s3.5-1.12 3.5-2.5-1.57-2.5-3.5-2.5-3.5-1.12-3.5-2.5S10.07 7 12 7s3.5 1.12 3.5 2.5" /></svg></span>
           <h3>Stablecoin Payments</h3>
           <p>Accept payins and send payouts to wallets globally, in seconds, around the clock.</p>
-          <span className="zh-card-arrow">→</span>
+          <span className="zh-card-more">Explore payments<span className="zh-card-arrow">→</span></span>
         </a>
         <a className="zh-card" href="/docs/sdk-index">
+          <span className="zh-card-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5" /><rect x="14" y="3" width="7" height="7" rx="1.5" /><rect x="3" y="14" width="7" height="7" rx="1.5" /><rect x="14" y="14" width="7" height="7" rx="1.5" /></svg></span>
           <h3>Drop-in SDKs</h3>
           <p>Front-end SDKs for KYC onboarding, trading, deposits, and withdrawals.</p>
-          <span className="zh-card-arrow">→</span>
+          <span className="zh-card-more">Explore SDKs<span className="zh-card-arrow">→</span></span>
         </a>
         <a className="zh-card" href="/docs/fiat">
+          <span className="zh-card-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 21h18" /><path d="M4 18v-8" /><path d="M8 18v-8" /><path d="M12 18v-8" /><path d="M16 18v-8" /><path d="M20 18v-8" /><path d="M2 10l10-7 10 7" /></svg></span>
           <h3>Fiat On/Off Ramps</h3>
           <p>ACH deposits and withdrawals with Plaid bank linking built in.</p>
-          <span className="zh-card-arrow">→</span>
+          <span className="zh-card-more">Explore fiat<span className="zh-card-arrow">→</span></span>
         </a>
         <a className="zh-card" href="/docs/settlements-as-a-service">
+          <span className="zh-card-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg></span>
           <h3>Settlement</h3>
           <p>Clear and settle off-exchange OTC and on-ramp trades with DVP finality.</p>
-          <span className="zh-card-arrow">→</span>
+          <span className="zh-card-more">Explore settlement<span className="zh-card-arrow">→</span></span>
         </a>
         <a className="zh-card" href="/docs/staking">
+          <span className="zh-card-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v4" /><path d="M12 18v4" /><path d="M4.93 4.93l2.83 2.83" /><path d="M16.24 16.24l2.83 2.83" /><path d="M2 12h4" /><path d="M18 12h4" /><path d="M4.93 19.07l2.83-2.83" /><path d="M16.24 7.76l2.83-2.83" /></svg></span>
           <h3>Staking &amp; More</h3>
           <p>Native staking, custody, and asset support across major chains.</p>
-          <span className="zh-card-arrow">→</span>
+          <span className="zh-card-more">Explore staking<span className="zh-card-arrow">→</span></span>
         </a>
       </div>
     </div>
   </section>
 
-  <section className="zh-cta-band">
-    <div className="zh-container zh-cta-inner">
-      <div>
+  <section className="zh-cta-section">
+    <div className="zh-container">
+      <div className="zh-cta-panel">
+        <div className="zh-cta-glow" />
         <h2 className="zh-h2">Ready to build?</h2>
-        <p>Provision Cert environment access and make your first signed request today.</p>
-      </div>
-      <div className="zh-cta-row">
-        <a className="zh-btn zh-btn-dark" href="/docs/get-platform-access">Get platform access</a>
-        <a className="zh-btn zh-btn-outline-dark" href="mailto:sales@zerohash.com">Talk to sales</a>
+        <p className="zh-cta-sub">Provision Cert environment access and make your first signed request today.</p>
+        <div className="zh-cta-row zh-cta-row-center">
+          <a className="zh-btn zh-btn-primary" href="/docs/get-platform-access">Get platform access</a>
+          <a className="zh-btn zh-btn-secondary" href="mailto:sales@zerohash.com">Talk to sales</a>
+        </div>
       </div>
     </div>
   </section>
