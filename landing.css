@@ -13,11 +13,8 @@
   --zh-glow: rgba(62, 207, 142, 0.14);
   --zh-btn-bg: #161615;
   --zh-btn-fg: #ffffff;
-  --zh-term-bg: #0f1110;
-  --zh-term-border: #242723;
   font-size: 16px;
   color: var(--zh-ink);
-  background: var(--zh-canvas);
 }
 
 .dark .zh-landing {
@@ -32,21 +29,31 @@
   --zh-glow: rgba(62, 207, 142, 0.08);
   --zh-btn-bg: #ededea;
   --zh-btn-fg: #111211;
-  --zh-term-bg: #101211;
-  --zh-term-border: #2b2d29;
+}
+
+/* Mintlify prints the frontmatter title + description as a page header above
+   the content; the hero below replaces it, so suppress it on this page only. */
+#content-area:has(.zh-landing) #header { display: none; }
+
+/* Mintlify's MDX heading component sets display:flex and injects an anchor
+   link; keep our headings flowing as normal text blocks. */
+.zh-landing h1,
+.zh-landing h2,
+.zh-landing h3 {
+  display: block;
 }
 
 .zh-landing .zh-container {
-  max-width: 1080px;
-  margin: 0 auto;
-  padding: 0 24px;
+  width: 100%;
+  margin: 0;
+  padding: 0;
 }
 
 /* ---------- hero ---------- */
 
 .zh-landing .zh-hero {
   position: relative;
-  padding: 92px 0 72px;
+  padding: 8px 0 56px;
   overflow: hidden;
 }
 
@@ -57,8 +64,8 @@
     linear-gradient(to right, rgba(25, 25, 24, 0.05) 1px, transparent 1px),
     linear-gradient(to bottom, rgba(25, 25, 24, 0.05) 1px, transparent 1px);
   background-size: 38px 38px;
-  -webkit-mask-image: radial-gradient(ellipse 75% 65% at 50% 0%, black 30%, transparent 75%);
-  mask-image: radial-gradient(ellipse 75% 65% at 50% 0%, black 30%, transparent 75%);
+  -webkit-mask-image: radial-gradient(ellipse 70% 80% at 0% 20%, black 20%, transparent 72%);
+  mask-image: radial-gradient(ellipse 70% 80% at 0% 20%, black 20%, transparent 72%);
   pointer-events: none;
 }
 
@@ -70,10 +77,9 @@
 
 .zh-landing .zh-hero-glow {
   position: absolute;
-  top: -140px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 760px;
+  top: -180px;
+  left: -160px;
+  width: 620px;
   height: 420px;
   background: radial-gradient(ellipse at center, var(--zh-glow), transparent 65%);
   pointer-events: none;
@@ -83,8 +89,8 @@
   position: relative;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  text-align: center;
+  align-items: flex-start;
+  text-align: left;
 }
 
 .zh-landing .zh-eyebrow {
@@ -97,7 +103,7 @@
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--zh-muted);
-  margin: 0 0 22px;
+  margin: 0 0 20px;
 }
 
 .zh-landing .zh-eyebrow-dot {
@@ -109,13 +115,13 @@
 }
 
 .zh-landing .zh-h1 {
-  font-size: clamp(36px, 5.4vw, 62px);
-  line-height: 1.05;
+  font-size: clamp(34px, 4.4vw, 52px);
+  line-height: 1.07;
   font-weight: 600;
   letter-spacing: -0.035em;
-  margin: 0 0 20px;
+  margin: 0 0 18px;
   color: var(--zh-ink);
-  max-width: 17ch;
+  max-width: 20ch;
 }
 
 .zh-landing .zh-accent-word {
@@ -126,18 +132,17 @@
 }
 
 .zh-landing .zh-sub {
-  font-size: 17.5px;
+  font-size: 17px;
   line-height: 1.6;
   color: var(--zh-muted);
-  margin: 0 0 30px;
-  max-width: 52ch;
+  margin: 0 0 28px;
+  max-width: 54ch;
 }
 
 .zh-landing .zh-cta-row {
   display: flex;
   gap: 12px;
   flex-wrap: wrap;
-  justify-content: center;
 }
 
 .zh-landing .zh-btn {
@@ -180,94 +185,17 @@
 
 .zh-landing .zh-trust-sep::before {
   content: "·";
-  margin: 0 14px;
+  margin: 0 12px;
   color: var(--zh-hairline-strong);
 }
 
-/* ---------- terminal ---------- */
-
-.zh-landing .zh-terminal {
-  width: min(680px, 100%);
-  margin-top: 52px;
-  background: var(--zh-term-bg);
-  border: 1px solid var(--zh-term-border);
-  border-radius: 14px;
-  overflow: hidden;
-  text-align: left;
-  box-shadow:
-    0 1px 2px rgba(0, 0, 0, 0.06),
-    0 28px 56px -16px rgba(15, 40, 30, 0.22);
-}
-
-.zh-landing .zh-term-bar {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 11px 16px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
-}
-
-.zh-landing .zh-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.14);
-}
-
-.zh-landing .zh-term-title {
-  margin-left: 10px;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 12px;
-  color: rgba(255, 255, 255, 0.45);
-}
-
-.zh-landing .zh-term-env {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  margin-left: auto;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 11px;
-  letter-spacing: 0.06em;
-  color: var(--zh-green-bright);
-  border: 1px solid rgba(62, 207, 142, 0.25);
-  border-radius: 999px;
-  padding: 2.5px 10px;
-}
-
-.zh-landing .zh-env-dot {
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: var(--zh-green-bright);
-}
-
-.zh-landing .zh-term-body {
-  padding: 18px 20px 20px;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 13px;
-  line-height: 1.75;
-  overflow-x: auto;
-}
-
-.zh-landing .zh-ln { white-space: pre; color: #dbe1dc; }
-.zh-landing .zh-ln-gap { margin-top: 14px; }
-.zh-landing .zh-tk-cmd { color: #ffffff; font-weight: 600; }
-.zh-landing .zh-tk-flag { color: #9aa59d; }
-.zh-landing .zh-tk-dim { color: #626b64; }
-.zh-landing .zh-tk-str { color: #3ecf8e; }
-.zh-landing .zh-tk-var { color: #e8c169; }
-.zh-landing .zh-tk-key { color: #8fb8d8; }
-.zh-landing .zh-tk-com { color: #5a635c; font-style: italic; }
-.zh-landing .zh-tk-ok { color: #3ecf8e; font-weight: 600; }
-
 /* ---------- quick links ---------- */
 
-.zh-landing .zh-quicklinks { padding: 8px 0 8px; }
+.zh-landing .zh-quicklinks { padding: 0; }
 
 .zh-landing .zh-ql-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
 }
 
@@ -313,7 +241,7 @@
 
 /* ---------- products ---------- */
 
-.zh-landing .zh-section { padding: 84px 0 24px; }
+.zh-landing .zh-section { padding: 68px 0 16px; }
 
 .zh-landing .zh-label {
   display: inline-block;
@@ -330,7 +258,7 @@
 }
 
 .zh-landing .zh-h2 {
-  font-size: clamp(26px, 3vw, 34px);
+  font-size: clamp(24px, 2.6vw, 31px);
   font-weight: 600;
   letter-spacing: -0.025em;
   margin: 0 0 10px;
@@ -341,13 +269,13 @@
   color: var(--zh-muted);
   font-size: 16px;
   line-height: 1.6;
-  margin: 0 0 36px;
+  margin: 0 0 32px;
   max-width: 60ch;
 }
 
 .zh-landing .zh-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
   gap: 14px;
 }
 
@@ -357,7 +285,7 @@
   background: var(--zh-card-bg);
   border: 1px solid var(--zh-hairline);
   border-radius: 14px;
-  padding: 24px;
+  padding: 22px;
   text-decoration: none;
   color: var(--zh-ink);
   transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
@@ -373,16 +301,16 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 38px;
-  height: 38px;
+  width: 36px;
+  height: 36px;
   border-radius: 10px;
   background: var(--zh-green-tint);
   color: var(--zh-green);
-  margin-bottom: 16px;
+  margin-bottom: 14px;
 }
 
 .zh-landing .zh-card h3 {
-  font-size: 16.5px;
+  font-size: 16px;
   font-weight: 650;
   letter-spacing: -0.01em;
   margin: 0 0 7px;
@@ -392,7 +320,7 @@
 .zh-landing .zh-card p {
   font-size: 14.5px;
   line-height: 1.55;
-  margin: 0 0 18px;
+  margin: 0 0 16px;
   color: var(--zh-muted);
 }
 
@@ -414,24 +342,22 @@
 
 /* ---------- CTA ---------- */
 
-.zh-landing .zh-cta-section { padding: 64px 0 96px; }
+.zh-landing .zh-cta-section { padding: 56px 0 40px; }
 
 .zh-landing .zh-cta-panel {
   position: relative;
   overflow: hidden;
-  text-align: center;
   background: var(--zh-card-bg);
   border: 1px solid var(--zh-hairline);
-  border-radius: 20px;
-  padding: 68px 32px 64px;
+  border-radius: 18px;
+  padding: 44px 40px 42px;
 }
 
 .zh-landing .zh-cta-glow {
   position: absolute;
-  top: -180px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 640px;
+  top: -200px;
+  left: -80px;
+  width: 560px;
   height: 360px;
   background: radial-gradient(ellipse at center, var(--zh-glow), transparent 65%);
   pointer-events: none;
@@ -443,21 +369,18 @@
   position: relative;
   color: var(--zh-muted);
   font-size: 16px;
-  margin: 0 auto 30px;
+  margin: 0 0 26px;
   max-width: 48ch;
 }
 
-.zh-landing .zh-cta-row-center { position: relative; justify-content: center; }
+.zh-landing .zh-cta-row-center { position: relative; }
 
 /* ---------- responsive ---------- */
 
-@media (max-width: 960px) {
-  .zh-landing .zh-ql-grid { grid-template-columns: repeat(2, 1fr); }
-}
-
 @media (max-width: 640px) {
-  .zh-landing .zh-hero { padding: 60px 0 48px; }
-  .zh-landing .zh-section { padding: 60px 0 16px; }
+  .zh-landing .zh-hero { padding: 4px 0 44px; }
+  .zh-landing .zh-section { padding: 52px 0 12px; }
   .zh-landing .zh-ql-grid { grid-template-columns: 1fr; }
+  .zh-landing .zh-cta-panel { padding: 34px 24px 32px; }
   .zh-landing .zh-trust-sep::before { margin: 0 8px; }
 }

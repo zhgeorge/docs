@@ -2,7 +2,7 @@
 title: "zerohash Developer Documentation"
 sidebarTitle: "Home"
 description: "Regulated crypto-as-a-service for fintechs and brokerages. Integrate crypto trading, stablecoin payments, and digital asset settlement via REST API."
-mode: "custom"
+mode: "wide"
 ---
 
 <div className="zh-landing">
@@ -22,26 +22,6 @@ mode: "custom"
         <a className="zh-btn zh-btn-secondary" href="/docs/submit-first-api-call">Make your first API call</a>
       </div>
       <p className="zh-trust">MSB · 50 US states + DC<span className="zh-trust-sep" />VASP · EU &amp; Australia<span className="zh-trust-sep" />24/7/365 settlement</p>
-      <div className="zh-terminal">
-        <div className="zh-term-bar">
-          <span className="zh-dot" /><span className="zh-dot" /><span className="zh-dot" />
-          <span className="zh-term-title">execute-trade.sh</span>
-          <span className="zh-term-env"><span className="zh-env-dot" />cert</span>
-        </div>
-        <div className="zh-term-body">
-          <div className="zh-ln"><span className="zh-tk-cmd">{'curl'}</span><span className="zh-tk-flag">{' -X POST'}</span>{' https://api.cert.zerohash.com/execute '}<span className="zh-tk-dim">{'\\'}</span></div>
-          <div className="zh-ln">{'  '}<span className="zh-tk-flag">{'-H'}</span>{' '}<span className="zh-tk-str">{'"X-SCX-API-KEY: '}<span className="zh-tk-var">{'$API_PUBLIC_KEY'}</span>{'"'}</span>{' '}<span className="zh-tk-dim">{'\\'}</span></div>
-          <div className="zh-ln">{'  '}<span className="zh-tk-flag">{'-H'}</span>{' '}<span className="zh-tk-str">{'"X-SCX-SIGNED: '}<span className="zh-tk-var">{'$SIGNATURE'}</span>{'"'}</span>{' '}<span className="zh-tk-dim">{'\\'}</span></div>
-          <div className="zh-ln">{'  '}<span className="zh-tk-flag">{'-d'}</span>{' '}<span className="zh-tk-dim">{"'{"}</span></div>
-          <div className="zh-ln">{'    '}<span className="zh-tk-key">{'"quote_id"'}</span><span className="zh-tk-dim">{':'}</span>{' '}<span className="zh-tk-str">{'"8ba2f...c41"'}</span><span className="zh-tk-dim">{','}</span></div>
-          <div className="zh-ln">{'    '}<span className="zh-tk-key">{'"underlying"'}</span><span className="zh-tk-dim">{':'}</span>{' '}<span className="zh-tk-str">{'"BTC"'}</span><span className="zh-tk-dim">{','}</span></div>
-          <div className="zh-ln">{'    '}<span className="zh-tk-key">{'"side"'}</span><span className="zh-tk-dim">{':'}</span>{' '}<span className="zh-tk-str">{'"buy"'}</span><span className="zh-tk-dim">{','}</span></div>
-          <div className="zh-ln">{'    '}<span className="zh-tk-key">{'"quantity"'}</span><span className="zh-tk-dim">{':'}</span>{' '}<span className="zh-tk-str">{'"0.025"'}</span></div>
-          <div className="zh-ln">{'  '}<span className="zh-tk-dim">{"}'"}</span></div>
-          <div className="zh-ln zh-ln-gap"><span className="zh-tk-com">{'# response · settled t+0'}</span></div>
-          <div className="zh-ln"><span className="zh-tk-dim">{'{'}</span>{' '}<span className="zh-tk-key">{'"trade_status"'}</span><span className="zh-tk-dim">{':'}</span>{' '}<span className="zh-tk-ok">{'"accepted"'}</span>{' '}<span className="zh-tk-dim">{'}'}</span></div>
-        </div>
-      </div>
     </div>
   </section>
 
