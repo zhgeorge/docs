@@ -7,6 +7,13 @@ Mintlify site for the zerohash developer documentation, deployed automatically f
   Do not hand-edit them — edit the source in ReadMe and re-run the sync.
 - The **landing page** (`index.mdx` + `landing.css`) and the rest of `docs.json` (theme, logo, colors,
   navbar, Changelog tab) are hand-maintained in this repo.
+- The **setup wizard** (`setup-wizard.mdx`, rendered by `wizard.js` + `wizard.css`) is hand-maintained too.
+  Mintlify injects every root-level `.js`/`.css` file on every page; `wizard.js` only acts when it finds
+  `#zh-wizard-root` (the wizard page) or `.zh-products` (the landing page's "Generate custom guide" mode,
+  which links to `/setup-wizard?products=fund,trade,…`). The wizard's product facts, endpoints and payloads
+  were transcribed from the guides in `docs/`; each generated section links to its source page. The sync
+  script keeps the page registered in `docs.json` under a hidden **Tools** group. To rebuild the
+  standalone, shareable copy of the wizard: `python3 scripts/build_wizard_artifact.py`.
 
 ## Syncing content from ReadMe
 

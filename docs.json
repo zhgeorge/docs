@@ -599,6 +599,13 @@
                 ]
               }
             ]
+          },
+          {
+            "group": "Tools",
+            "hidden": true,
+            "pages": [
+              "setup-wizard"
+            ]
           }
         ]
       },

@@ -329,6 +329,49 @@
 
 .zh-landing .zh-card:hover .zh-card-arrow { transform: translateX(3px); }
 
+
+/* ---------- products: header row + "Generate custom guide" select mode ---------- */
+
+.zh-landing .zh-section-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.zh-landing .zh-section-head > div:first-child { flex: 1 1 420px; min-width: 0; }
+.zh-landing .zh-section-head .zh-section-sub { margin-bottom: 0; }
+.zh-landing .zh-section-head + .zh-grid { margin-top: 36px; }
+
+.zh-landing .zh-section-actions { display: flex; align-items: center; gap: 6px; padding-top: 34px; flex-wrap: wrap; }
+.zh-landing .zh-btn-ghost { border: 1.5px solid transparent; background: none; color: var(--zh-muted); }
+.zh-landing .zh-btn-ghost:hover { color: var(--zh-ink); }
+.zh-landing .zh-btn:disabled { opacity: .45; cursor: not-allowed; transform: none; box-shadow: none; }
+
+/* the two states of the heading and subheading swap with the section's mode */
+.zh-landing .zh-title-select, .zh-landing .zh-guide-cancel { display: none; }
+.zh-landing .zh-products.is-select .zh-title-default { display: none; }
+.zh-landing .zh-products.is-select .zh-title-select { display: inline; }
+.zh-landing .zh-products.is-select .zh-guide-cancel { display: inline-block; }
+.zh-landing .zh-products.is-select .zh-guide-toggle { background: var(--zh-btn-bg); color: var(--zh-btn-fg); border-color: var(--zh-btn-bg); }
+
+/* cards become multi-select options */
+.zh-landing .zh-card-check {
+  position: absolute; top: 18px; right: 18px; width: 20px; height: 20px; border-radius: 6px;
+  border: 1.5px solid var(--zh-hairline-strong); background: var(--zh-card-bg); display: none;
+}
+.zh-landing .zh-products.is-select .zh-card-check { display: block; }
+.zh-landing .zh-products.is-select .zh-card-more { visibility: hidden; }
+.zh-landing .zh-products.is-select .zh-card { cursor: pointer; user-select: none; }
+.zh-landing .zh-products.is-select .zh-card.on { border-color: var(--zh-green); box-shadow: 0 0 0 3px var(--zh-green-tint); }
+.zh-landing .zh-products.is-select .zh-card.on .zh-card-check { background: var(--zh-green); border-color: var(--zh-green); }
+.zh-landing .zh-products.is-select .zh-card.on .zh-card-check::after {
+  content: ""; position: absolute; left: 6px; top: 2.5px; width: 5px; height: 10px;
+  border: solid #fff; border-width: 0 2px 2px 0; transform: rotate(45deg);
+}
+.dark .zh-landing .zh-products.is-select .zh-card.on .zh-card-check::after { border-color: #0d0e0d; }
+
 /* ---------- CTA ---------- */
 
 .zh-landing .zh-cta-section { padding: 64px 0 96px; }

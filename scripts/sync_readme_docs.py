@@ -181,6 +181,9 @@ def build_documentation_tab(tree: list[dict]) -> dict:
         else:
             pages = nav_to_mintlify(items)
         groups.append({"group": sec["section"], "pages": pages})
+    # Hand-maintained pages that live outside ReadMe. Hidden from the sidebar, but they must be
+    # in the navigation to route and pass `mint validate`.
+    groups.append({"group": "Tools", "hidden": True, "pages": ["setup-wizard"]})
     return {"tab": "Documentation", "groups": groups}
 
 
