@@ -1,198 +1,34 @@
-/* Changelog page — the "Releases" rail of dates beside the release entries.
-   The page runs in Mintlify's custom mode, so this stylesheet lays out the content
-   container itself. Every rule is gated on the page containing .zh-cl-rail, so no
-   other page in the site is affected. */
+/* Changelog page. The whole page is the changelog, so it carries no left column: the
+   sidebar's only entry was a link to this page. Every rule is gated on the page
+   containing .zh-cl-page, so no other page in the site is affected. */
 
-#content-area:has(.zh-cl-rail) {
-  --zh-cl-ink: #191918;
-  --zh-cl-muted: #6f6f68;
-  --zh-cl-hairline: #e6e6e0;
-  --zh-cl-green: #0b7a54;
-  --zh-cl-active-bg: rgba(14, 159, 110, 0.09);
-}
-
-.dark #content-area:has(.zh-cl-rail) {
-  --zh-cl-ink: #ededea;
-  --zh-cl-muted: #9c9c94;
-  --zh-cl-hairline: #242522;
-  --zh-cl-green: #3ecf8e;
-  --zh-cl-active-bg: rgba(62, 207, 142, 0.12);
-}
-
-/* The page runs in wide mode so the entry bodies keep Mintlify's prose typography.
-   Hide the native sidebar (its only entry was this page) and the page header, since the
-   rail and the title below replace them. */
-/* Only on desktop, where the sidebar occupies its own column and the rail replaces it.
-   Below Mintlify's lg breakpoint the sidebar is the slide-out nav drawer behind the
-   hamburger — the only way to reach the other tabs on a phone — so leave it alone. */
+/* Only on desktop, where the sidebar occupies its own column. Below Mintlify's lg
+   breakpoint that same element is the slide-out nav drawer behind the hamburger — the
+   only way to reach the other tabs on a phone — so leave it alone. */
 @media (min-width: 1024px) {
-  body:has(.zh-cl-rail) #sidebar {
+  body:has(.zh-cl-page) #sidebar {
     display: none;
   }
-}
 
-#content-area:has(.zh-cl-rail) #header {
-  display: none;
-}
-
-/* reclaim the space the hidden sidebar was reserving: the main container is capped at
-   the width of a page that has a sidebar, which would squeeze the entries once the rail
-   takes its own column */
-body:has(.zh-cl-rail) #content-container {
-  max-width: none;
-}
-
-#content-area:has(.zh-cl-rail) {
-  padding-left: 0;
-  margin-left: 0;
-  width: 100%;
-  max-width: none;
-}
-
-/* Two columns: the rail spans every row so it can stay sticky down the whole page. */
-#content-area:has(.zh-cl-rail) #content {
-  display: grid;
-  grid-template-columns: 232px minmax(0, 1fr);
-  column-gap: 56px;
-  align-items: start;
-  max-width: 1180px;
-  margin: 0 auto;
-  padding: 40px 32px 96px;
-}
-
-#content-area:has(.zh-cl-rail) #content > *:not(.zh-cl-rail) {
-  grid-column: 2;
-  min-width: 0;
-}
-
-/* ---------- rail ---------- */
-
-.zh-cl-rail {
-  grid-column: 1;
-  /* span implicit rows too: `1 / -1` would only reach the end of the explicit grid,
-     leaving the rail alone in row 1 and stretching that row to its full height */
-  grid-row: 1 / span 200;
-  align-self: start;
-  position: sticky;
-  /* --scroll-mt is Mintlify's own sticky offset (clears the fixed navbar and any banner);
-     the Update date labels stick to the same line */
-  top: var(--scroll-mt, 128px);
-  max-height: calc(100vh - var(--scroll-mt, 128px) - 32px);
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  padding-right: 8px;
-}
-
-.zh-cl-rail-title {
-  margin: 0 0 12px;
-  padding-left: 12px;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--zh-cl-ink);
-}
-
-.zh-cl-rail-nav {
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-}
-
-.zh-cl-rail-link {
-  display: block;
-  padding: 6px 12px;
-  border-radius: 8px;
-  font-size: 13.5px;
-  line-height: 1.45;
-  color: var(--zh-cl-muted);
-  /* Mintlify's prose styles give links a primary-colored border-bottom */
-  text-decoration: none;
-  border: 0;
-  transition: color 0.12s ease, background 0.12s ease;
-}
-
-.zh-cl-rail-link:hover {
-  color: var(--zh-cl-green);
-  background: var(--zh-cl-active-bg);
-}
-
-/* highlights whichever date the reader jumped to */
-.zh-cl-rail-link:target,
-.zh-cl-rail-link:focus-visible {
-  color: var(--zh-cl-green);
-  background: var(--zh-cl-active-bg);
-  outline: none;
-}
-
-/* thin scrollbar so a long release history doesn't dominate the rail */
-.zh-cl-rail::-webkit-scrollbar { width: 6px; }
-.zh-cl-rail::-webkit-scrollbar-thumb {
-  background: var(--zh-cl-hairline);
-  border-radius: 999px;
-}
-.zh-cl-rail { scrollbar-width: thin; }
-
-/* ---------- page header ---------- */
-
-.zh-cl-title {
-  display: block;
-  margin: 0 0 8px;
-  font-size: 40px;
-  line-height: 1.1;
-  font-weight: 600;
-  letter-spacing: -0.03em;
-  color: var(--zh-cl-ink);
-}
-
-.zh-cl-sub {
-  margin: 0 0 8px;
-  font-size: 17px;
-  line-height: 1.55;
-  color: var(--zh-cl-muted);
-}
-
-/* ---------- anchors ---------- */
-
-/* Zero-height jump targets sitting just above each <Update>; the offset keeps the
-   entry clear of the sticky navbar after an in-page jump. */
-.zh-cl-anchor {
-  display: block;
-  height: 0;
-  scroll-margin-top: 108px;
-}
-
-/* ---------- narrow screens: rail becomes a horizontal strip above the entries ---------- */
-
-@media (max-width: 900px) {
-  #content-area:has(.zh-cl-rail) #content {
-    display: block;
-    padding: 24px 20px 72px;
+  /* The main container is capped at the width of a page that has a sidebar, and is laid
+     out in a reversed flex row, so with the sidebar gone the entries would sit off to
+     one side. Let it fill the row and centre the content instead. */
+  body:has(.zh-cl-page) #content-container {
+    max-width: none;
   }
 
-  .zh-cl-rail {
-    position: static;
-    max-height: none;
-    overflow: visible;
-    margin-bottom: 28px;
-    padding-right: 0;
-    border-bottom: 1px solid var(--zh-cl-hairline);
-    padding-bottom: 16px;
+  #content-area:has(.zh-cl-page) {
+    padding-left: 0;
+    margin-left: auto;
+    margin-right: auto;
   }
 
-  .zh-cl-rail-title { padding-left: 0; }
-
-  .zh-cl-rail-nav {
-    flex-direction: row;
-    flex-wrap: nowrap;
-    gap: 6px;
-    overflow-x: auto;
-    padding-bottom: 4px;
+  /* the page header is a sibling of the content, so both need centring or the title
+     drifts to the far left of the entries */
+  #content-area:has(.zh-cl-page) #header,
+  #content-area:has(.zh-cl-page) #content {
+    max-width: 900px;
+    margin-left: auto;
+    margin-right: auto;
   }
-
-  .zh-cl-rail-link {
-    flex: 0 0 auto;
-    border: 1px solid var(--zh-cl-hairline);
-    white-space: nowrap;
-  }
-
-  .zh-cl-title { font-size: 32px; }
 }
