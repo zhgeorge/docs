@@ -577,8 +577,10 @@ def build_changelog(posts: list[dict]) -> str:
            'title: "Changelog"',
            'sidebarTitle: "Changelog"',
            'description: "Product updates, new features, and platform changes across zerohash, newest first."',
-           "---", "",
-           f"Mirrored from the [zerohash changelog]({BASE}/changelog).", ""]
+           # wide mode drops the right-hand table of contents (the Update labels would
+           # otherwise be repeated there); the date pills stay on the left of each entry.
+           'mode: "wide"',
+           "---", ""]
     for p in posts:
         label = p["date"] or "Undated"
         desc = p["type"].replace('"', "'")
