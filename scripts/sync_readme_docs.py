@@ -568,24 +568,55 @@ def convert_changelog_post(html: str, url: str) -> dict | None:
         iso = datetime.strptime(re.sub(r"(\d+)(st|nd|rd|th)", r"\1", date_txt), "%B %d, %Y").date().isoformat()
     except ValueError:
         pass
-    return {"url": url, "title": title, "date": date_txt, "iso": iso, "type": rtype, "body": md}
+    return {"url": url, "slug": url.rsplit("/", 1)[-1], "title": title, "date": date_txt,
+            "iso": iso, "type": rtype, "body": md}
 
 
 def build_changelog(posts: list[dict]) -> str:
+    """One custom-mode page: a sticky Releases rail of dates beside the release entries.
+
+    Mintlify's own sidebar can only hold page paths (no in-page anchors), so the rail is
+    built here and styled by changelog.css. Each release gets a stable `#release-<slug>`
+    anchor; the rail lists each distinct date once, linking to that date's first release.
+    """
     posts = sorted(posts, key=lambda p: p["iso"] or "0000", reverse=True)
+
+    rail, seen = [], set()
+    for p in posts:
+        label = p["date"] or "Undated"
+        if label in seen:
+            continue
+        seen.add(label)
+        rail.append((label, f"release-{p['slug']}"))
+
     out = ["---",
            'title: "Changelog"',
            'sidebarTitle: "Changelog"',
            'description: "Product updates, new features, and platform changes across zerohash, newest first."',
-           # wide mode drops the right-hand table of contents (the Update labels would
-           # otherwise be repeated there); the date pills stay on the left of each entry.
+           # wide mode drops the right-hand table of contents but keeps Mintlify's prose
+           # typography for the entry bodies (custom mode loses it). changelog.css hides the
+           # native sidebar and page header so the rail below can take the left column.
            'mode: "wide"',
-           "---", ""]
+           "---", "",
+           '<div className="zh-cl-rail">',
+           '  <p className="zh-cl-rail-title">Releases</p>',
+           # a <nav> here is stripped by Mintlify's MDX pipeline (children and all), so the
+           # list of dates has to be plain divs
+           '  <div className="zh-cl-rail-nav">']
+    for label, anchor in rail:
+        out.append(f'  <a className="zh-cl-rail-link" href="#{anchor}">{label}</a>')
+    out += ["  </div>", "</div>", "",
+            '<h1 className="zh-cl-title">Changelog</h1>', "",
+            '<p className="zh-cl-sub">Product updates, new features, and platform changes '
+            'across zerohash, newest first.</p>', ""]
+
     for p in posts:
         label = p["date"] or "Undated"
         desc = p["type"].replace('"', "'")
         attrs = f' label="{label}"' + (f' description="{desc}"' if desc else "")
-        out += [f"<Update{attrs}>", f"### {escape_mdx_text(p['title'])}", "", p["body"], "</Update>", ""]
+        out += [f'<div id="release-{p["slug"]}" className="zh-cl-anchor" />', "",
+                f"<Update{attrs}>", f"### {escape_mdx_text(p['title'])}", "", p["body"],
+                "</Update>", ""]
     return "\n".join(out)
 
 
