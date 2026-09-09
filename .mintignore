@@ -6,5 +6,5 @@
 drafts/
 *.draft.mdx
 
-# Scraped source files (not docs pages)
-sources/
+# ReadMe HTML cache used by scripts/sync_readme_docs.py
+.cache/

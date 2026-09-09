@@ -1,92 +1,112 @@
 ---
-title: "ACH and Real-Time Fiat Payments with Zero Hash API"
-sidebarTitle: "Fiat Payments"
-description: "Accept and disburse USD via ACH, RTP, and FedNow using Zero Hash — cost-effective bank-to-bank transfers with regulatory compliance built in."
+title: "Bank Rails"
+description: "zerohash provides regulated fiat payment infrastructure for moving USD into and out of crypto and stablecoins. This guide introduces the available funding models, the payment rails we support, and…"
 ---
 
-Zero Hash supports ACH, RTP, and FedNow as bank-to-bank payment rails, allowing your platform to offer end customers direct funding and withdrawal options without relying on card networks. ACH is the most widely used system for electronic funds transfer in the United States, enabling direct movement of funds between bank accounts at low cost. RTP and FedNow extend that coverage to real-time settlement for eligible transactions.
-
-## Payment Rail Overview
-
-<CardGroup cols={3}>
-  <Card title="ACH" icon="building-columns">
-    The standard US bank-to-bank transfer network, governed by Nacha. Supports same-day and standard processing. Cost-effective and widely accepted.
-  </Card>
-  <Card title="RTP" icon="bolt">
-    Real-Time Payments, managed by The Clearing House. Near-instant settlement for participating banks.
-  </Card>
-  <Card title="FedNow" icon="landmark">
-    A real-time payment service provided by the Federal Reserve. Zero Hash automatically invokes FedNow when RTP is unavailable, ensuring full coverage under the `rtp` network type on the API.
-  </Card>
-</CardGroup>
-
-<Note>
-  On the Zero Hash API, both RTP and FedNow are accessed via the `rtp` network type. FedNow is invoked automatically when RTP is not available for the receiving bank.
-</Note>
-
-## Regulatory Framework
-
-ACH transactions are governed by rules and regulations established by **Nacha** (the National Automated Clearing House Association). These regulations cover:
-
-- **Authorization requirements** — customers must explicitly authorize ACH debits before any transaction is initiated
-- **Processing timelines** — rules define standard and same-day settlement windows
-- **Return and dispute resolution** — defined return codes and deadlines for unauthorized or erroneous transactions
-
-Platforms using Zero Hash for ACH must comply with Nacha's return rate thresholds. See [ACH Returns](/docs/instant-usd) for the full list of return codes and how to calculate your return rates.
-
-## Use Cases
-
-<CardGroup cols={3}>
-  <Card title="On-Ramp" icon="arrow-right-to-bracket">
-    Offer a cost-effective direct payment method to end customers. ACH typically has higher transaction limits and lower fees than card payments.
-  </Card>
-  <Card title="Off-Ramp" icon="arrow-right-from-bracket">
-    Let end customers withdraw fiat directly to their bank account instead of withdrawing crypto to a third-party exchange.
-  </Card>
-  <Card title="Alternative Payment Method" icon="arrows-left-right">
-    Diversify your platform's funding options by adding ACH or RTP alongside card payments.
-  </Card>
-</CardGroup>
+<Warning>
+Exact requirements for transaction limits, reserve balances, and float balances, are set by zerohash based on your use case and expected volumes.
+</Warning>
 
 ## Key Features
 
-| Feature | Detail |
-|---------|--------|
-| **Cost-effective** | ACH and RTP transactions carry low fees compared to card and wire alternatives. |
-| **Processing optionality** | Choose standard or same-day ACH processing based on your customers' needs and your platform's support. |
-| **Capital efficiency** | Pull funds directly from customer bank accounts instead of maintaining a pre-funded float. *(Implementation-dependent.)* |
-| **Flexible liquidity models** | Zero Hash supports two ACH funding models depending on your preferred liquidity approach. |
+Unlock fiat-powered trading.
 
-## ACH Liquidity Models
+Buy, sell, and convert crypto and stablecoins using traditional fiat rails.
 
-Zero Hash offers two approaches to ACH funding depending on how your platform manages liquidity:
+Lower cost than cards.
 
-<CardGroup cols={2}>
-  <Card title="Prefunded Workflow" icon="piggy-bank" href="/docs/getting-started-with-fiat-payments">
-    Your platform pre-funds a float account. Trades are settled immediately using available float balance, and ACH debits replenish the float over time.
-  </Card>
-  <Card title="On-Demand Workflow" icon="rotate" href="/docs/getting-started-with-fiat-payments">
-    ACH debits are initiated at the time of each transaction. No pre-funding is required, but settlement depends on the ACH clearing window.
-  </Card>
-</CardGroup>
+Lower per-transaction costs for funding and payouts when compared to card processing.
 
-## ACH Limits and Velocity Controls
+Flexible funding models.
 
-Platforms using ACH processing are subject to transaction limits and velocity controls to manage risk and maintain regulatory compliance. These limits are configurable and may differ for credit (deposit) and debit (withdrawal) transactions.
+Choose On-demand, Pre-funded, or Instant USD based on your desired customer experience and settlement needs.
 
-| Limit Type | Description |
-|------------|-------------|
-| Maximum Transaction Size | The maximum dollar amount allowed per individual transaction. |
-| Minimum Transaction Size | The minimum dollar amount allowed per individual transaction. |
-| $ Transactions Per Week (User) | The cumulative weekly dollar amount of transactions permitted per user. |
-| # Transactions Per Week (User) | The number of transactions allowed per user per week. |
-| Transactions In Flight | The maximum number of pending transactions a user can have simultaneously. |
-| # Linked Bank Accounts | The maximum number of active bank accounts a participant may have linked at one time. |
-| $ Transactions Per Week (Platform) | The cumulative weekly transaction volume allowed across your entire platform. |
+Instant, always-on payouts.
 
-When a transaction is blocked by any of these controls, its status updates to `rejected`. Review the table above for the full breakdown of limit types and their descriptions.
+Offer payouts to US bank accounts in seconds using RTP and FedNow, available 24/7/365.
 
-## API Reference
+## Funding Models
 
-- [Payments API docs](https://docs.zerohash.com/reference/payments)
-- [Payments webhooks](https://docs.zerohash.com/reference/payments-1)
+zerohash supports three funding models. The model you choose determines funds availability for your customers and balance requirements you may have to begin processing.
+
+On-demand
+
+Trades execute instantly once the ACH debit is approved (buy) or sale is initiated (sell), rather than waiting for settlement. A platform-funded float enables this, with your float balance determining how much your customers can trade.
+
+[See On-demand integration guide →](/docs/funding-models#on-demand)
+
+Pre-funded
+
+Customers must fund their account before trading. Fund availability occurs after ACH settlement plus a brief holding period to account for ACH return risk. Withdrawals work the opposite way: customers sell crypto, then they can withdraw from their USD balance. No float required.
+
+[See Pre-funded integration guide →](/docs/funding-models#pre-funded)
+
+Instant USD
+
+Customers USD balances are credited immediately upon ACH debit approval. They can trade with those USD balances before the ACH settles. Platform float funds the balances and determines how much your customers can trade.
+
+[See Instant USD integration guide →](/docs/funding-models#instant-usd)
+
+Depending on which model is selected, there are different requirements surrounding the necessary account types that a platform must maintain.
+
+- **Loss Reserve:** If you have ACH enabled, a Loss Reserve is required to absorb any losses tied to ACH returns. [See more info here →](/docs/funding-models#loss-reserve-)
+- **Float Balance:** Required if you want to make funds available to customers before an ACH transfer has settled. Must have one for On-demand and Instant USD. [See more info here →](/docs/funding-models#float-account)
+
+## Bank Account Linking via Plaid
+
+ACH and RTP payments require linking and verifying a customer's bank account before any money moves. zerohash uses Plaid for this and supports two integration models.
+
+The right one primarily depends on whether your platform already has a Plaid relationship.
+
+### zerohash-powered Plaid Link
+
+### (Plaid Reseller)
+
+For platforms without an existing Plaid relationship.
+
+There is no separate Plaid contract to sign. A zerohash relationship manager handles the Plaid onboarding, and your customers link accounts through a zerohash SDK. This is the simpler integration.
+
+[See zerohash-powered Plaid Link →](/docs/bank-account-linking#plaid-reseller)
+
+### self-service Plaid Link
+
+### (Plaid Processor Token)
+
+For platforms that hold their own Plaid relationship.
+
+You contract with Plaid directly for the required products (Auth, Balance, Identity, and Identity Match), own the account linking flow, and pass zerohash a Plaid processor token that lets us connect to the account for necessary Plaid calls.
+
+[See self-service Plaid Link →](/docs/bank-account-linking#plaid-processor-token)
+
+## Payment Rails Supported
+
+zerohash supports three US fiat rails:
+
+### ACH (Automated Clearing House)
+
+ACH is the primary US fiat rail for funding (debits) and payouts (credits). It's low cost and widely accepted, but settles in 1-3 business days (and on business days only). Same-day ACH is also available for faster processing. ACH carries settlement and return risk, so loss reserve and float requirements apply.
+
+### RTP (Real-Time Payments) and FedNow
+
+RTP and FedNow enable instant payouts to end customer bank accounts. Funds arrive within seconds, 24/7/365. Both operate under the `rtp` network type in the zerohash API, with FedNow automatically invoked when RTP isn't available. These rails are available at most major US financial institutions, though some smaller regional banks and credit unions don't yet participate.
+
+### FedWire
+
+FedWire supports both funding and payouts and is suited to higher-value transfers where speed and finality outweigh cost. Wires settle during banking hours and are typically reserved for larger transactions. Availability depends on your configuration.
+
+| Rail | Direction | Speed | Availability | Reversible |
+| --- | --- | --- | --- | --- |
+| ACH | Debit & Credit | 1-3 business days | Business Days | Yes |
+| RTP/FedNow | Credit (payouts only) | Instant (seconds) | 24/7/365 | No |
+| FedWire | Credit (In & Out) | Same day (hours) | Business Days | Limited |
+
+<Info title="Virtual Accounts">
+We also offer a product that allows you to provision named accounts for your customers. This unlocks the ability for your customers to push payments (such as Direct Deposits, Wires, RTP, and FedNow) to fund their accounts. [Learn more here →](/docs/virtual-accounts)
+</Info>
+
+## Additional Resources
+
+- [Bank Account Linking](/docs/bank-account-linking)
+- [Funding Models](/docs/funding-models)
+- [ACH Limits and Velocity Controls](/docs/ach-limits-and-velocity-controls)
+- [ACH Returns](/docs/ach-returns)

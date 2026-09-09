@@ -1,0 +1,107 @@
+---
+title: "Staking FAQs"
+---
+
+## General
+
+### Which assets can be staked?
+
+ETH today. SOL is planned for Q4 2026. Use [GET /assets?staking\_enabled=true](https://docs.zerohash.com/reference/get_assets) to retrieve the current list rather than hardcoding it.
+
+### Is staking available via an SDK?
+
+No. Staking is currently available via API only. See the [main Staking page](/docs/staking) for the full integration guide.
+
+### Does zerohash offer liquid staking?
+
+No. Staked positions are illiquid for the duration of the network's unstake period and cannot be represented by a transferable receipt token (e.g., stETH-style derivatives).
+
+### Are there minimum stake or unstake amounts?
+
+No platform-imposed minimums. Users can stake or unstake any amount they hold in available or staked respectively.
+
+### Is staking available in every U.S. state?
+
+No. We restrict staking in the following four states: CA, MD, NJ, and WA today. zerohash is actively working with regulators to enable staking in these states.
+
+### Are staking rewards guaranteed?
+
+No. Rewards are paid out by the underlying network and depend on validator performance and prevailing network conditions, both of which fluctuate over time. The `apy_net` returned by zerohash is an estimate based on recent network performance, not a forward commitment. Platforms should set this expectation directly with their end users through their user agreements, since reward rates are variable and outside of zerohash's control.
+
+---
+
+## Requests and Lifecycle
+
+### How long does activation take?
+
+For ETH, currently around 3 days. Participant stakes are added to existing zerohash validators, so they are not subject to the network's new-validator queue that public trackers report in weeks. Use `estimated_active_at` from the stake response rather than a hardcoded value.
+
+Track activation with the `stake.broadcasted` → `stake.confirmed` → `stake.staked` webhook sequence, or poll [GET /stakes/\{stake\\\\\\\_id\}/status](https://docs.zerohash.com/reference/get_stakes-stake-id-status).
+
+### How do I know when an unstake actually completed?
+
+[GET /stakes/unstake/\{unstake\_id\}/status](https://docs.zerohash.com/reference/get_stakes-unstake-unstake-id-status) returns `completed_at` once the status is unstaked. It is absent until then. `estimated_available_at` is a pre-completion estimate, not the completion timestamp. The `unstake.unstaked` webhook is the canonical push signal.
+
+Please note that rewards continue to accrue throughout the unstake period until the terminal unstaked state. Rewards accrued during this time are attributed to the `available` balance.
+
+### How long can a request be canceled?
+
+While in `submitted` or `queued`. Batches are broadcast once daily after operational approval, so a request placed today is cancelable until that day's broadcast. Once `broadcasted`, the position must be unstaked after activation.
+
+---
+
+## Balances
+
+### What's the difference between available, collateral, and staked balances?
+
+- `available` — usable for trade, transfer, withdraw, or new stake submissions.
+- `collateral` — pending activation or pending unstake period. Not earning rewards, not usable.
+- `staked` — actively staked and earning rewards.
+
+Query each balance via [GET /accounts?account\_type=\{type\}](https://docs.zerohash.com/reference/get_accounts-account-id).
+
+### Where do funds sit during each stage?
+
+`available` → `collateral` on stake submission, `collateral` → `staked` on activation, `staked` → `collateral` on unstake submission, `collateral` → `available` when cooldown completes.
+
+Query each with [GET /accounts?account\_type=\{type\}](https://docs.zerohash.com/reference/get_accounts-account-id).
+
+### Why did an unstake fail with a 400?
+
+The requested amount exceeded the participant's `staked` balance. Funds in `collateral` must reach `staked` before they can be unstaked.
+
+---
+
+## Rewards
+
+### How often are rewards paid, and where do they land?
+
+Daily, per participant, per asset. Consensus rewards on an actively staked balance compound into `staked`. MEV rewards, and rewards earned on a balance that is mid-unstake, are credited to `available`.
+
+### Are reported rewards gross or net of my platform fee?
+
+Net. Reward amounts and `apy_net` reflect your configured platform fee, and the participant is credited the net amount.
+
+### What do total_staked and total_rewards_earned mean on the summary endpoint?
+
+Independent values. `total_staked` is the current staked balance - live, and it grows as consensus rewards compound. `total_rewards_earned` is lifetime cumulative rewards for that participant and asset - never reduced by unstaking, never resets, including after a full unstake and later restake. `average_apy_net` is the current asset-level rate, identical for all participants, not a realized per-participant yield.
+
+### Does total_staked include stakes still activating?
+
+No. Pending stakes sit in `collateral` and are excluded until active.
+
+---
+
+## Platform Fees and Tax
+
+### Who sets the staking fee?
+
+Platforms set their own end-user fee. zerohash recommends a platform fee of 25–35% of gross rewards (users receive 65–75%), but the platform controls pricing. See the [Configurable Platform Fees](/docs/staking#configurable-platform-fees) section for more details.
+
+### Why does the APY I see differ from another platform's APY for the same asset?
+
+The `apy_net` returned by [GET /assets/\{asset\}/staking\_info](https://docs.zerohash.com/reference/get_assets-asset-staking-info) is platform-specific and reflects your configured platform fee. Different platforms querying the same asset will see different `apy_net` values.
+
+### Will users receive a 1099?
+
+In most jurisdictions, staking rewards are taxable as ordinary income at fair market value on the date received. U.S. participants above the reporting threshold receive 1099s. zerohash generates these as part of the standard tax reporting included with the platform.

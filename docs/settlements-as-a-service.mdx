@@ -1,120 +1,64 @@
 ---
-title: "Settlements as a Service: Zero Hash Platform Guide"
-sidebarTitle: "Overview"
-description: "Streamline digital asset trade clearing with Zero Hash's DVP settlement infrastructure, regulatory umbrella, and flexible trading models."
+title: "Settlements as a Service"
 ---
 
-Zero Hash Settlements as a Service lets you offload the entire post-trade lifecycle — calculation, movement, and on-chain delivery — to a regulated infrastructure provider. Whether you source liquidity externally and drop trades into Zero Hash for settlement, negotiate large OTC blocks with institutional counterparties, or swap between digital asset pairs, Zero Hash acts as both Calculation Agent and Settlement Agent under its FinCEN-registered Money Service Business (MSB) license and money transmitter authorizations in all 50 U.S. states.
+Simplify and streamline your trade clearing processes with zerohash's comprehensive settlement solutions. Our platform offers seamless integration, robust infrastructure, and advanced tech to facilitate efficient settlement of digital asset trades.
 
 ## Use Cases
 
-<CardGroup cols={3}>
-  <Card title="On-Ramp" icon="arrow-right-to-bracket">
-    Source liquidity outside of Zero Hash, then submit trades via API for regulated settlement. Zero Hash handles the movement of fiat and digital assets on your behalf.
-  </Card>
-  <Card title="OTC Trades" icon="handshake">
-    Settle large, negotiated off-exchange trades with institutional counterparties. Zero Hash calculates net obligations and executes the transfer under DVP guarantees.
-  </Card>
-  <Card title="Crypto-to-Crypto Swaps" icon="arrows-rotate">
-    Settle crypto-to-crypto trades across a wide range of digital asset pairs with Delivery versus Payment (DVP) finality, eliminating counterparty risk on both sides.
-  </Card>
-</CardGroup>
+- **On-ramp:** First source liquidity outside of zerohash, then drop in trades for regulated settlement
+- **OTC:** Settle large, negotiated off-exchange trades with institutional counterparties
+- **Crypto-to-Crypto Swaps:** Settle crypto-to-crypto trades across a wide range of digital pairs with DVP finality
 
-## Settlement Flow
+## Flow
 
-The end-to-end settlement process moves through six stages from trade execution to on-chain confirmation.
-
-<Steps>
-  <Step title="Trade Execution">
-    Trades are executed on your platform or a supported venue.
-  </Step>
-  <Step title="Trade Delivery to Zero Hash">
-    Trades are delivered to Zero Hash via API, phone, instant message, or any other agreed channel.
-  </Step>
-  <Step title="Obligation Calculation">
-    Upon receipt, Zero Hash calculates margin and settlement obligations as the neutral Calculation Agent.
-  </Step>
-  <Step title="Internal Movement">
-    Zero Hash, as a FinCEN-registered MSB and money transmitter, executes fiat and digital asset movements internally across participant ledger accounts.
-  </Step>
-  <Step title="On-Chain Delivery">
-    Zero Hash isolates digital asset movements, compresses them for efficiency, and broadcasts the final settlement to the blockchain.
-  </Step>
-  <Step title="Confirmation">
-    All stakeholders can verify their ownership of digital assets on-chain, providing a transparent, immutable settlement record.
-  </Step>
-</Steps>
+1. Trades are executed on a supported platform
+2. Trades are then delivered to zerohash over API, phone, instant message or any other means
+3. Upon trade receipt, margin and settlement obligations are calculated by zerohash as Calculation Agent
+4. zerohash, as a FinCEN-registered MSB and money transmitter, executes movements internally
+5. zerohash then isolates digital asset movements, compresses them and delivers to the blockchain
+6. All stakeholders involved can see their ownership of digital assets and on-chain
 
 ## Key Features
 
-<CardGroup cols={2}>
-  <Card title="DVP Settlement" icon="shield-check">
-    Zero Hash's Delivery versus Payment system withholds settlement until both parties have fulfilled their obligations, completely eliminating counterparty risk.
-  </Card>
-  <Card title="Regulatory Umbrella" icon="building-columns">
-    Operate under Zero Hash's licenses as a registered MSB, FX Dealer, and money transmitter across all 50 U.S. states — without building your own compliance infrastructure.
-  </Card>
-  <Card title="Full-Service Onboarding" icon="users">
-    Leverage Zero Hash's legal and compliance team to compliantly onboard trading counterparties under established KYC/AML frameworks.
-  </Card>
-  <Card title="Flexible Reporting" icon="chart-bar">
-    Query historical trade data programmatically via `GET /trades` or download CSV reports directly from the Client Portal for finance and audit teams.
-  </Card>
-</CardGroup>
+- **Regulatory umbrella:** zerohash is a registered Money Service Business and FX Dealer with FinCEN, and [money transmitter in all 50 states across the U.S.](/docs/permitted-and-restricted-jurisdictions) This infrastructure can be leveraged by Platforms who want to avoid the regulatory investment and resulting overhead.
+- **Reporting:** Platforms can query historical trade data via API or the Client Portal
+- **Delivery versus Payment (DVP) Settlement**: Our settlement system will not settle trades until both side have fulfilled their trade obligations, eliminating counterparty risk
+- **Full-service Onboarding:** Leverage zerohash's legal and compliance team to compliantly onboard trading counterparties
 
-## Trading Models
+## Agency / Broker Exchange Model
 
-Zero Hash supports two distinct operating models. Choose the one that matches how your platform interacts with trade counterparties.
+The Agency / Broker Exchange Model is a trading framework where a platform operator (you) facilitates trades between counterparties without taking principal risk (i.e., you do not trade on your own balance sheet, but act as an intermediary or facilitator).
 
-### Agency / Broker Exchange Model
+- **Calculation Agent:** Neutral third party to calculate obligations
+- **Settlement Agent:** Entity effectuating the movement of fiat currency and digital assets
+- **Platform:** An exchange, request-for-quote system, a brokerage network, a dealer platform or some combination thereof
+- **Platform Operator:** You
 
-In the Agency or Broker Exchange Model, you facilitate trades between counterparties without taking any principal risk. You do not trade on your own balance sheet — you act as an intermediary that connects buyers and sellers.
+![](https://files.readme.io/f55ee15e5cd24d4f5c9b609ea0587fda55c1e5c713af4bca14782df9a4901f75-image.png)
 
-| Role | Description |
-|---|---|
-| **Calculation Agent** | Neutral third party (Zero Hash) that calculates obligations for each leg of the trade |
-| **Settlement Agent** | Zero Hash, which executes the movement of fiat currency and digital assets |
-| **Platform** | An exchange, RFQ system, brokerage network, dealer platform, or combination thereof |
-| **Platform Operator** | You — the facilitator connecting counterparties without taking principal exposure |
+## Principal Dealer Model
 
-**Flow diagram:** Your platform matches buyer and seller → trade details submitted to Zero Hash → Zero Hash calculates net obligations for each counterparty → assets and fiat move simultaneously under DVP → all parties receive on-chain confirmation.
+In the Principal Dealer Model, the platform operator (you) acts as a counterparty to all trades, buying and selling digital assets as a principal.
 
-<Note>
-  In the Agency Model, Zero Hash's calculation and settlement role provides a neutral, regulated layer between your counterparties, reducing operational complexity and compliance burden for your organization.
-</Note>
+- **Calculation Agent:** Neutral third party to calculate obligations
+- **Settlement Agent:** Entity effectuating the movement of fiat currency and digital assets
+- **Platform:** An exchange, request-for-quote system, a brokerage network, a dealer platform or some combination thereof
+- **Platform Operator:** You
 
-### Principal Dealer Model
-
-In the Principal Dealer Model, you act as the counterparty to all trades — buying and selling digital assets on your own balance sheet. You take principal risk on each transaction and manage inventory positions.
-
-| Role | Description |
-|---|---|
-| **Calculation Agent** | Neutral third party (Zero Hash) that calculates your net obligations across all trades |
-| **Settlement Agent** | Zero Hash, which executes movement of fiat and digital assets |
-| **Platform** | Your trading system — you originate all buy and sell sides |
-| **Platform Operator** | You — acting as principal dealer with full inventory and price risk |
-
-**Flow diagram:** You quote and execute trades as principal → net position is submitted to Zero Hash → Zero Hash calculates your aggregate delivery obligation → net settlement executed in a single movement → on-chain delivery confirms finality.
-
-<Tip>
-  The Principal Dealer Model is well suited to platforms that want full control over pricing and spreads while delegating all post-trade clearing and settlement operations to Zero Hash.
-</Tip>
+![](https://files.readme.io/a21b4d96387e836f21e3214a4a94acfa00314c31b320c5b7e5b1f48d3cae1ce1-image.png)
 
 ## API Reference
 
-Use the following endpoints to submit trades and manage digital asset addresses:
+- [POST /trades](https://docs.zerohash.com/reference-link/post_trades)
+- [GET /trades](https://docs.zerohash.com/reference-link/get_trades-trade-id)
+- [GET /trades/:id](https://docs.zerohash.com/reference-link/get_trades-trade-id)
+- [POST /deposits/digital\_asset\_addresses](https://docs.zerohash.com/reference/post_deposits-digital-asset-addresses)
+- [GET /deposits/digital\_asset\_addresses](https://docs.zerohash.com/reference/get_deposits-digital-asset-addresses)
+- [POST /withdrawals/requests](https://docs.zerohash.com/reference/post_withdrawals-requests)
+- [GET /withdrawals/requests](https://docs.zerohash.com/reference/get_withdrawals-requests)
+- [GET /withdrawals/requests/:id](https://docs.zerohash.com/reference/get_withdrawals-requests-id)
 
-| Endpoint | Description |
-|---|---|
-| `POST /trades` | Submit a trade for Zero Hash settlement |
-| `GET /trades` | Query all trades for your platform |
-| `GET /trades/:id` | Retrieve a specific trade by ID |
-| `POST /deposits/digital_asset_addresses` | Create a deposit address for on-chain receipt |
-| `GET /deposits/digital_asset_addresses` | List existing deposit addresses |
-| `POST /withdrawals/requests` | Submit a withdrawal request |
-| `GET /withdrawals/requests` | List all withdrawal requests |
-| `GET /withdrawals/requests/:id` | Retrieve a specific withdrawal request |
+## Sample Code
 
-<Warning>
-  All trades submitted to Zero Hash must include both counterparty `participant_code` values and the asset/amount for each side. Incomplete trade submissions will be rejected and must be resubmitted.
-</Warning>
+Review our code recipe for more insight on trade submission to the [POST /trades](https://docs.zerohash.com/reference-link/post_trades) endpoint .

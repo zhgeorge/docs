@@ -1,0 +1,40 @@
+---
+title: "Hold Onchain Money"
+description: "Provision wallet for your agent."
+---
+
+## Overview & Concepts
+
+Create a dedicated and unique wallet address on a per-agent basis. View aggregate balances across all agents.
+
+## Provision the agent with a wallet
+
+Once the agent is [onboarded and its permissions are set](/docs/know-your-agent), provision it with its own deposit address by calling `POST/deposits_digital_asset_addresses`:
+
+Passing the agent's `agent_id` as the `account_label`. This creates a dedicated address whose incoming funds are ledgered separately from the end customer's general balance and from any other agents acting on the same `participant_code`.
+
+```json
+{
+  "participant_code": "CUST01",
+  "asset": "USDC.ETH",
+  "account_label": "AGENT01"
+}
+```
+
+Sample response:
+
+```json
+{
+  "message": {
+    "created_at": 1753776000,
+    "address": "0x7f41A26C0CB9D5a1e57BE9cF10F8354b77CD8ab3",
+    "participant_code": "CUST01",
+    "asset": "USDC.ETH",
+    "account_label": "AGENT01"
+  }
+}
+```
+
+<Info>
+Because the agent's `account_label` scopes its own address, the transaction limits and product permissions configured (via `account_label`) apply automatically to any activity flowing through this wallet - the same `account_label` value is the thread that ties onboarding, permissions, and ledger balance together for a given agent.
+</Info>

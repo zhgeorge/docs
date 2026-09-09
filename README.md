@@ -1,55 +1,54 @@
-# Mintlify Starter Kit
+# zerohash developer docs (Mintlify)
 
-Use the starter kit to get your docs deployed and ready to customize.
+Mintlify site for the zerohash developer documentation, deployed automatically from `main`.
 
-Click the green **Use this template** button at the top of this repo to copy the Mintlify starter kit. The starter kit contains examples with
+- **Guides** (`docs/*.mdx`), the **Documentation** navigation in `docs.json`, and `changelog.mdx` are
+  **generated** from the public ReadMe site at <https://docs.zerohash.com> by `scripts/sync_readme_docs.py`.
+  Do not hand-edit them — edit the source in ReadMe and re-run the sync.
+- The **landing page** (`index.mdx` + `landing.css`) and the rest of `docs.json` (theme, logo, colors,
+  navbar, Changelog tab) are hand-maintained in this repo.
 
-- Guide pages
-- Navigation
-- Customizations
-- API reference pages
-- Use of popular components
-
-**[Follow the full quickstart guide](https://starter.mintlify.com/quickstart)**
-
-## AI-assisted writing
-
-Set up your AI coding tool to work with Mintlify:
+## Syncing content from ReadMe
 
 ```bash
-npx skills add https://mintlify.com/docs
+python3 -m venv .venv && .venv/bin/pip install -r scripts/requirements.txt
+.venv/bin/python scripts/sync_readme_docs.py
 ```
 
-This command installs Mintlify's documentation skill for your configured AI tools like Claude Code, Cursor, Windsurf, and others. The skill includes component reference, writing standards, and workflow guidance.
+The script reads ReadMe's sidebar to discover every guide and its position in the hierarchy, fetches each
+page (HTML is cached for 24h under `.cache/readme/`), converts the article to Mintlify MDX (callouts →
+`<Note>/<Info>/<Warning>`, code tabs → `<CodeGroup>`, accordions → `<Accordion>`, tables → pipe tables),
+rebuilds the Documentation tab from the sidebar tree, regenerates `changelog.mdx` from the individual
+changelog posts, and records what it wrote in `scripts/readme-sync-manifest.json`. Pages that disappear
+from ReadMe are removed from `docs/`.
 
-See the [AI tools guides](/ai-tools) for tool-specific setup.
+Useful flags:
 
-## Development
+| Flag | Effect |
+| --- | --- |
+| `--refresh` | Ignore the HTML cache and re-fetch everything |
+| `--only <slug> ...` | Convert just those guide slugs (skips nav + changelog); handy when debugging the converter |
+| `--no-nav` | Leave `docs.json` untouched |
+| `--no-changelog` | Leave `changelog.mdx` untouched |
 
-Install the [Mintlify CLI](https://www.npmjs.com/package/mint) to preview your documentation changes locally. To install, use the following command:
+Links to parts of ReadMe that are not mirrored here (API reference, recipes, legal pages) are kept as
+absolute `docs.zerohash.com` URLs. Images stay on ReadMe's CDN (`files.readme.io`).
 
+After a sync, review the diff, then:
+
+```bash
+mint validate        # strict build check
+mint broken-links    # internal link check
+mint dev             # preview at http://localhost:3000
 ```
+
+## Local preview
+
+```bash
 npm i -g mint
-```
-
-Run the following command at the root of your documentation, where your `docs.json` is located:
-
-```
 mint dev
 ```
 
-View your local preview at `http://localhost:3000`.
+## Publishing
 
-## Publishing changes
-
-Install our GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app) to propagate changes from your repo to your deployment. Changes are deployed to production automatically after pushing to the default branch.
-
-## Need help?
-
-### Troubleshooting
-
-- If your dev environment isn't running: Run `mint update` to ensure you have the most recent version of the CLI.
-- If a page loads as a 404: Make sure you are running in a folder with a valid `docs.json`.
-
-### Resources
-- [Mintlify documentation](https://mintlify.com/docs)
+Pushing to `main` triggers the Mintlify GitHub App deployment.

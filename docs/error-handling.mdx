@@ -1,110 +1,47 @@
 ---
-title: "Zero Hash API Error Handling and Retry Logic Guide"
-sidebarTitle: "Error Handling"
-description: "HTTP status codes returned by Zero Hash, what each means, remediation steps, idempotency check patterns, and exponential backoff retry strategies."
+title: "Error handling"
+description: "Common error HTTP status codes Status Code Description Remediation Steps 400 Bad Request The server could not understand the request, most likely due to invalid syntax. Please check if the request…"
 ---
 
-Zero Hash uses standard HTTP status codes to communicate the outcome of every API request. Some errors are permanent and require you to fix something in your request before retrying. Others are transient and safe to retry automatically. Understanding the difference — and implementing the right retry logic — is essential for building a resilient integration.
+## Common error HTTP status codes
 
-## HTTP Status Code Reference
+| Status Code | Description | Remediation Steps |
+| --- | --- | --- |
+| 400 Bad Request | The server could not understand the request, most likely due to invalid syntax. | Please check if the request you are sending is syntactically and semantically correct. Contact zerohash if you continue to experience issues. |
+| 401 Unauthorized | The server could not authenticate your request. | Ensure your API keys, credentials, and request URL are valid. |
+| 403 Forbidden | You are not authorized to access the requested resource. | Ensure your API keys, credentials, and request URL are valid. Also, check if your IP address is allow-listed in our platform. Lastly, please confirm the resource you're trying to access belongs to your platform. |
+| 404 Not Found | The requested resource was not found. | Check your request URL and entity identifiers - ensure they exist. |
+| 409 Conflict | The request could not be completed due to a conflict with the current state. This often means you are trying to create a duplicate entity or a failure in acquiring a lock. | Check your request. Contact zerohash if you continue to experience issues. |
+| 429 Too Many Requests | The client has triggered the Rate Limit thresholds. | Wait 10 seconds to be able to successfully send another request. |
+| 500 Internal Server Error | The server has encountered an internal error. | Please capture the details of your request and contact zerohash for further troubleshooting. |
+| 502 Bad Gateway | There was a glitch in our internal infrastructure, or the request timed out. | Make an idempotence check and retry if necessary. See below for details. |
+| 503 Service Unavailable | The server has encountered a transient internal error. It could also mean it failed to acquire an internal lock (in that case, it's not an error, just a race condition). | Generally safe to retry. See below for details. |
+| 504 Gateway Timeout | There was a glitch in our internal infrastructure, or the request timed out. | Make an idempotence check and retry if necessary. See below for details. |
+| 1020 Access Denied | Error 1020 Access Denied is caused when a firewall rule has been violated on a site protected by Cloudflare. | Contact ZH support and provide a list of IPs that should be added to the allowlist. |
 
-| Status Code | Name | Description | Remediation |
-|---|---|---|---|
-| `400` | Bad Request | The server could not understand the request, most likely due to invalid syntax or a semantic error in the payload. | Check that your request body and query parameters are syntactically and semantically correct. Review the API Reference for required fields and value formats. |
-| `401` | Unauthorized | The server could not authenticate your request. | Verify that your API key, private key, passphrase, and timestamp are correct. Confirm the key has been approved and is not expired. |
-| `403` | Forbidden | You are not authorized to access the requested resource. | Check that your API key is approved, your IP is allowlisted, and that the resource belongs to your Platform. Verify the key has the required permissions for the operation. |
-| `404` | Not Found | The requested resource does not exist. | Check your request URL and all entity identifiers (participant codes, account IDs, etc.) for typos or incorrect values. |
-| `409` | Conflict | The request conflicts with the current state — often a duplicate entity creation or a lock acquisition failure. | Review your request for duplicate submissions. Contact Zero Hash support if conflicts persist unexpectedly. |
-| `422` | Unprocessable Entity | The request is well-formed but contains invalid values or violates a business rule. | Review the error message in the response body for specific field-level validation details. |
-| `429` | Too Many Requests | You have exceeded the rate limit of 2,000 requests per rolling 10-second window, per IP address. | Wait 10 seconds before retrying. See [API Security](/docs/api-security) for rate limit details and strategies to avoid hitting limits. |
-| `500` | Internal Server Error | An unexpected error occurred on the Zero Hash side. | Do **not** retry automatically. Capture the full request and response details and contact Zero Hash support for investigation. |
-| `502` | Bad Gateway | A glitch in Zero Hash internal infrastructure, or the request timed out upstream. | State is indeterminate for `POST` requests — run an idempotency check before retrying. `GET` requests are safe to retry directly. |
-| `503` | Service Unavailable | A transient internal error, often a race condition on an internal lock. | Generally safe to retry immediately without an idempotency check. |
-| `504` | Gateway Timeout | A request timed out within Zero Hash infrastructure. | State is indeterminate for `POST` requests — run an idempotency check before retrying. `GET` requests are safe to retry directly. |
-| `1020` | Access Denied (Cloudflare) | A Cloudflare firewall rule blocked the request. The originating IP is not recognized. | Contact Zero Hash support and provide the IP addresses that need to be added to the allowlist. |
+## Retrying timeouts and transient errors
 
-## Retrying Transient Errors
+Retrying 502, 503, and 504 HTTP status codes will greatly increase the resilience of your application. However, some endpoints are **not** safe to retry without first running an idempotence check. Not following this rule could result in undesired side effects.
 
-Implementing retry logic for transient failures (502, 503, 504) significantly improves the resilience of your integration. However, not all retries are safe without first checking whether the original request succeeded on the Zero Hash side.
+All **GET** requests are idempotent and safe to retry. For example, if GET /liquidity/rfq returns 502 Bad Gateway, it can be retried without additional checks.
 
-### GET Requests
+When it comes to **POST** requests, the general rule is:
 
-All `GET` requests are idempotent and safe to retry directly for any 5xx response. A read operation has no side effects, so you can retry as many times as needed.
+- When receiving 502 Bad Gateway or 504 Gateway Timeout status codes, the state is indeterminate and an **idempotency check** is required before retrying.
+- When receiving 503 Service Unavailable, it should be safe to retry the request without an idempotence check.
 
-### POST Requests
+The table below shows how to retry some endpoints, more specifically for Liquidity.
 
-`POST` requests mutate state, so the safety of a retry depends on the specific status code:
+| Endpoint | Status Codes | Idempotence check |
+| --- | --- | --- |
+| POST /liquidity/execute | 502, 503, 504 | Safe to be retried. |
+| POST /liquidity/execute | 404 | Use the quote\_id as the client\_trade\_id query parameter to run `GET /trades`.<br /> If the trade is not found, the quote has expired. Retry by getting a new RFQ: `GET /liquidity/rfq` → `POST /liquidity/execute` |
+| POST /convert\_withdraw/execute | 502, 503, 504 | Safe to be retried. |
+| POST /convert\_withdraw/execute | 404 | Use the quote\_id as the client\_trade\_id query parameter to run GET /trades. If the trade is not found, the quote has expired. Retry by getting a new RFQ: GET /convert\_withdraw/rfq → POST /convert\_withdraw/execute |
+| POST /participants/customers/new | 400 | Two types of responses if there is a participant data conflict:<br /> **400 Participant already exists with this email for this platform:** - Returned when ZH receives different data (e.g. name, ssn, DoB) for an existing participant email.<br /> **400 Participant data already used with different requestID:**<br /> - Returned on 2nd request when same payload received twice and X-REQUEST-ID is not supplied in the header.<br /> - Returned on 2nd request when same payload received twice with different X-REQUEST-ID.<br /> - Returned on 2nd request when two different payloads received with same X-REQUEST-ID.<br /> Use a GET request to validate if a customer creation was successful.<br /> Note: Other 400 responses may include format errors in payload such as email, country, ID number, etc |
 
-| Status Code | Safe to Retry? | Required Action Before Retry |
-|---|---|---|
-| `502 Bad Gateway` | After idempotency check | State is indeterminate. Query the resource to confirm it was not already created. |
-| `503 Service Unavailable` | Yes, directly | No check required. Safe to retry immediately. |
-| `504 Gateway Timeout` | After idempotency check | State is indeterminate. Query the resource to confirm it was not already created. |
-| `500 Internal Server Error` | No | Contact Zero Hash support. Do not retry. |
+Please do **not** retry 500 Internal Server Error, which indicates an issue with our API. If you are experiencing problems, please contact our support team.
 
-### Idempotency Check Examples
+## Retry backoff
 
-<Tabs>
-  <Tab title="POST /liquidity/execute">
-    If `POST /liquidity/execute` returns 502 or 504, use the `quote_id` as the `client_trade_id` query parameter on `GET /trades` to check whether the trade was created.
-
-    ```bash
-    # Check whether the trade was created before retrying
-    GET /trades?client_trade_id=<your_quote_id>
-    ```
-
-    - If the trade exists: the original request succeeded. **Do not retry.**
-    - If no trade is found and a `404` is returned: the quote has expired. Start a new RFQ flow: `GET /liquidity/rfq` → `POST /liquidity/execute`.
-
-    For `503`, the trade was not created and you can retry `POST /liquidity/execute` directly.
-  </Tab>
-  <Tab title="POST /convert_withdraw/execute">
-    If `POST /convert_withdraw/execute` returns 502 or 504, use the same `GET /trades` check before retrying.
-
-    ```bash
-    # Check whether the convert-withdraw trade was created
-    GET /trades?client_trade_id=<your_quote_id>
-    ```
-
-    - If the trade exists: the original request succeeded. **Do not retry.**
-    - If no trade is found: retry via `GET /convert_withdraw/rfq` → `POST /convert_withdraw/execute`.
-  </Tab>
-  <Tab title="POST /participants/customers/new">
-    For customer creation errors, Zero Hash returns descriptive 400 messages:
-
-    | Error Message | Meaning |
-    |---|---|
-    | `Participant already exists with this email for this platform` | A participant with this email already exists but the submitted data (name, SSN, date of birth) does not match the existing record. |
-    | `Participant data already used with different requestID` | The same payload was submitted twice with a different `X-REQUEST-ID`, or two different payloads were submitted with the same `X-REQUEST-ID`. |
-
-    Use `GET /participants` to verify whether the customer was successfully created before retrying.
-  </Tab>
-</Tabs>
-
-## Retry Backoff
-
-When retrying, always apply a backoff strategy to avoid overwhelming Zero Hash or compounding an existing problem. Zero Hash recommends an **exponential backoff** pattern:
-
-1. Start with a small initial delay (100–500 ms).
-2. Double the delay after each successive failed attempt.
-3. Add random jitter to prevent retry storms when multiple clients fail simultaneously.
-4. Set a maximum retry count or maximum backoff cap (e.g., 30 seconds).
-
-```python
-import time
-import random
-
-def retry_with_backoff(fn, max_attempts=5, base_delay_ms=200):
-    for attempt in range(max_attempts):
-        try:
-            return fn()
-        except TransientError as e:
-            if attempt == max_attempts - 1:
-                raise
-            delay = (base_delay_ms * (2 ** attempt) + random.uniform(0, 100)) / 1000
-            time.sleep(delay)
-```
-
-<Note>
-  Always use the [X-REQUEST-ID](/docs/request-ids) header on requests you may need to retry. It provides a stable identifier you can use to trace a request's fate and provide to Zero Hash support if an issue requires investigation.
-</Note>
+When retrying, please add a backoff to avoid overloading our systems or making a problem worse. We recommend an **exponential backoff** algorithm, i.e, start with a small backoff (eg: 100 - 500ms) and exponentially increase it after successive retries.

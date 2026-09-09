@@ -1,0 +1,65 @@
+---
+title: "x402 Platform Configuration"
+description: "Enable your platform or merchant to accept agent payments over x402, settled and facilitated by zerohash."
+---
+
+## Overview & Concepts
+
+This guide applies to whichever entity actually operates the server receiving agent payments - that may be your Platform directly (if you run the paid endpoint yourself), or a merchant onboarded under your Platform (if a business customer of yours runs the paid endpoint). The configuration steps are identical either way; only who performs them differs.
+
+If the relevant server already accepts (or plans to accept) x402 payments, no new integration is required to use zerohash. x402 middleware is generic by design - the protocol does not mandate a single facilitator, and any standard x402 middleware package can point at any spec-compliant facilitator. Selecting zerohash is a configuration change: point the existing (or new) x402 middleware at zerohash's facilitator URL and credentials, in place of a generic or third-party facilitator.
+
+This guide covers:
+
+- Install standard x402 middleware for your server framework
+- Configure zerohash as your facilitator
+- Define your paid route(s)
+- Verify the configuration
+
+<Info>
+If a merchant is operating the server, your Platform is responsible for ensuring the merchant completes these steps - merchants do not have direct API access to zerohash (see [Onboard your merchant](/docs/know-your-agent)), but they configure their own server-side middleware independently, using facilitator credentials provided to them via your Platform.
+</Info>
+
+## Authentication
+
+Authentication for payment facilitation for x402 uses the same standard [credential mechanisms](/docs/authentication).
+
+## Steps
+
+### 1 - Choose your x402 middleware
+
+Whoever operates the server, your Platform or your merchant, has two options for how to speak x402. Both of these options result in zerohash acting as your facilitator; they differ in how much configuration is handled for you versus configured manually.
+
+**Option A: Use zerohash's x402 middleware -** zerohash provides a middleware package pre-wired to our facilitator, with built-in support KYA, endpoint monetization, and streaming session support. This is the fastest path if you want facilitator selection and zerohash-specific configuration (KYA-linked participants, agent-level limits) handled together, rather than as separate steps.
+
+**Option B: Use a third-party or open-source x402 middleware package -** x402 middleware is generic by design, the protocol does not mandate a single facilitator, and any standard, spec-compliant middleware (e.g., x402-express for Node.js, x402 for Python/FastAPI) can point at any spec-compliant facilitator, including zerohash's. Choose this option if you're already running x402 elsewhere and want to add zerohash as a facilitator without changing your existing middleware.
+
+*Note: Our Streaming Acceptance solution is only supported by Option A (zerohash middleware).*
+
+### 2 - Configure zerohash as your facilitator
+
+Point the middleware's facilitator configuration at zerohash, using the credentials from the Authentication step. Contact your zerohash representative for more information.
+
+### 3 - Configure your merchants x402 settings
+
+This [guide](/docs/x402-merchant-configuration) walks Platforms through configuring their merchant's x402 payment, settlement, and streaming requirements.
+
+### 4 - Verify Your Configuration
+
+To confirm that your server is properly configured:
+
+1. Send an unauthenticated HTTP request (without payment headers) to your paid endpoint
+2. Confirm that your server returns an HTTP `402 Payment Required` response containing your pricing and payout parameters
+
+**Sample Request:**
+
+```http
+GET /api/v1/data HTTP/1.1
+Host: api.yourdomain.com
+```
+
+**Expected Response (**`402 Payment Required`**):**
+
+`PAYMENT-REQUIRED` header in HTTP response containing `PAYMENT-REQUIRED` object (base64encoded)
+
+Once this test succeeds, your server is ready to accept and settle on-chain agent payments facilitated through zerohash. Reach out to your Platform administrator if you encounter any authentication or configuration issues.

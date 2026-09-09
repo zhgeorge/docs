@@ -1,0 +1,92 @@
+---
+title: "AUTH SDK Integration Guide"
+description: "Leverage AUTH with zerohash's SDKs to allow your users to seamlessly initiate on-chain deposits and withdrawals"
+---
+
+## Integration Overview
+
+At a high-level, integration with the AUTH product follows these steps:
+
+1. Configuration of platform & product, including retrieval of API key
+2. Authentication to retrieve client access token
+3. Instantiation of an AUTH-compatible zerohash SDK, such as the Account Funding SDK
+4. Consumption of webhook events for transactional statuses & alerts
+
+## Pre-requisities & Setup
+
+### Configure Platform
+
+Follow the steps in the [Get Platform Access](/docs/get-platform-access) guide to receive your credentials.
+
+### Configure AUTH
+
+Your zerohash team can configure your Platform with the following settings:
+
+1. **Supported assets**: See supported assets [here](/docs/supported-assets-instruments)
+2. **Transfer methods**: There are three categories of transfer methods to choose from within the AUTH network.
+
+   - [Custodial wallets](/docs/auth-network#custodial-accounts)
+   - [Non-custodial Wallets](/docs/auth-network#non-custodial-accounts)
+   - Manual Transfers
+3. **public\_key**: A public key from a cryptographic key-pair is required for use in signature validation of API requests.
+4. **Asset precision by network**
+
+   By default, AUTH accepts transfer amounts at the full on-chain precision of the source asset (up to 18 decimal places for chains like Ethereum). If your platform's ledger, CLOB, or downstream accounting system supports fewer decimal places, this can result in sub-precision "dust" amounts on your side with no clean place to land.
+
+   You can configure a maximum decimal precision per asset and network. Any AUTH deposit or withdrawal submitted with more decimal places than the configured value is rejected with a 400 — the transfer is not silently truncated.
+
+   **Why you might want this:**
+
+   - Match AUTH transfer precision to your internal ledger's precision, avoiding dust and reconciliation gaps
+   - Enforce a tighter precision ceiling than the asset's native chain precision (e.g. cap ETH at 8 decimals when your ledger only tracks 8)
+   1. Set different precision rules per asset — the configuration is per asset and network
+5. **Per-participant exchange visibility (production QA)**
+
+   When you want to validate a new AUTH integration in production before making it available to all of your users, you can restrict the exchange to a defined list of your participant codes. Only those participants will see the exchange in the AUTH Partner menu; every other participant on your platform will not see it.
+
+   **Why you might want this:**
+
+   - Run end-to-end production tests against a new exchange with your QA participants before general availability
+   - Progressively roll out a new exchange to specific user cohorts
+   - Restrict a exchange for internal risk or compliance reasons
+
+   **How it works:**
+
+   You provide zerohash with the exchange and the list of participant codes that should retain access. Participants on the list see the exchange; all other participants do not. Once you're ready to make the exchange generally available, the restriction is removed and all participants see the exchange in their menu.
+6. **Transaction limits**
+
+   The AUTH configuration system is flexible and can accommodate many types of limit configurations. Notably, here are the most common:
+
+   - **Maximum and Minimum per-transaction limits:** Define the smallest and largest allowable amounts (denominated in fiat) for a single transaction. AUTH will enforce these limits for each individual transaction request.
+   - **Maximum daily limits:** Set a cap on the total transaction volume allowed per user within a 24-hour period. This helps manage risk and comply with regulatory or internal policy requirements.
+
+### Configure Webhooks
+
+Provide zerohash with the **callback URL** that Auth will emit event updates to. You can review webhook documentation along with supported event domains [here](https://docs.zerohash.com/reference/overview) including specific events related to [Deposits & Withdrawals](https://docs.zerohash.com/reference-link/deposits-withdrawals) webhook statuses.
+
+## Authentication
+
+Authentication can be obtained to initialize a flow with AUTH SDK begins with [Generate a client access token.](https://docs.zerohash.com/reference-link/post_client-auth-token) This request requires a `participant_code` from a successfully onboarded customer before the token can be minted. You can review our [Onboarding](/docs/onboarding-experience-sample) solutions here.
+
+Additionally, all API calls require HMAC signing as described in our [API Authentication](/docs/authentication) overview.
+
+## Integrating with Auth
+
+Once Auth has been configured for your platform and desired product, you can use the existing integration guides.
+
+The web SDKs that currently support AUTH are:
+
+1. Fund SDK - [Integration Guide](/docs/fund-integration-guide-onboarding-api-fund-sdk-sdk)
+2. Withdrawal SDK - [Integration Guide](/docs/auth-withdrawals-sdk)
+
+To enable AUTH on mobile, reference our [native iOS and Android SDK](/docs/mobile-sdks) guides.
+
+*Note: usage of our native iOS and Android SDKs is required for access to all AUTH features in mobile.*
+
+## Webhooks Reference
+
+Webhooks for the AUTH-supported products can be found here, or in the [Webhooks Overview](https://docs.zerohash.com/reference/overview) section.
+
+1. [Account Funding Webhooks](https://docs.zerohash.com/reference/fund-transaction-update)
+2. [Deposit Webhooks](https://docs.zerohash.com/reference/deposit-status-updates)
+3. [Withdrawal Webhooks](https://docs.zerohash.com/reference/withdrawal-status-updates)

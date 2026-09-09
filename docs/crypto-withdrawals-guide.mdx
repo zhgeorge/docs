@@ -1,0 +1,317 @@
+---
+title: "Crypto Withdrawals SDK Guide"
+description: "Enable users to withdraw stablecoins & crypto directly from your platform to their exchange account or wallet"
+---
+
+## Setup
+
+<Info>
+### Please note that for AUTH usage you must install zh-web-sdk v3.5.0 or higher
+</Info>
+
+Platforms can instantiate the Crypto Withdrawals SDK offering with [AUTH](/docs/auth) included that eliminates the need to use the Account Link SDK flow.
+
+Crypto Withdrawals differs from the Fund Withdrawals SDK in that it does NOT require fiat to convert into outgoing with rawals from the platform's float account. Crypto Withdrawals SDK is a non-converted withdrawal of crypto on the zerohash ledger to the customer's exchange account or wallet. Both SDKs utilize the same permission `crypto-withdrawals`. The difference is in the token's payload: supplying `withdrawal_details` (with `quoted_asset` and `withdrawal_request_amount`) triggers the Fund Withdrawals flow, whereas Crypto Withdrawals expects no `withdrawal_details` and lets the End Customer pick asset, network, and amount inside the SDK.
+
+The key difference between this integration and the [Account Link SDK + Withdraw SDK](/docs/wallet-link-sdk-integration-guide) integration is the absence of the external account reference. Otherwise, the SDK flow is similar.
+
+## Flow
+
+### Crypto Withdrawals SDK - Request Access Token
+
+Platform [generates a client access token](https://docs.zerohash.com/reference/post_client-auth-token) with the `crypto-withdrawals` permission. Unlike the Fund Withdrawals SDK, no `withdrawal_details` block is required; the End Customer selects asset, network, and amount inside the SDK.
+
+| Field | Description | Example Value | Required? |
+| --- | --- | --- | --- |
+| `participant_code` | The 6-digit alpha numeric code associated with the Customer that is looking to withdraw (the response of the original [POST /participants/customers/new](https://docs.zerohash.com/reference/post_participants-customers-new) call) | CUST01 | Y |
+| `permissions` | The array of permissions that will be granted to the returned JWT token | `["crypto-withdrawals"]` | Y |
+| `reference_id` | Platform reference id for a specific transaction | 0bd7f7f0-cf26-495f-b2df-e8afe8481ba3 | N |
+
+Example `POST /client_auth_token` request:
+
+```json
+{
+    "participant_code": "CUST01",
+    "permissions": ["crypto-withdrawals"],
+    "reference_id": "0bd7f7f0-cf26-495f-b2df-e8afe8481ba3"
+}
+```
+
+#### Starting the Crypto Withdrawals flow
+
+After a successful `POST /client_auth_token` call, the next step is to open the Crypto Withdrawals modal via the [zh-web-sdk](https://www.npmjs.com/package/zh-web-sdk). The example below shows a React integration; for native iOS/Android, use our [native mobile SDKs](/docs/mobile-sdks) which expose the same flow.
+
+```
+import { useMemo } from 'react';
+import ZeroHashSDK, { AppIdentifier } from 'zh-web-sdk';
+
+export function WithdrawButton({ jwt }: { jwt: string }) {
+  // Create the SDK instance once, not on every render.
+  const sdk = useMemo(
+    () =>
+      new ZeroHashSDK({
+        zeroHashAppsURL: 'https://web-sdk.zerohash.com',
+        env: 'prod', // 'cert' | 'prod'
+        theme: 'auto', // 'light' | 'dark' | 'auto'
+      }),
+    []
+  );
+
+  const openWithdrawal = () => {
+    sdk.openModal({
+      appIdentifier: AppIdentifier.CRYPTO_WITHDRAWALS,
+      jwt,
+    });
+  };
+
+  const closeWithdrawal = () => {
+    sdk.closeModal(AppIdentifier.CRYPTO_WITHDRAWALS);
+  };
+
+  return <button onClick={openWithdrawal}>Withdraw crypto</button>;
+}
+```
+
+The SDK walks the End Customer through the flow before the Review screen:
+
+1. **Select source** (only when the token has AUTH enabled) - either link an exchange to withdraw from, or choose manual entry (classic transfer)
+2. **Select asset** - the asset to withdraw
+3. **Select network** - the network the asset should be sent on
+4. **Destination address** - the destination wallet or exchange address (plus a memo/tag if the asset requires one). Only shown for manual entry; for exchange integrations the destination is resolved from the linked account
+5. **Enter amount** - the amount to withdraw, in the selected asset
+
+The Customer then lands on the Review screen, which shows:
+
+| Data Point | Description | Example |
+| --- | --- | --- |
+| Withdraw | The amount and asset being withdrawn | 200 USDC |
+| Network fee | The blockchain-assessed network fee on the withdrawal, in USD terms | \$1.25 |
+| Network | The network used to send the transaction | Ethereum |
+| Send to | The destination address (truncated for display) | 0xa6b0…cB89 |
+| You receive | The amount the destination address will receive, net of fees | 197.25 USDC |
+
+### Crypto Withdrawals SDK - Initiate Withdrawal
+
+At this point, the End Customer is interacting with the front end SDK. The Customer will ultimately initiate the withdrawal.
+
+### Crypto Withdrawals SDK - Consume Payments Webhook
+
+<Info>
+### Platform must be configured with a valid webhook URL in order to receive these webhooks. Please get in touch with a zerohash representative so that they can set this up for you. Your Platform will need to be specifically configured to receive these webhooks.
+</Info>
+
+After the End Customer successfully initiates the Withdrawal via the SDK, the Platform can consume webhooks related to that [payment](https://docs.zerohash.com/reference/payments-status-changes).
+
+**Note:** the `x-zh-hook-payload-type` is `payment_status_changed` (more details on webhooks [here](https://docs.zerohash.com/reference/webhook-security))
+
+#### Status Summary
+
+The Withdrawal will initially enter a status of `submitted`. If zerohash is unable to process the transaction, the Withdrawal will enter a terminal status of `failed`. When the transaction has been successfully broadcasted on-chain, it will enter a status of `posted`. A terminal status of `settled` is reached when the Withdrawal has been confirmed on-chain and received by the End Customer.
+
+#### Initialized Status
+
+After you successfully generate a JWT token via the `POST /client_auth_token` endpoint, zerohash will send an `initialized` webhook. Example payload:
+
+```json
+{
+   "payment_id":"0f68333e-2114-469d-b505-c850d776e061",
+   "obo_participant":{
+      "participant_code":"CUST01",
+      "account_group":"PLAT01",
+      "account_label":"general"
+   },
+   "payment_details":{
+      "withdrawal_request_id":"",
+      "trade_id":"",
+      "on_chain_transaction_id":"",
+      "network_fee_notional":"",
+      "network_fee_quantity":"",
+      "withdrawal_fee_notional": "",
+      "destination_address":"0xa6b0Cd1baaa15AE97D8135f0E87F61af27c6cB89"
+   },
+   "asset":"",
+   "network":"ETH",
+   "payment_type":"payout",
+   "participant_code":"CUST01",
+   "quantity":"",
+   "status":"initialized",
+   "created_at":"2024-09-26T13:05:22.657Z",
+   "updated_at":"2024-09-26T13:05:22.657Z",
+   "total":"200",
+   "reference_id": "0bd7f7f0-cf26-495f-b2df-e8afe8481ba3"
+}
+```
+
+#### Submitted Status
+
+The Withdrawal will initially and briefly enter a status of `submitted`. Example payload:
+
+```json
+{
+   "payment_id":"0f68333e-2114-469d-b505-c850d776e061",
+   "obo_participant":{
+      "participant_code":"CUST01",
+      "account_group":"PLAT01",
+      "account_label":"general"
+   },
+   "payment_details":{
+      "withdrawal_request_id":"",
+      "trade_id":"b752503c-1c42-4dfe-ad1d-7b39da5db59c",
+      "on_chain_transaction_id":"",
+      "network_fee_notional":"",
+      "network_fee_quantity":"",
+      "withdrawal_fee_notional": "",
+      "destination_address":"0xa6b0Cd1baaa15AE97D8135f0E87F61af27c6cB89"
+   },
+   "asset":"USDC",
+   "network":"ETH",
+   "payment_type":"payout",
+   "participant_code":"CUST01",
+   "quantity":"",
+   "status":"submitted",
+   "created_at":"2024-09-26T13:05:22.657Z",
+   "updated_at":"2024-09-26T13:05:22.657Z",
+   "total":"200",
+   "reference_id": "0bd7f7f0-cf26-495f-b2df-e8afe8481ba3"
+}
+```
+
+#### Posted Status
+
+The Withdrawal will transition into a status of `posted`, which means that the asset has been **broadcasted on-chain**. Note the presence of the `on_chain_transaction_id` field, which represents the on-chain hash. Typically, this is displayed to the End Customer on the Platform's "Transaction History" or equivalent page in order to allow the Customer to trace the transaction. Example payload:
+
+```json
+{
+   "payment_id":"0f68333e-2114-469d-b505-c850d776e061",
+   "obo_participant":{
+      "participant_code":"CUST01",
+      "account_group":"PLAT01",
+      "account_label":"general"
+   },
+   "payment_details":{
+      "withdrawal_request_id":"14f8ebb8-7530-4aa4-bef9-9d73d56313f3",
+      "trade_id":"b752503c-1c42-4dfe-ad1d-7b39da5db59c",
+      "on_chain_transaction_id":"0x55dfac6137387a81e32fc353fca45eea3124cd42564a4112192323add8dee1da",
+      "network_fee_notional":"1.25",
+      "network_fee_quantity":".00032",
+      "withdrawal_fee_notional": "1.50",
+      "destination_address":"0xa6b0Cd1baaa15AE97D8135f0E87F61af27c6cB89"
+   },
+   "asset":"USDC",
+   "network":"ETH",
+   "payment_type":"payout",
+   "participant_code":"CUST01",
+   "quantity":"197.25",
+   "status":"posted",
+   "created_at":"2024-09-26T13:05:22.657Z",
+   "updated_at":"2024-09-26T13:05:22.657Z",
+   "total":"200",
+   "reference_id": "0bd7f7f0-cf26-495f-b2df-e8afe8481ba3"
+}
+```
+
+#### Settled Status
+
+When the withdrawal transitions to a `settled` status, the transaction has been fully settled on-chain and the balance should be reflected on the End Customer's destination exchange or wallet account. Example payload:
+
+```json
+{
+   "payment_id":"0f68333e-2114-469d-b505-c850d776e061",
+   "obo_participant":{
+      "participant_code":"CUST01",
+      "account_group":"PLAT01",
+      "account_label":"general"
+   },
+   "payment_details":{
+      "withdrawal_request_id":"14f8ebb8-7530-4aa4-bef9-9d73d56313f3",
+      "trade_id":"b752503c-1c42-4dfe-ad1d-7b39da5db59c",
+      "on_chain_transaction_id":"0x55dfac6137387a81e32fc353fca45eea3124cd42564a4112192323add8dee1da",
+      "network_fee_notional":"1.25",
+      "network_fee_quantity":".00032",
+      "withdrawal_fee_notional": "1.50",
+      "destination_address":"0xa6b0Cd1baaa15AE97D8135f0E87F61af27c6cB89"
+   },
+   "asset":"USDC",
+   "network":"ETH",
+   "payment_type":"payout",
+   "participant_code":"CUST01",
+   "quantity":"197.25",
+   "status":"settled",
+   "created_at":"2024-09-26T13:05:22.657Z",
+   "updated_at":"2024-09-26T13:05:22.657Z",
+   "total":"200",
+   "reference_id": "0bd7f7f0-cf26-495f-b2df-e8afe8481ba3"
+}
+```
+
+#### Failed Status
+
+Due to either zerohash processing issues or issues with the blockchain itself, a Withdrawal can transition to a `failed` status. Example payload:
+
+```json
+{
+   "payment_id":"0f68333e-2114-469d-b505-c850d776e061",
+   "obo_participant":{
+      "participant_code":"CUST01",
+      "account_group":"PLAT01",
+      "account_label":"general"
+   },
+   "payment_details":{
+      "withdrawal_request_id":"14f8ebb8-7530-4aa4-bef9-9d73d56313f3",
+      "trade_id":"b752503c-1c42-4dfe-ad1d-7b39da5db59c",
+      "on_chain_transaction_id":"0x55dfac6137387a81e32fc353fca45eea3124cd42564a4112192323add8dee1da",
+      "network_fee_notional":"1.25",
+      "network_fee_quantity":".00032",
+      "withdrawal_fee_notional": "1.50",
+      "destination_address":"0xa6b0Cd1baaa15AE97D8135f0E87F61af27c6cB89"
+   },
+   "asset":"USDC",
+   "network":"ETH",
+   "payment_type":"payout",
+   "participant_code":"CUST01",
+   "quantity":"197.25",
+   "status":"failed",
+   "created_at":"2024-09-26T13:05:22.657Z",
+   "updated_at":"2024-09-26T13:05:22.657Z",
+   "total":"200",
+   "reference_id": "0bd7f7f0-cf26-495f-b2df-e8afe8481ba3"
+}
+```
+
+#### Abandoned Status
+
+When the End Customer leaves the SDK UI **without** having initiated a Withdrawal, zerohash will send an `abandoned` webhook message. This is helpful when accounting for balance ledgering and reconciliation, learn more [here](/docs/withdrawals-releasing-funds). Example payload:
+
+```json
+{
+   "payment_id":"0f68333e-2114-469d-b505-c850d776e061",
+   "obo_participant":{
+      "participant_code":"CUST01",
+      "account_group":"PLAT01",
+      "account_label":"general"
+   },
+   "payment_details":{
+      "withdrawal_request_id":"",
+      "trade_id":"",
+      "on_chain_transaction_id":"",
+      "network_fee_notional":"",
+      "network_fee_quantity":"",
+      "withdrawal_fee_notional": "",
+      "destination_address":"0xa6b0Cd1baaa15AE97D8135f0E87F61af27c6cB89"
+   },
+   "asset":"USDC",
+   "network":"ETH",
+   "payment_type":"payout",
+   "participant_code":"CUST01",
+   "quantity":"",
+   "status":"abandoned",
+   "created_at":"2024-09-26T13:05:22.657Z",
+   "updated_at":"2024-09-26T13:05:22.657Z",
+   "total":"200",
+   "reference_id": "0bd7f7f0-cf26-495f-b2df-e8afe8481ba3"
+}
+```
+
+### Crypto Withdrawals SDK - Query Payments
+
+The Platform can also query the [GET /payments](https://docs.zerohash.com/reference/get_payments) endpoint to view information about the Withdrawal. See the endpoint reference for the full response shape and example.

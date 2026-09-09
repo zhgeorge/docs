@@ -1,0 +1,262 @@
+---
+title: "Know your Agent (KYA)"
+description: "Compliant onboarding of agents."
+---
+
+## Overview & Concepts
+
+zerohash can provision your agents with the following steps:
+
+1. Setup your Platform on zerohash
+2. Onboard your Customers (individuals and businesses)
+3. Onboard agents using our Know Your Agent (KYA) framework and set agent permissions & limits
+
+## Authentication
+
+Authentication follows our standard [API Authentication](/docs/authentication) practices of HMAC signing. You will receive an API key after your platform has been onboarded.
+
+## Steps
+
+### 1 - Setup your Platform on zerohash
+
+First, ensure you onboard your business to zerohash via the [portal.zerohash.com.](http://portal.zerohash.com) follow the `Sign Up` flow.
+
+Work with your zerohash representative to:
+
+- Create API keys
+- Add webhook URLs
+- Configure relevant settings
+
+### 2 - Onboard your Customers
+
+Your platform's structure follows one of two shapes:
+
+- **Directly to end customers:** Your platform onboards an individual directly, with no merchant layer in between - the agent acts on behalf of one of your platform's own individual customers.
+- **Through a business customer:** Your platform onboards a business ("merchant"), and that merchant has its own individual end customers on whose behalf agents act. In this shape, both the merchant and its end customers are onboarded as participants under your platform.
+
+In both shapes, the individual are onboarded the same way, via `POST /participants/customers/new` - the difference is only whether that individual sits directly under your platform or under a merchant you've also onboarded.
+
+#### Onboarding a business customer
+
+Only needed if your platform has business customers with their own the individual underneath them. Onboard the business as a participant via `POST /participants/entity/new`
+
+Example request:
+
+```json
+{
+  "platform_code": "PLAT01",
+  "entity_name": "Merchant XYZ",
+  "legal_name": "Merchant XYZ Inc.",
+  "contact_number": "15553765432",
+  "website": "www.merchant.com",
+  "date_established": "2018-01-15",
+  "entity_type": "llc",
+  "address_one": "1 Main St.",
+  "address_two": "Suite 1000",
+  "city": "Chicago",
+  "postal_code": "12345",
+  "jurisdiction_code": "US-IL",
+  "tax_id": "883987654",
+  "id_issuing_authority": "United States",
+  "risk_rating": "low",
+  "risk_vendor": "passbase",
+  "sanction_screening": "pass",
+  "sanction_screening_timestamp": 1677252628000,
+  "submitter_email": "josh_doe@example.com",
+  "submitter_first_name": "Josh",
+  "submitter_last_name": "Doe",
+  "submitter_title": "Senior Legal Counsel",
+  "control_persons": [
+    {
+      "name": "Joe Doe",
+      "email": "joe.doe@example.com",
+      "address_one": "1 South St.",
+      "city": "Chicago",
+      "postal_code": "12345",
+      "jurisdiction_code": "US-IL",
+      "date_of_birth": "1980-01-30",
+      "citizenship_code": "US",
+      "tax_id": "123456789",
+      "id_number_type": "us_passport",
+      "id_number": "332211200",
+      "kyc": "pass",
+      "kyc_timestamp": 1630623005000,
+      "sanction_screening": "pass",
+      "sanction_screening_timestamp": 1677252628000,
+      "control_person": 1
+    }
+  ],
+  "beneficial_owners": [
+    {
+      "name": "Jane Doe Jr",
+      "beneficial_owner": 1,
+      "email": "janedoejr@example.com",
+      "address_one": "1 North St.",
+      "city": "Chicago",
+      "postal_code": "12345",
+      "jurisdiction_code": "US-IL",
+      "date_of_birth": "1980-01-30",
+      "citizenship_code": "US",
+      "tax_id": "012345578",
+      "id_number_type": "us_drivers_license",
+      "id_number": "P11122243333",
+      "kyc": "pass",
+      "kyc_timestamp": 1630623005000,
+      "sanction_screening": "pass",
+      "sanction_screening_timestamp": 1677252628000
+    }
+  ]
+}
+```
+
+The response returns a `participant_code` for your customer.
+
+<Info title="Note for business customers">
+`control_persons` and `beneficial_owners` are required fields in the standard onboarding flow shown above. A separate reduced-field tier ("partial NNP") exists for platforms that have received explicit Compliance and Legal approval and been configured with a platform-specific KYC tier - this tier waives beneficial owner/control person collection. Contact your zerohash representative if you're interested in qualifying for it.
+</Info>
+
+#### Onboarding an individual
+
+Onboard an individual as a participant via `POST /participants/customers/new`
+
+```json
+{
+  "platform_code": "PLAT01",
+  "first_name": "John",
+  "last_name": "Smith",
+  "name": "John Smith",
+  "email": "john.smith@example.com",
+  "date_of_birth": "1985-04-12",
+  "address_one": "1 Main St.",
+  "city": "Chicago",
+  "state": "IL",
+  "zip_code": "12345",
+  "country": "US",
+  "id_number_type": "us_ssn",
+  "id_number": "123456789",
+  "submission_method": "api",
+  "request_id": "b3f1e2a0-1c4d-4e2a-9f3a-7c1e2d4a5b6c",
+  "metadata": {}
+}
+```
+
+The response returns a `participant_code` for the end user.
+
+### 3 - Onboard agents using our Know Your Agent (KYA) framework
+
+#### Onboard Agent
+
+Every agent must be tied to a verified human or business customer who is legally accountable for its actions. `POST /participants/agents` supports two flows:
+
+1. **Attach to an existing customer -** pass the human's existing `participant_code`, plus the agent's details.
+2. **Onboard simultaneously -** pass a standard `POST /participants/customers/new`-style payload for the human (if they haven't been onboarded yet) together with the agent's details, in one call.
+
+In both cases, the human or business must sign an explicit KYA agreement - distinct from any general terms of service - acknowledging that they are delegating transacting authority to an autonomous agent and accept liability for its actions.
+
+Example `POST /participants/agents` request **attaching an agent to an already-onboarded** participant:
+
+```json
+{
+  "platform_code": "PLAT01",
+  "participant_code": "CUST01",
+  "agent": {
+    "agent_id": "AGENT01",
+    "agent_name": "John's Research Agent",
+    "agent_type": "llm_autonomous",
+    "framework": "langchain",
+    "description": "Purchases market data and research API access on behalf of the customer",
+    "operator_email": "john.smith@example.com",
+    "created_at": "2026-07-29T12:00:00Z"
+  },
+  "signed_agreements": [
+    {
+      "type": "kya_agent_authorization",
+      "region": "us",
+      "signed_timestamp": 1753776000000
+    }
+  ]
+}
+```
+
+Example `POST /participants/agents` request **onboarding a customer and their agent in a single call:**
+
+```json
+{
+  "platform_code": "PLAT01",
+  "first_name": "John",
+  "last_name": "Smith",
+  "email": "john.smith@example.com",
+  "date_of_birth": "1985-04-12",
+  "address_one": "1 Main St.",
+  "city": "Chicago",
+  "postal_code": "12345",
+  "jurisdiction_code": "US-IL",
+  "citizenship_code": "US",
+  "tax_id": "123456789",
+  "id_number_type": "us_passport",
+  "id_number": "332211200",
+  "agent": {
+    "agent_id": "AGENT01",
+    "agent_name": "John's Research Agent",
+    "agent_type": "llm_autonomous",
+    "framework": "langchain",
+    "description": "Purchases market data and research API access on behalf of the customer",
+    "created_at": "2026-07-29T12:00:00Z"
+  },
+  "signed_agreements": [
+    {
+      "type": "kya_agent_authorization",
+      "region": "us",
+      "signed_timestamp": 1753776000000
+    }
+  ]
+}
+```
+
+<Info>
+The response returns the customer's participant\_code and the agent's `agent_id`. The `agent_id` becomes the `account_label` used to scope permissions, transaction limits, and wallet activity to this specific agent in the following steps.
+</Info>
+
+| Field | Description |
+| --- | --- |
+| `agent_id` | Required. Unique per customer; becomes the account\_label used everywhere downstream. |
+| `agent_name` | Required. Human-readable label for admin portal / dashboards. |
+| `agent_type` | Required. e.g. llm\_autonomous, scripted, hybrid - flags whether a human is ever in the loop. |
+| `framework` | Optional. e.g. langchain, custom, autogpt - useful for risk/monitoring segmentation later. |
+| `description` | Optional but recommended. Free text describing the agent's intended purpose/scope - useful evidence of "intended bounds" if a dispute arises. |
+| `created_at` | Required. Timestamp the agent was provisioned. |
+| `operator_email` | Optional. If the agent is managed by someone other than the primary customer contact (e.g., a technical admin at the merchant). |
+
+#### Set agent permissions and limits
+
+Once onboarded, each agent's transacting authority is explicitly scoped via `POST /permissions/agents`
+
+This call defines which products the agent may use and how much it may move, using the `participant_code` + `account_label` (the `agent_id` from step 3) pairing established during onboarding.
+
+```json
+{
+  "participant_code": "CUST01",
+  "account_label": "AGENT01",
+  "product_permissions": ["pay", "fund", "payout"],
+  "limits": [
+    {
+      "type": ["trades"],
+      "period": 24,
+      "configured_limit": "2000",
+      "asset": "USD"
+    },
+    {
+      "type": ["trades"],
+      "period": 720,
+      "configured_limit": "20000",
+      "asset": "USD"
+    }
+  ]
+}
+```
+
+<Info>
+`product_permissions` accepts `pay`, `fund`, and `payout`. An agent with only ["pay"] permission, for example, can transact via the Move/Stream flows but cannot initiate a withdrawal - even if the underlying customer is fully enabled for all three products.
+
+A single customer can have multiple agents, each with its own `account_label` and its own independently configured `product_permissions` and limits - so one agent might be scoped to ["pay"] with a \$500/day cap, while another under the same customer is scoped to ["fund", "payout"] with a much higher limit, entirely independent of each other.
+</Info>

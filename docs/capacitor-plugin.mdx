@@ -1,0 +1,114 @@
+---
+title: "Capacitor Plugin"
+description: "The zerohash Capacitor plugin wraps the native iOS and Android SDKs, so a Capacitor app can present the same flows without writing any native code. The flows render over your app, not inside your…"
+---
+
+The zerohash Capacitor plugin wraps the native [iOS](/docs/ios-sdk) and [Android](/docs/android-sdk) SDKs, so a Capacitor app can present the same flows without writing any native code. The flows render over your app, not inside your WebView. Read [Mobile SDKs](/docs/mobile-sdks) first for the shared concepts, in particular the event model.
+
+**Package:** [`@zerohash-sdk/capacitor`](https://www.npmjs.com/package/@zerohash-sdk/capacitor)
+
+## Requirements
+
+|   |   |
+| --- | --- |
+| iOS | 17.0+ |
+| Android | `minSdkVersion` 24+ |
+| Distribution | npm |
+
+## Installation
+
+```bash
+npm install @zerohash-sdk/capacitor
+npx cap sync
+```
+
+`npx cap sync` is what wires the native SDKs in, so run it after installing and after any dependency change.
+
+### Android
+
+Nothing further. The plugin's Android side pulls the native zerohash Android SDK from Maven Central, which a standard Gradle setup already resolves.
+
+### iOS
+
+Nothing further. `npx cap sync` adds the native iOS SDK via Swift Package Manager.
+
+Your iOS app must still declare `NSCameraUsageDescription` and `NSMicrophoneUsageDescription` in `Info.plist`. A crypto transaction can be held for an identity check that the user completes with their device camera, and the check cannot run without both keys. See the [iOS guide](/docs/ios-sdk) for details.
+
+## Integration
+
+Register your listeners **before** presenting. Events emitted while nothing is listening are lost.
+
+```typescript
+import { Zerohash } from '@zerohash-sdk/capacitor';
+
+await Zerohash.addListener('fundCompleted', (event) => {
+  console.log('Deposit complete', event.assetSymbol, event.amount);
+});
+
+await Zerohash.addListener('fundFailed', (event) => {
+  // Terminal failed deposit. Not an error — show the reason.
+});
+
+await Zerohash.addListener('close', () => {
+  // The user dismissed the flow.
+});
+
+await Zerohash.addListener('error', (error) => {
+  console.error(error.code, error.message);
+});
+
+await Zerohash.presentFund({
+  jwt,
+  environment: 'production',
+  theme: 'system',
+});
+```
+
+`environment` defaults to `production` and `theme` to `system`, so `presentFund({ jwt })` is a valid minimal call.
+
+`addListener` returns a handle. Call `handle.remove()` when your component unmounts, or listeners accumulate across navigations and you will handle the same event more than once.
+
+## Methods
+
+| Method | Behaviour |
+| --- | --- |
+| `presentFund(options)` | Presents the Fund (deposit) flow |
+| `presentCryptoWithdrawals(options)` | Presents the crypto-withdrawals flow |
+| `presentFundWithdrawals(options)` | Presents the fund-withdrawals flow |
+| `cancel()` | Dismisses the active session, if any |
+| `isActive()` | Resolves `{ isActive: boolean }` |
+| `removeAllListeners()` | Removes every listener registered by the plugin |
+
+Only one flow can be presented at a time. **Presenting while another flow is active rejects**, so either await `close` before presenting the next one, or check `isActive()` first.
+
+### Options
+
+| Option | Type | Default |
+| --- | --- | --- |
+| `jwt` | `string` | required |
+| `environment` | `'sandbox' \| 'production'` | `'production'` |
+| `theme` | `'light' \| 'dark' \| 'system'` | `'system'` |
+| `allowList` | `string[]` | platform default |
+
+## Events
+
+Events are global to the plugin rather than scoped to a session object. Events whose payload differs per flow are therefore named per flow, while events whose payload is the same everywhere stay bare.
+
+| Event | Payload | Fires when |
+| --- | --- | --- |
+| `loaded` | none | The flow finished loading and is ready |
+| `close` | none | The user closed the flow, or you called `cancel()` |
+| `error` | `{ code, message }` | An SDK or request error occurred |
+| `event` | `{ type, data? }` | A low-level event was forwarded from the flow |
+| `fundCompleted` | `FundCompletedEvent` | A deposit completed successfully |
+| `fundFailed` | `FundCompletedEvent` | A deposit reached a terminal failed state |
+| `fundDeposit` | `FundDepositEvent` | Status update for a deposit funded from an external source |
+| `withdrawalCompleted` | `CryptoWithdrawalsCompletedEvent` | A crypto withdrawal was submitted successfully |
+| `withdrawalFailed` | `CryptoWithdrawalsCompletedEvent` | A crypto withdrawal reached a terminal failed state |
+| `fundWithdrawalCompleted` | `FundWithdrawalCompletedEvent` | A fund withdrawal was submitted successfully |
+
+Every payload field is nullable unless stated otherwise, since the flow does not always provide all of them. Types ship with the package, so your editor will show the exact shape.
+
+There is deliberately no `fundWithdrawalFailed`. Once a fund withdrawal is submitted it cannot report a failure, so anything going wrong beforehand arrives on `error` instead.
+
+Full event payload fields and the error type hierarchy are documented in the [npm page](https://www.npmjs.com/package/@zerohash-sdk/capacitor), which is versioned alongside the SDK.

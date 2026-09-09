@@ -1,0 +1,30 @@
+---
+title: "Virtual Accounts Setup"
+description: "Get your integration ready before creating your first virtual account."
+---
+
+## High Level - Integration Steps
+
+1. Complete the Prerequisites below.
+2. Onboard an end customer.
+3. Link an external wallet address (required for the auto-convert Virtual Accounts).
+4. Retrieve virtual accounts.
+5. Manage virtual accounts.
+
+## Pre-requisites
+
+1. Work with zerohash to determine your **onboarding method**:
+   1. **zerohash-managed KYC:** embed a zerohash-managed KYC SDK (docs [here](/docs/onboarding-experience-sample))
+   2. **Reliance:** choose your own KYC/KYB provider, implement their tech, and submit the result to zerohash via API ([POST /participants/customers/new](https://docs.zerohash.com/reference/post_participants-customers-new) for individuals, [POST/participants/entity/new](https://docs.zerohash.com/reference/post_participants-entity-new) for businesses)
+
+<Warning title="Approval needed">
+The Reliance onboarding method requires approval by zerohash's Compliance team. Consult your zerohash representative to begin the review process.
+</Warning>
+
+2. In the [Client Portal](/docs/onboarding), create an **API key with the "Virtual Account" permission** enabled for Read and Write.
+3. Provide zerohash with your **callback URL** so we can configure your Platform to listen to the following webhook events:
+   1. [Participants:](https://docs.zerohash.com/reference/participants-1) for End customer status updates
+   2. [External Account:](https://docs.zerohash.com/reference/external-account-status-updates) for external account status updates
+      1. This is mostly relevant auto-convert Virtual Accounts, where the destination blockchain wallet address is considered an External Account.
+   3. [Virtual Accounts:](https://docs.zerohash.com/reference/virtual-accounts) for dedicated virtual account status updates
+4. Decide whether you or zerohash will send **email receipts** to your end customers. zerohash has a regulatory obligation to ensure end customers receive email receipts for certain virtual account events, and offers this as a free service to simplify your integration. See in-depth guide [here](https://docs.zerohash.com/docs/email-receipts-virtual-accounts).

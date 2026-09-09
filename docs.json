@@ -25,139 +25,579 @@
         "tab": "Documentation",
         "groups": [
           {
-            "group": "Get Started",
+            "group": "Getting Started",
             "pages": [
               "docs/getting-started",
               "docs/get-platform-access",
-              "docs/generate-api-keys",
-              "docs/submit-first-api-call",
-              "docs/terminology"
+              "docs/submit-first-api-call"
             ]
           },
           {
-            "group": "Core Concepts",
+            "group": "User Guides",
             "pages": [
-              "docs/core-resources",
-              "docs/authentication",
-              "docs/api-security",
-              "docs/error-handling",
-              "docs/request-ids",
-              "docs/supported-assets-instruments"
+              {
+                "group": "General",
+                "pages": [
+                  "docs/asset-recovery-process-1",
+                  "docs/authentication",
+                  {
+                    "group": "Custody",
+                    "pages": [
+                      "docs/zerohash-custody",
+                      {
+                        "group": "Address Information",
+                        "pages": [
+                          "docs/supported-address-formats",
+                          "docs/does-zero-hash-support-ltc-3-prefixed-addresses",
+                          "docs/address-formats-for-testing-in-cert",
+                          "docs/memos-destination-tags",
+                          "docs/blockchain-trustline-requirements"
+                        ]
+                      },
+                      {
+                        "group": "Mainnets",
+                        "pages": [
+                          "docs/which-bitcoin-cash-bch-chain-do-you-support",
+                          "docs/preparing-for-the-ethereum-proof-of-stake-merge-event",
+                          "docs/solana-blockchain-support-faq"
+                        ]
+                      },
+                      {
+                        "group": "Testnets",
+                        "pages": [
+                          "docs/testnet-support-and-token-faucets"
+                        ]
+                      },
+                      "docs/proof-of-reserves"
+                    ]
+                  },
+                  "docs/api-security",
+                  "docs/request-ids",
+                  "docs/fees",
+                  {
+                    "group": "Permitted and Prohibited/ Restricted Jurisdictions",
+                    "pages": [
+                      "docs/permitted-and-restricted-jurisdictions",
+                      "docs/updated-list-of-permitted-higher-risk-non-us-geographies",
+                      "docs/prohibited-and-restricted-non-us-jurisdictions-list",
+                      "docs/restricted-activities-for-new-york-participants"
+                    ]
+                  },
+                  {
+                    "group": "Supported Assets and Instruments",
+                    "pages": [
+                      "docs/supported-assets-instruments",
+                      "docs/production-environment-blockchains"
+                    ]
+                  },
+                  "docs/terminology",
+                  "docs/when-are-fiat-withdrawals-processed",
+                  {
+                    "group": "zerohash Cryptocurrency Kiosk Consumer Disclosures, Transaction Limitations, and Refund Policies (Listed by State)",
+                    "pages": [
+                      "docs/zerohash-cryptocurrency-kiosk-consumer-disclosures-transaction-limitations-and-refund-policies-listed-by-state-copy",
+                      "docs/crypto-atm-kiosks-receipt",
+                      "docs/zerohash-cryptocurrency-kiosk-disclosures-and-refund-policies-arizona",
+                      "docs/zerohash-cryptocurrency-kiosk-disclosures-and-refund-policies-arkansas",
+                      "docs/zerohash-cryptocurrency-kiosk-disclosures-and-refund-policies-california-copy-1",
+                      "docs/zerohash-cryptocurrency-kiosk-disclosures-and-refund-policies-colorado",
+                      "docs/zerohash-cryptocurrency-kiosk-disclosures-and-refund-policies-connecticut",
+                      "docs/zerohash-cryptocurrency-kiosk-disclosures-and-refund-policies-florida",
+                      "docs/zerohash-cryptocurrency-kiosk-disclosures-and-refund-policies-georgia",
+                      "docs/zerohash-cryptocurrency-kiosk-disclosures-and-refund-policies-hawaii",
+                      "docs/zerohash-cryptocurrency-kiosk-disclosures-and-refund-policies-illinois",
+                      "docs/zerohash-cryptocurrency-kiosk-disclosures-and-refund-policies-iowa",
+                      "docs/zerohash-cryptocurrency-kiosk-disclosures-and-refund-policies-kansas",
+                      "docs/zerohash-cryptocurrency-kiosk-disclosures-and-refund-policies-louisiana",
+                      "docs/zerohash-cryptocurrency-kiosk-disclosures-and-refund-policies-maine",
+                      "docs/zerohash-cryptocurrency-kiosk-disclosures-and-refund-policies-maryland",
+                      "docs/zerohash-cryptocurrency-kiosk-disclosures-and-refund-policies-massachusetts",
+                      "docs/zerohash-cryptocurrency-kiosk-disclosures-and-refund-policies-minnesota",
+                      "docs/zerohash-cryptocurrency-kiosk-disclosures-and-refund-policies-mississippi",
+                      "docs/zerohash-cryptocurrency-kiosk-disclosures-and-refund-policies-missouri",
+                      "docs/zerohash-cryptocurrency-kiosk-disclosures-and-refund-policies-nebraska",
+                      "docs/zerohash-cryptocurrency-kiosk-disclosures-and-refund-policies-new-jersey",
+                      "docs/zerohash-cryptocurrency-kiosk-disclosures-and-refund-policies-new-york",
+                      "docs/zerohash-cryptocurrency-kiosk-disclosures-and-refund-policies-north-carolina",
+                      "docs/zerohash-cryptocurrency-kiosk-disclosures-and-refund-policies-north-dakota",
+                      "docs/zerohash-cryptocurrency-kiosk-disclosures-and-refund-policies-oklahoma",
+                      "docs/zerohash-cryptocurrency-kiosk-disclosures-and-refund-policies-rhode-island",
+                      "docs/zerohash-cryptocurrency-kiosk-disclosures-and-refund-policies-tennessee",
+                      "docs/zerohash-cryptocurrency-kiosk-disclosures-and-refund-policies-texas",
+                      "docs/cryptocurrency-kiosk-disclosures-and-refund-policies-utah",
+                      "docs/zerohash-cryptocurrency-kiosk-disclosures-and-refund-policies-vermont",
+                      "docs/zerohash-cryptocurrency-kiosk-disclosures-and-refund-policies-washington",
+                      "docs/zerohash-cryptocurrency-kiosk-disclosures-and-refund-policies-wisconsin",
+                      "docs/zerohash-cryptocurrency-kiosk-disclosures-and-refund-policies-wyoming"
+                    ]
+                  }
+                ]
+              },
+              {
+                "group": "Help Articles",
+                "pages": [
+                  "docs/safeguarding-your-identity-online",
+                  "docs/understanding-cryptocurrency-cash-and-stocks",
+                  "docs/understanding-cryptocurrency-pricing-unraveling-price-discrepancies",
+                  "docs/demystifying-blockchain-how-it-works-and-transaction-expectations",
+                  "docs/protecting-yourself-from-cryptocurrency-fraud-common-scams",
+                  "docs/protecting-against-elder-financial-exploitation-in-the-world-of-cryptocurrency",
+                  "docs/what-should-i-do-if-i-believe-that-i-am-a-victim-of-fraud-or-a-scam",
+                  "docs/unknown-zero-hash-charges-on-financial-statement",
+                  "docs/navigating-crypto-delivery-a-step-by-step-guide",
+                  "docs/what-is-cryptocurrency-a-guide-to-popular-digital-assets-and-consumer-interaction",
+                  "docs/assets-delisting",
+                  "docs/liquidity-models"
+                ]
+              },
+              {
+                "group": "Core API Resources",
+                "pages": [
+                  "docs/core-resources",
+                  {
+                    "group": "Participants",
+                    "pages": [
+                      "docs/supported-zip-code-formats",
+                      "docs/iso-3166-subdivision-conversions",
+                      "docs/sanction-screening",
+                      "docs/itin-format",
+                      "docs/eu-participant-creation",
+                      "docs/eu-entity-business-onboarding"
+                    ]
+                  },
+                  {
+                    "group": "Accounts",
+                    "pages": [
+                      "docs/platform-account-faqs",
+                      "docs/float-accounts",
+                      "docs/creating-custom-accounts",
+                      "docs/origin-field"
+                    ]
+                  },
+                  {
+                    "group": "Balances Websocket",
+                    "pages": [
+                      "docs/balances-websocket",
+                      "docs/api-workflow-3"
+                    ]
+                  }
+                ]
+              },
+              {
+                "group": "Onboarding",
+                "pages": [
+                  "docs/onboarding-experience-sample",
+                  "docs/faqs-kycaas-unable-to-sign-updecline",
+                  "docs/test-verification-sessions",
+                  "docs/kyc-support-accepted-identification-documents"
+                ]
+              },
+              {
+                "group": "SDK",
+                "pages": [
+                  "docs/sdk",
+                  "docs/sdk-index",
+                  "docs/sdk-styling",
+                  {
+                    "group": "Mobile SDKs",
+                    "pages": [
+                      "docs/mobile-sdks",
+                      "docs/ios-sdk",
+                      "docs/android-sdk",
+                      "docs/capacitor-plugin",
+                      "docs/native-migration-guide"
+                    ]
+                  }
+                ]
+              },
+              {
+                "group": "Client Portal",
+                "pages": [
+                  "docs/onboarding",
+                  {
+                    "group": "Logging In",
+                    "pages": [
+                      "docs/how-do-i-reset-my-password",
+                      "docs/my-sign-up-link-has-expired",
+                      "docs/how-can-i-login-without-my-2-factor-authentication-device",
+                      "docs/single-sign-on-sso"
+                    ]
+                  },
+                  "docs/application-review-process",
+                  {
+                    "group": "Account Administration",
+                    "pages": [
+                      "docs/how-to-add-user",
+                      "docs/generate-api-keys",
+                      "docs/whitelist-ip-addresses"
+                    ]
+                  },
+                  "docs/how-do-i-set-my-primary-account-group",
+                  "docs/how-do-i-allocate-funds",
+                  "docs/reporting-suite",
+                  "docs/generating-platform-deposit-addresses",
+                  "docs/creating-a-withdrawal-account"
+                ]
+              },
+              {
+                "group": "Misc.",
+                "pages": [
+                  "docs/how-is-the-zero-hash-index-calculated",
+                  "docs/how-are-notional-values-rounded",
+                  "docs/lock-your-platform",
+                  "docs/error-handling"
+                ]
+              },
+              {
+                "group": "Stablecoins",
+                "pages": [
+                  "docs/issuer-fees"
+                ]
+              }
             ]
           },
           {
-            "group": "Participants & Accounts",
+            "group": "Value Added Services",
             "pages": [
-              "docs/onboard-a-customer",
-              "docs/customer-accounts-guide",
-              "docs/customer-sub-accounts",
-              "docs/virtual-accounts",
-              "docs/account-management-guide",
-              "docs/participant-account-statuses-locking"
+              {
+                "group": "AUTH",
+                "pages": [
+                  "docs/auth",
+                  "docs/adk-sdk-integration-guide",
+                  "docs/auth-network",
+                  "docs/auth-validate",
+                  "docs/front-end-implementation-guide"
+                ]
+              },
+              {
+                "group": "Tax",
+                "pages": [
+                  {
+                    "group": "Tax Overview",
+                    "pages": [
+                      "docs/crypto-tax-overview",
+                      "docs/w-9-implementation-guide",
+                      "docs/w-8-implementation-guide-api",
+                      "docs/eea-tax-guidelines"
+                    ]
+                  },
+                  "docs/what-constitutes-a-taxable-event",
+                  "docs/what-tax-forms-might-i-receive"
+                ]
+              }
             ]
           },
           {
-            "group": "Trading",
+            "group": "Transact",
             "pages": [
-              "docs/buysell",
-              "docs/request-for-quote",
-              "docs/submit-and-execute-quotes",
-              "docs/central-limit-order-book-3",
-              "docs/liquidity-models",
-              "docs/spreads-and-fees"
+              {
+                "group": "Agentic Suite (Beta)",
+                "pages": [
+                  "docs/agentic-suite-beta",
+                  {
+                    "group": "Get Started",
+                    "pages": [
+                      "docs/payments-facilitator-configuration",
+                      "docs/x402-merchant-configuration",
+                      "docs/know-your-agent"
+                    ]
+                  },
+                  "docs/hold-onchain-money",
+                  {
+                    "group": "Move Onchain Money",
+                    "pages": [
+                      "docs/move-onchain-money",
+                      {
+                        "group": "Accept (payins)",
+                        "pages": [
+                          "docs/accept-payins",
+                          "docs/stream-onchain-money"
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "group": "Payins",
+                "pages": [
+                  "docs/payins",
+                  "docs/merchant-onboarding-guide",
+                  "docs/onboard-shoppers",
+                  "docs/payins-integration-guide",
+                  "docs/payins-api-integration-guide"
+                ]
+              },
+              {
+                "group": "Payouts",
+                "pages": [
+                  "docs/payouts",
+                  {
+                    "group": "Modular Payouts",
+                    "pages": [
+                      "docs/modular-payouts",
+                      "docs/payouts-integration-guide",
+                      "docs/payouts-sdk-integration-guide",
+                      "docs/enterprise-settlements-no-code-integration-guide"
+                    ]
+                  },
+                  {
+                    "group": "Single API Call Payouts",
+                    "pages": [
+                      "docs/streamlined-payouts",
+                      "docs/new-payouts-api-integration-guide"
+                    ]
+                  },
+                  "docs/supported-regions"
+                ]
+              },
+              {
+                "group": "Account Funding",
+                "pages": [
+                  "docs/fund-overview",
+                  {
+                    "group": "Deposits",
+                    "pages": [
+                      "docs/fund-integration-guide-onboarding-api-fund-sdk-sdk",
+                      "docs/fund-integration-guide-sdk",
+                      "docs/fund-integration-guide-api",
+                      "docs/crypto-deposits-sdk-guide"
+                    ]
+                  },
+                  {
+                    "group": "Withdrawals",
+                    "pages": [
+                      "docs/wallet-link-sdk-integration-guide",
+                      "docs/auth-withdrawals-sdk",
+                      "docs/crypto-withdrawals-guide"
+                    ]
+                  },
+                  {
+                    "group": "Reconciliation Guidelines",
+                    "pages": [
+                      "docs/account-funding-reconciliation",
+                      "docs/withdrawals-releasing-funds"
+                    ]
+                  },
+                  "docs/customer-sub-accounts",
+                  "docs/faqs-for-platforms-support-team",
+                  "docs/multi-tenant-account-funding"
+                ]
+              },
+              {
+                "group": "On & Off Ramps",
+                "pages": [
+                  "docs/on-off-ramps",
+                  "docs/on-ramp-integration-guide",
+                  "docs/off-ramp-integration-guide",
+                  "docs/custom-spreads",
+                  "docs/transaction-fees"
+                ]
+              },
+              {
+                "group": "Bank Rails",
+                "pages": [
+                  "docs/fiat",
+                  {
+                    "group": "ACH + RTP Integration",
+                    "pages": [
+                      "docs/bank-account-linking",
+                      "docs/funding-models",
+                      "docs/ach-limits-and-velocity-controls",
+                      "docs/ach-returns"
+                    ]
+                  }
+                ]
+              },
+              {
+                "group": "Virtual Accounts",
+                "pages": [
+                  "docs/virtual-accounts",
+                  "docs/virtual-accounts-setup",
+                  "docs/create-a-virtual-account",
+                  "docs/manage-virtual-accounts"
+                ]
+              },
+              {
+                "group": "Remittances",
+                "pages": [
+                  "docs/remittance-integration-guide",
+                  "docs/fiat-remittances-stablecoin-sandwich",
+                  {
+                    "group": "Lightning Network",
+                    "pages": [
+                      "docs/bolt11-deposits-and-withdrawals",
+                      "docs/lnurl-deposits-and-withdrawals",
+                      "docs/uma-deposits-and-withdrawals"
+                    ]
+                  }
+                ]
+              },
+              "docs/transaction-limits",
+              {
+                "group": "Recovery",
+                "pages": [
+                  "docs/recovery",
+                  {
+                    "group": "Platform-hosted",
+                    "pages": [
+                      "docs/api-recovery"
+                    ]
+                  },
+                  {
+                    "group": "zerohash-hosted",
+                    "pages": [
+                      "docs/recovery-sdk-integration-guide",
+                      "docs/recovery-portal"
+                    ]
+                  }
+                ]
+              }
             ]
           },
           {
-            "group": "Deposits & Withdrawals",
+            "group": "Trade",
             "pages": [
-              "docs/deposits-withdrawals",
-              "docs/generating-platform-deposit-addresses",
-              "docs/creating-a-withdrawal-account",
-              "docs/withdrawals-releasing-funds",
-              "docs/fiat",
-              "docs/getting-started-with-fiat-payments"
+              {
+                "group": "Buy/Sell",
+                "pages": [
+                  "docs/buysell",
+                  {
+                    "group": "Central Limit Order Book",
+                    "pages": [
+                      "docs/central-limit-order-book-3",
+                      "docs/supported-instruments",
+                      "docs/account-setup",
+                      "docs/commissions-and-fees-spreads-tiers",
+                      "docs/supported-orders",
+                      "docs/market-data-clob"
+                    ]
+                  },
+                  {
+                    "group": "Request For Quote",
+                    "pages": [
+                      "docs/request-for-quote",
+                      "docs/supported-instruments-1",
+                      "docs/spreads-and-fees",
+                      "docs/account-setup-1",
+                      "docs/submit-and-execute-quotes",
+                      "docs/prices-websocket",
+                      "docs/usdc-trading-pairs"
+                    ]
+                  }
+                ]
+              },
+              {
+                "group": "Settlement Process",
+                "pages": [
+                  "docs/settlement-reconciliation",
+                  {
+                    "group": "Settlement Reconciliation",
+                    "pages": [
+                      "docs/standard-settlement",
+                      "docs/suspense-settlement"
+                    ]
+                  },
+                  "docs/settlement-configurations",
+                  "docs/account-management-guide"
+                ]
+              },
+              {
+                "group": "Settlements as a Service",
+                "pages": [
+                  "docs/settlements-as-a-service",
+                  "docs/settlements-as-a-service-integration-guide"
+                ]
+              },
+              {
+                "group": "Portfolio Strategies",
+                "pages": [
+                  "docs/portfolio-strategies",
+                  "docs/portfolio-strategies-implementation-guide"
+                ]
+              },
+              {
+                "group": "Account Maintenance",
+                "pages": [
+                  "docs/customer-accounts-guide",
+                  {
+                    "group": "Ledger Account Types",
+                    "pages": [
+                      "docs/what-is-an-account",
+                      "docs/what-is-an-account-group",
+                      "docs/what-is-an-account-label",
+                      "docs/what-is-an-account-type"
+                    ]
+                  },
+                  "docs/participant-account-statuses-locking",
+                  "docs/financial-advisor-authorization"
+                ]
+              },
+              {
+                "group": "Financial Advisor-Linked Accounts",
+                "pages": [
+                  "docs/financial-advisor-linked-accounts",
+                  "docs/financial-advisor-implementation-guide"
+                ]
+              },
+              {
+                "group": "Transfers",
+                "pages": [
+                  "docs/deposits-withdrawals",
+                  {
+                    "group": "Deposits",
+                    "pages": [
+                      "docs/retail-digital-asset-deposits-faq",
+                      "docs/create2-smart-contract-powered-address-deployments"
+                    ]
+                  },
+                  {
+                    "group": "Withdrawals",
+                    "pages": [
+                      "docs/network-fees",
+                      "docs/how-are-network-fee-estimates-calculated",
+                      "docs/withdrawal-spreads",
+                      "docs/are-there-minimum-withdrawal-amounts",
+                      "docs/withdrawal-api-response-field-interpretation"
+                    ]
+                  }
+                ]
+              },
+              "docs/collateral-management",
+              {
+                "group": "Loyalty",
+                "pages": [
+                  "docs/loyalty",
+                  "docs/rewards-integration-guide",
+                  "docs/awards-integration-guide"
+                ]
+              },
+              {
+                "group": "Staking",
+                "pages": [
+                  "docs/staking",
+                  "docs/staking-faqs"
+                ]
+              }
             ]
           },
           {
-            "group": "Payments",
+            "group": "Tokenize",
             "pages": [
-              "docs/payins",
-              "docs/payouts",
-              "docs/streamlined-payouts",
-              "docs/fiat-remittances-stablecoin-sandwich",
-              "docs/instant-usd"
-            ]
-          },
-          {
-            "group": "Settlement",
-            "pages": [
-              "docs/settlements-as-a-service",
-              "docs/standard-settlement",
-              "docs/settlement-configurations",
-              "docs/settlement-reconciliation"
-            ]
-          },
-          {
-            "group": "SDKs",
-            "pages": [
-              "docs/sdk-index",
-              "docs/sdk",
-              "docs/onboarding-experience-sample",
-              "docs/fund-overview",
-              "docs/wallet-link-sdk-integration-guide",
-              "docs/mobile-sdks"
-            ]
-          },
-          {
-            "group": "Additional Features",
-            "pages": [
-              "docs/staking",
-              "docs/loyalty",
-              "docs/reporting-suite",
-              "docs/balances-websocket",
-              "docs/account-funding-reconciliation"
-            ]
-          }
-        ]
-      },
-      {
-        "tab": "Integration Guides",
-        "groups": [
-          {
-            "group": "Onboarding",
-            "pages": [
-              "docs/onboarding",
-              "docs/eu-participant-creation",
-              "docs/application-review-process",
-              "docs/kyc-support-accepted-identification-documents",
-              "docs/sanction-screening"
-            ]
-          },
-          {
-            "group": "Payments Guides",
-            "pages": [
-              "docs/payins-integration-guide",
-              "docs/payouts-integration-guide",
-              "docs/rewards-integration-guide",
-              "docs/remittance-integration-guide",
-              "docs/enterprise-settlements-no-code-integration-guide"
-            ]
-          },
-          {
-            "group": "Fund Guides",
-            "pages": [
-              "docs/fund-integration-guide-api",
-              "docs/fund-integration-guide-sdk",
-              "docs/settlements-as-a-service-integration-guide"
-            ]
-          },
-          {
-            "group": "Compliance & Tax",
-            "pages": [
-              "docs/crypto-tax-overview",
-              "docs/tax-data-collection-kycaas",
-              "docs/w-9-implementation-guide",
-              "docs/fees"
+              {
+                "group": "Tokenization Payment Rails",
+                "pages": [
+                  "docs/tokenization-payment-rails"
+                ]
+              },
+              {
+                "group": "Tokenization Engine",
+                "pages": [
+                  "docs/tokenization-engine",
+                  "docs/fungible-token-11-stablecoin-integration",
+                  "docs/non-fungible-token-nft-integration"
+                ]
+              }
             ]
           }
         ]

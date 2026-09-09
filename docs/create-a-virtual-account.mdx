@@ -1,0 +1,220 @@
+---
+title: "Create and Use Virtual Accounts"
+description: "Create a Virtual Account linked to a customer for deposits and stablecoin or crypto conversions"
+---
+
+## Settlement Policies for Virtual Accounts - 2 types
+
+The 2 settlement policies for Virtual Accounts are:
+
+- `AUTO_CONVERT_AND_WITHDRAW`: When a customer's deposit settles, the USD is automatically converted into a stablecoin/crypto asset and automatically sent on-chain to an external wallet.
+- `HOLD`: Customer's balance will be credited USD when the deposit settles. The customer can choose if/when to buy an asset or withdraw fiat to a linked bank account (separate integrations required).
+
+*The below API flows assume that you have already created an End Customer (see references to* `participant_code` within the payloads below*. The Onboarding instructions can be found* [*here.*](/docs/virtual-accounts-setup#pre-requisites)*)*
+
+## Creating Virtual Accounts
+
+Auto ConvertHold
+
+### 1. Create a destination blockchain address
+
+Once you have created an End Customer, you then need to link a destination blockchain address to that customer via the [POST /payments/external\_accounts](https://docs.zerohash.com/reference/post_payments-external-accounts) endpoint.
+
+Example request:
+
+```json
+{
+  "participant_code": "CUST01",
+  "type": "crypto",
+  "details": {
+    "network": "SOL",
+    "supported_assets": ["USDC"],
+    "address": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+  }
+}
+```
+
+Example response:
+
+```json
+{
+    "request_id": "a9e2c6fb-f738-4ecb-986c-befd70678707",
+    "external_account_id": "107e8a2a-c835-4b76-b49d-a633d45727b9",
+    "participant_code": "CUST01",
+    "platform_code": "PLAT01",
+    "account_nickname": "",
+    "created_at": "2024-10-11T00:52:21.865Z",
+    "status": "pending",
+    "type": "crypto",
+    "details": {
+        "network": "SOL",
+        "supported_assets": [
+            "USDC"
+        ],
+        "address": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+        "destination_tag": ""
+    }
+}
+```
+
+The external account will initially enter a status of `submitted`. Immediately and automatically after an external account submission, zerohash will run the address through various checks. If the checks pass, the external account will enter a state of `approved`. Else, `rejected`.
+
+### 2. Opening an auto-convert Virtual Account
+
+Example request (for an individual) - [POST /virtual\_accounts](https://docs.zerohash.com/reference/post_virtual-accounts)
+
+```json
+{
+  "participant_code": "CUST01",
+  "settlement_policy": {
+    "type": "AUTO_CONVERT_AND_WITHDRAW",
+    "asset": "USDC",
+    "external_account_id": "7c1e2c3a-4b5d-4e6f-8a9b-0c1d2e3f4a5b"
+  }
+}
+```
+
+Note: When the platform selects `AUTO_CONVERT_AND_WITHDRAW` as the settlement policy, they must share the following fields in the account opening request:
+
+- `asset` = stablecoin/crypto asset that the customer's deposit will automatically be converted into
+- `external_account_id` = external wallet address where the stablecoin/crypto asset will be paid out to
+
+Example response when status = `PENDING`
+
+Note: `status` will display `PENDING` and `bank_details` will display `null`
+
+```json
+{
+  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "participant_code": "CUST01",
+  "platform_code": "PLAT01",
+  "provider_type": "CRB",
+  "status": "PENDING",
+  "currency": "USD",
+  "bank_details": null,
+  "status_detail": null,
+  "settlement_policy": { "type": "AUTO_CONVERT_AND_WITHDRAW" },
+  "created_at": "2026-08-24T14:22:00.000Z",
+  "updated_at": "2026-08-24T14:22:00.000Z"
+}
+```
+
+Example response when status = `ACTIVE`
+
+Note: `status` will display `ACTIVE` and `bank_details` will display with customer's unique account number and routing number for the Virtual Account
+
+```json
+{
+  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "participant_code": "CUST01",
+  "platform_code": "PLAT01",
+  "provider_type": "CRB",
+  "status": "ACTIVE",
+  "currency": "USD",
+  "bank_details": {
+    "bank_account_number": "0000000001",
+    "bank_routing_number": "123456789",
+    "provider_account_id": "0000000001",
+    "bank_name": "Cross River Bank"
+  },
+  "status_detail": null,
+  "settlement_policy": { "type": "AUTO_CONVERT_AND_WITHDRAW" },
+  "created_at": "2026-08-24T14:22:00.000Z",
+  "updated_at": "2026-08-24T14:35:12.000Z"
+}
+```
+
+### 3. Webhooks
+
+After Virtual Account creation, the account moves through a status-based state machine `PENDING` → `ACTIVE`, or into a terminal `BLOCKED`, `FAILED`, or `CLOSED` state), and platforms receive a [webhook](https://docs.zerohash.com/reference/virtual-account-updates) on each transition:
+
+- `virtual_account.created` when the account goes active
+- `virtual_account.blocked` or `virtual_account.failed` if it can't proceed (each with a `status_detail` explaining why)
+- `virtual_account.closed` when the account is closed. Use the status field for branching logic and `status_detail.code` (not the human-readable message) for any failure/block handling.
+
+### 1. Opening a Hold Virtual Account
+
+Example request (for an individual) - [POST /virtual\_accounts](https://docs.zerohash.com/reference/post_virtual-accounts)
+
+```json
+{
+  "participant_code": "CUST01",
+  "settlement_policy": { "type": "HOLD" }
+}
+```
+
+Example response when status = `PENDING`
+
+Note: `status` will display `PENDING` and `bank_details` will display `null`
+
+```json
+{
+  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "participant_code": "CUST01",
+  "platform_code": "PLAT01",
+  "provider_type": "CRB",
+  "status": "PENDING",
+  "currency": "USD",
+  "bank_details": null,
+  "status_detail": null,
+  "settlement_policy": { "type": "HOLD" },
+  "created_at": "2026-08-24T14:22:00.000Z",
+  "updated_at": "2026-08-24T14:22:00.000Z"
+}
+```
+
+Example response when status = `ACTIVE`
+
+Note: `status` will display `ACTIVE` and `bank_details` will display with customer's unique account number and routing number for the virtual account
+
+```json
+{
+  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "participant_code": "CUST01",
+  "platform_code": "PLAT01",
+  "provider_type": "CRB",
+  "status": "ACTIVE",
+  "currency": "USD",
+  "bank_details": {
+    "bank_account_number": "0000000001",
+    "bank_routing_number": "123456789",
+    "provider_account_id": "0000000001",
+    "bank_name": "Cross River Bank"
+  },
+  "status_detail": null,
+  "settlement_policy": { "type": "HOLD" },
+  "created_at": "2026-08-24T14:22:00.000Z",
+  "updated_at": "2026-08-24T14:35:12.000Z"
+}
+```
+
+### 2. Webhooks
+
+After Virtual Account creation, the account moves through a status-based state machine `PENDING` → `ACTIVE`, or into a terminal `BLOCKED`, `FAILED`, or `CLOSED` state), and platforms receive a [webhook](https://docs.zerohash.com/reference/virtual-account-updates) on each transition:
+
+- `virtual_account.created` when the account goes active
+- `virtual_account.blocked` or `virtual_account.failed` if it can't proceed (each with a `status_detail` explaining why)
+- `virtual_account.closed` when the account is closed. Use the status field for branching logic and `status_detail.code` (not the human-readable message) for any failure/block handling.
+
+### 3. How to use USD balance after deposit
+
+After USD is credited to your customers balance, you can leverage other endpoints to facilitate a crypto buy, stablecoin conversion, or fiat withdrawal. For example:
+
+- To buy crypto, leverage [POST /liquidity/rfq](https://docs.zerohash.com/reference/post_liquidity-rfq) to get a quote and [POST /liquidity/execute](https://docs.zerohash.com/reference/post_liquidity-execute) to execute quote
+- For a stablecoin conversion and payout (or a fiat withdrawal), leverage [POST /payments/external\_accounts](https://docs.zerohash.com/reference/post_payments-external-accounts) to link an external wallet address (or bank account) for your customer, and leverage [POST /payments](https://docs.zerohash.com/reference/post_payments) for a stablecoin (or fiat) withdrawal.
+
+## Using the Virtual Accounts
+
+### Fiat Rails
+
+Once a Virtual Account reaches `ACTIVE` status, the returned `bank_details` (account and routing number) function as a standard US bank account for receiving USD. **The end customer can push a payment to the Virtual Account from their own bank using whichever rail they prefer (wire, RTP, or ACH)** with no additional integration required on the Platform's side to receive these incoming push payments.
+
+### Webhooks
+
+See dedicated webhook page [here](https://docs.zerohash.com/reference/virtual-account-updates). Summary:
+
+Auto ConvertHold
+
+For accounts configured with `AUTO_CONVERT_AND_WITHDRAW`, `deposit_received` indicates the bank has received the deposit. `account_balance.changed` notifies that your customer's balance has been credited and kicks off further processing: the deposited funds are automatically converted to the configured asset and withdrawn to the configured external account. `payout_initiated` fires once that conversion/withdrawal process begins, followed by either `payout_completed` once the funds land in the destination account, or `payout_failed` if the conversion or withdrawal leg fails.
+
+For accounts configured with a `HOLD` settlement policy, the state machine is simple: `deposit_received` indicates the bank has received the deposit. `account_balance.changed`is effectively the terminal state. Funds are credited to the virtual account balance and just sit there, so `payout_initiated`, `payout_completed`, and `payout_failed` never fire for these accounts.

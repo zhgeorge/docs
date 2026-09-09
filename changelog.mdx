@@ -1,185 +1,2867 @@
 ---
-title: "Zero Hash Platform Product Changelog — Recent Updates"
+title: "Changelog"
 sidebarTitle: "Changelog"
-description: "Recent Zero Hash product updates: new SDK version, single API call payouts, ETH staking, standardized error codes, AUTH enhancements, and new assets."
+description: "Product updates, new features, and platform changes across zerohash, newest first."
 ---
 
-The Zero Hash changelog tracks product updates, new features, breaking changes, and informational releases across the platform. Entries are listed in reverse chronological order. Use the type labels — **Added**, **Changed**, **Fixed**, and **Action Required** — to quickly identify the nature and impact of each release.
+Mirrored from the [zerohash changelog](https://docs.zerohash.com/changelog).
+
+<Update label="August 31st, 2026" description="New feature">
+### USDC-Quoted Trading on RFQ
+
+#### Summary
+
+Platforms can now request and accept RFQ quotes denominated in **USDC.ETH** (USDC on Ethereum) for supported crypto base assets. This lets end users trade directly out of their USDC balances, with no explicit USDC-to-USD conversion step before each trade.
+
+Each request returns a single, all-in **USDC quote**: platforms request, accept, and settle entirely in USDC. End users fund and receive in USDC with no FX step on the customer side. Because USDC is held in customer accounts, these flows are treated as **direct** regardless of the platform's liquidity model.
+
+USDC-quoted pairs are live in the US for popular assets (BTC/USDC.ETH, ETH/USDC.ETH, and more), with 16 supported instruments at launch. The capability meets growing platform and end-user demand to transact in stablecoins in addition to fiat, removes the friction of a USDC-to-USD conversion before every trade, and lets platforms serve stablecoin-native users out of balances they already hold.
+
+Optional action: This is available to any platform on a **novated** or **platform-direct** liquidity model whose end users hold USDC on Ethereum. No integration changes are required for platforms that do not need USDC-quoted pairs.
+
+#### Supported Instruments (16 to start)
+
+- BTC/USDC.ETH
+- ETH/USDC.ETH
+- SOL/USDC.ETH
+- XRP/USDC.ETH
+- DOGE/USDC.ETH
+- ADA/USDC.ETH
+- Plus 10 additional instruments (see [Supported Instruments](/docs/supported-instruments-1))
+
+#### Endpoints Impacted
+
+Platforms trade USDC-quoted pairs through the standard RFQ endpoints, passing a USDC-quoted instrument (for example, `BTC/USDC.ETH`):
+
+- `POST /liquidity/rfq` (request an RFQ quote)
+- `POST /liquidity/execute` (execute an RFQ quote)
+
+#### Relevant Documentation
+
+- [USDC Trading Pairs Guide](/docs/usdc-trading-pairs)
+- [Supported Instruments](/docs/supported-instruments-1)
+</Update>
+
+<Update label="August 19th, 2026" description="Informational – optional action from platforms">
+### Account Funding - Issuer Fees
+
+#### Summary
+
+Some stablecoin issuers charge zerohash a fee on mint or burn activity. In some cases, zerohash must pass these fees on to the platform on a per-transaction basis. This is already the case for the Liquidity API, and this release extends the same treatment to the Account Funding flow.
+
+This release covers how a platform that is charged an Issuer Fee can access that information via API. When a platform is configured to incur Issuer Fees for a given stablecoin, the fund quote, fund webhook, and fund transaction records include three fields: `issuer_fee_amount`, `issuer_fee_rate`, and `issuer_fee_payor_type`. The customer is credited the full deposit notional, the Issuer Fee is recorded per fund event, and the platform is invoiced monthly for the total Issuer Fees incurred. There is no change to deposit confirmation emails.
+
+zerohash does not support a way for platforms to pass Issuer Fees directly on to their own customers through Account Funding. Platforms that wish to recoup these costs from their customers can do so using the Account Funding transaction fee feature.
+
+Optional action: No integration changes are required to continue receiving deposits. Platforms incurring Issuer Fees can read these fields to reconcile against their monthly invoice.
+
+#### Endpoints Impacted
+
+When a platform is configured for issuer fees, the following endpoints will return `issuer_fee_amount `(where applicable), `issuer_fee_rate`, and `issuer_fee_payor_type`
+
+- [POST /fund/rfq](https://docs.zerohash.com/reference/post_fund-rfq)
+- [GET /fund/transactions](https://docs.zerohash.com/reference/get_fund-transactions)
+- [Fund transaction webhooks](https://docs.zerohash.com/reference/fund-transaction-update)
+
+#### Relevant Documentation
+
+- [Account Funding Transaction Updates](https://docs.zerohash.com/reference/fund-transaction-update)
+- [Account Funding SDK Documentation](/docs/fund-integration-guide-onboarding-api-fund-sdk-sdk)
+- [Account Funding API Documentation](/docs/fund-integration-guide-api)
+</Update>
+
+<Update label="August 18th, 2026" description="Informational – optional action from platforms">
+### Account Funding - High-Value Deposits
+
+#### Summary
+
+zerohash now supports high-value USDC deposits through the Account Funding API and SDK. Because high-value USDC deposits settle with the stablecoin issuer and may take additional time rather than completing instantly, a new intermediate status, `DEPOSIT_PENDING_SETTLEMENT`, indicates a deposit has been received and is settling; the existing `DEPOSIT_PROCESSED` indicates when a deposit has fully settled. The Account Funding SDK shows a corresponding "Deposit Received and Pending Settlement" screen and email at the pending stage.
+
+Optional action: Enablement is configured per platform. Reach out to your zerohash relationship manager to turn on high-value USDC deposits for the Account Funding API or SDK. Platforms may choose to read the new `DEPOSIT_PENDING_SETTLEMENT` webhook status and update their own frontends accordingly, signaling to their customers that the funds have been received and are processing.
+
+*The exact threshold values that differentiate high-value vs. standard deposit size can vary.*
+
+#### Endpoints Impacted
+
+- [GET /fund/transactions](https://docs.zerohash.com/reference/get_fund-transactions)
+  - Response may now return `status_reason_code: DEPOSIT_PENDING_SETTLEMENT`with `status_reason: false`. No changes to the request format.
+- [Fund transaction webhooks](https://docs.zerohash.com/reference/fund-transaction-update)
+  - This webhook may now emit an event with `status_reason_code: DEPOSIT_PENDING_SETTLEMENT` and `reason: The deposit has been received and is pending settlement. Once processing is completed, the deposit will be converted to fiat and credited to the customer's account.`
+
+#### Relevant Documentation
+
+- [Account Funding Transaction Updates](https://docs.zerohash.com/reference/fund-transaction-update)
+- [Account Funding SDK Documentation](/docs/fund-integration-guide-onboarding-api-fund-sdk-sdk)
+- [Account Funding API Documentation](/docs/fund-integration-guide-api)
+- [GET /fund/transactions API Reference](https://docs.zerohash.com/reference/get_fund-transactions)
+</Update>
+
+<Update label="August 12th, 2026" description="Informational, no action required from platforms not onboarding EU entities">
+### EU Entity (Non-Natural Person) Onboarding
+
+#### Summary
+
+`POST /participants/entity/new` now supports EU-based businesses (non-natural persons) alongside US entities, through the same endpoint. Submit `jurisdiction_code` to route a payload to EU processing; EU businesses use the EU request variants, each with its own required-field set.
+
+EU entity submissions capture the additional identity information required under MiCA/AMLR — including a chamber of commerce number, LEI, business activity locations, expected annual volume, source of funds, ownership-structure attestations, and at least one board member (a distinct person type from control persons and beneficial owners). EU entities also submit an EU-specific document set: LEI certificate, chamber of commerce excerpt, annual accounts, power of authorization, and — for complex ownership structures — a legal opinion.
+
+EU entity onboarding is enabled per platform. To turn it on, set your `compliance_countries` and reach out to your zerohash representative.
+
+#### Endpoints Impacted
+
+- [POST /participants/entity/new](https://docs.zerohash.com/reference/post_participants-entity-new)
+- [POST /participants/entity/documents](https://docs.zerohash.com/reference/post_participants-entity-documents)
+
+#### Relevant Documentation
+
+- [EU Entity (Business) Onboarding guide](/docs/eu-entity-business-onboarding)
+- [Create Entity reference — EU Entity variant](https://docs.zerohash.com/reference/post_participants-entity-new)
+- [Entity Participants overview](https://docs.zerohash.com/reference/entity-participants)
+- [Submit Entity Documents](https://docs.zerohash.com/reference/post_participants-entity-documents)
+</Update>
+
+<Update label="August 11th, 2026" description="Informational, no action required from platforms">
+### USDG.ROBINHOOD, USDG.ETH, USDG.SOL, and ETH.ROBINHOOD now available across Trade and Transact
+
+#### Summary
+
+zerohash is pleased to announce the addition of new assets, expanding your trading and platform capabilities.
+
+| Asset Name | Symbol | Notes |
+| --- | --- | --- |
+| Global Dollar on Robinhood Chain | `USDG.ROBINHOOD` | Not available in NY |
+| Global Dollar on Ethereum | `USDG.ETH` | Not available in NY |
+| Global Dollar on Solana | `USDG.SOL` | Not available in NY |
+| Ethereum on Robinhood Chain | `ETH.ROBINHOOD` | Not available in NY |
+
+#### Availability
+
+| Asset | RFQ | CLOB | Custody | Fund | Payments |
+| --- | --- | --- | --- | --- | --- |
+| `USDG.ROBINHOOD` | ✔️ | ❌ | ✔️ | ✔️ | ✔️ |
+| `USDG.ETH` | ✔️ | ❌ | ✔️ | ✔️ | ✔️ |
+| `USDG.SOL` | ✔️ | ❌ | ✔️ | ✔️ | ✔️ |
+| `ETH.ROBINHOOD` | ✔️ | ❌ | ✔️ | ✔️ | ✔️ |
+
+- Environments: All assets are live in both CERT and PROD environments.
+- Geographic Restrictions: All assets are not enabled in New York at this time.
+- Effective Date: Immediately available using the symbols listed above.
 
 ---
 
-## July 20, 2026
+#### RFQ Endpoints Impacted
 
-<CardGroup cols={1}>
-  <Card title="AUTH Connect: Webhook Fees, Configurable Asset Precision, Staged Exchange Testing, and Preset Deposit Amount" icon="plug">
-    **Added** — Five updates to the AUTH (Account Funding + Connect) integration surface:
+The following executable endpoints now support the above assets:
 
-    1. **Fees in Connect webhooks.** The `connect_deposit.status_changed` and `connect_withdrawal.status_changed` webhook payloads now include a `fees` object containing fee amount, fee asset, and payment model. Deposit fees are populated for deposits without conversion; withdrawal fees follow the `NETTED` or `ADDITIVE` payment model.
+##### Buy/Sell
 
-    2. **Configurable asset precision for AUTH transfers.** Platforms can now set a maximum decimal precision per asset and network. Deposits and withdrawals with more decimal places than the configured value are rejected, preventing sub-precision dust accumulation on your ledger. Contact your Zero Hash representative to enable this feature.
+- Get quote: [POST /liquidity/rfq](https://docs.zerohash.com/reference/post_liquidity-rfq)
+- Execute quote: [POST /liquidity/execute](https://docs.zerohash.com/reference/post_liquidity-execute)
 
-    3. **Staged exchange rollouts.** Platforms can restrict a new AUTH exchange integration to a defined list of participants for production QA before making it available to all users. Contact your Zero Hash representative to enable staged rollouts.
+##### Convert Withdraw
 
-    4. **Preset deposit amount for the AUTH Fund flow.** Pass `deposit_amount` inside `deposit_details` on the `POST /client_auth_token` request to preset the fund amount for the end user. The user sees a prefilled amount and only sees accounts with sufficient balances to cover it. Enforcement uses existing FWC min/max deposit limits.
+- Get quote: [POST /convert\_withdraw/rfq](https://docs.zerohash.com/reference/post_convert-withdraw-rfq)
+- Execute quote: [POST /convert\_withdraw/execute](https://docs.zerohash.com/reference/post_convert-withdraw-execute)
 
-    5. **Gemini whitelisting instruction enhancements.** The Gemini AUTH flow now includes clearer whitelisting instructions, reducing transfer failures and support volume.
+##### Deposit
 
-    **Endpoints impacted:** `connect_deposit.status_changed` webhook, `connect_withdrawal.status_changed` webhook, `POST /client_auth_token` (new optional `deposit_details.deposit_amount` field).
-  </Card>
-</CardGroup>
+- Create deposit address: [POST /deposits/digital\_asset\_address](https://docs.zerohash.com/reference/post_deposits-digital-asset-addresses)
 
----
+##### Withdraw
 
-## June 24, 2026
+- Create withdrawal request: [POST /withdrawals/requests](https://docs.zerohash.com/reference/post_withdrawals-requests)
 
-<CardGroup cols={1}>
-  <Card title="Single API Call Payouts — New Payout Product" icon="bolt">
-    **Added** — Zero Hash has introduced **Single API Call Payouts**, a streamlined payout product designed for licensed financial institutions and organizations managing nested payors. It is best suited for platforms that do not need to build a custom payout UI or track payout state internally.
+##### Fund
 
-    The original Payouts product has been renamed to **Modular Payouts** to distinguish it from this new offering. Modular Payouts remains the right choice for platforms that want full ownership of the payout experience, complex creator or seller networks, and complete control over state, UX, and compliance tracking.
-
-    **Endpoints added:**
-    - `POST /payouts` — Submit a single-call payout
-    - `GET /payouts` — Retrieve payout history
-    - Single API Call Payouts webhooks
-
-    No action is required for platforms using Modular Payouts. The rename is informational only.
-  </Card>
-</CardGroup>
+- [SDK support]
+- Get quote: [POST /fund/rfq](https://docs.zerohash.com/reference/post_fund-rfq)
+- Get fund transactions: [GET /fund/transactions](https://docs.zerohash.com/reference/get_fund-transactions)
 
 ---
 
-## June 8, 2026
+#### Relevant Documentation
 
-<CardGroup cols={1}>
-  <Card title="HYPE, USDC.HYPE, and USDT.HYPE Now Available" icon="coins">
-    **Added** — Three new assets on HyperEVM are now live in both CERT and PROD environments:
+For a full list of supported assets and instruments, please use the links below.
 
-    | Asset Name | Symbol | Notes |
-    |------------|--------|-------|
-    | HYPE on HyperEVM | `HYPE` | Not available in NY or EU |
-    | USDC on HyperEVM | `USDC.HYPE` | Not available in NY or EU |
-    | USDT on HyperEVM | `USDT.HYPE` | Not available in NY or EU |
+##### Supported Assets
 
-    **Availability by product:**
+- [Production](https://docs.zerohash.com/page/what-assets-do-you-support-two)
+- [Certification](https://docs.zerohash.com/page/cert-environment-assets)
 
-    | Asset | RFQ | CLOB | Custody | Fund | Payments |
-    |-------|-----|------|---------|------|----------|
-    | `HYPE` | ✓ | ✓ | ✓ | ✓ | ✓ |
-    | `USDC.HYPE` | ✓ | — | ✓ | ✓ | ✓ |
-    | `USDT.HYPE` | ✓ | — | ✓ | ✓ | ✓ |
+##### Supported Instruments
 
-    All three assets are immediately available using the symbols above. Geographic restriction: **not available in New York or EU** at this time.
+- [Production](https://docs.zerohash.com/page/production-environment)
+- [Certification](https://docs.zerohash.com/page/certification-environment-instruments)
+</Update>
 
-    **Endpoints impacted:** `POST /liquidity/rfq`, `POST /liquidity/execute`, `POST /convert_withdraw/rfq`, `POST /convert_withdraw/execute`, `POST /deposits/digital_asset_address`, `POST /withdrawals/requests`, `POST /fund/rfq`, `GET /fund/transactions`, and CLOB order management endpoints.
-  </Card>
-</CardGroup>
+<Update label="August 7th, 2026" description="Informational, no action required from platforms">
+### Account Funding - Refreshed UX
+
+#### Summary
+
+![](https://files.readme.io/fc1eef212f7b7c411d53142381e6d90f865129ad7877c9b47201647cec24b383-image.png)
+
+Mobile UX
+
+We refreshed the Account Funding deposit screen for a higher-converting experience:
+
+- **Fewer clicks to your deposit address or QR code:** asset, network, and address now live on one screen
+- **Device-aware display:** mobile shows the address by default, desktop shows the QR code
+- **Same deposit flow, same addresses:** just a smoother path to get there
+
+#### Endpoints Impacted
+
+None - this is a front-end/UI update only. No API changes.
+
+#### Relevant Documentation
+
+- [Account Funding](/docs/fund-overview)
+</Update>
+
+<Update label="August 3rd, 2026" description="Informational, no action required from platforms">
+### Auth - Beta Release
+
+#### Summary
+
+##### Auth for Account Funding SDK
+
+Auth is now available for our Account Funding SDK product in Beta, enabling seamless access to the world's most popular crypto exchanges and non-custodial wallets. Auth can be configured for your Platform as an additional feature for existing customers or for new integrations.
+
+[Auth](/docs/auth) provides your Platform with powerful capabilities such as:
+
+- Linking of exchange accounts, such as Coinbase, Gemini, and Robinhood
+- Linking of 600+ non-custodial wallets such as Metamask, Phantom, Trust Wallet, Coinbase Wallet, Robinhood Wallet and more
+- Integration with our Account Funding SDK product to enable users to fund without using cumbersome QR codes or copy-paste mechanisms (withdrawals are also available)
+- One-time integration that grants continual access to our growing [Auth Network](/docs/auth-network) with immediate access to new Auth Providers as they become available
+- Access to [Auth Validate](/docs/auth-validate) - robust compliance capabilities, such as Pre-crediting Name Matching and Non-Auth deposit blocking
+
+Get started with Auth our [web SDK integration guide](/docs/adk-sdk-integration-guide) and [mobile SDK integration guide](/docs/mobile-sdks).
+
+*Note: usage of our native iOS and Android SDKs is required for access to all Auth features in mobile.*
+
+##### Crypto Transfers
+
+We've added Coinbase to the Auth network within the [Crypto Transfers SDK (legacy SDK)](/docs/front-end-implementation-guide)
+
+###### Network Fees in Network Denomination
+
+Platforms using this SDK can now view network fees in the network's native asset denomination. For example, gas fees will now be shown in ETH in both our SDK UI as well as [webhooks](https://docs.zerohash.com/reference/connect-webhooks#depositfees-object-when-present).
+
+Webhooks for Connect Deposits and Withdrawals have now been enhanced with granular crypto and notional fee information. Fields `crypto_amount`, `crypto_asset`, `notional_amount` , `notional_currency` have been added to the following events:
+
+- [connect.deposits.pending](https://docs.zerohash.com/reference/connect-webhooks#depositfees-object-when-present)
+- [connect.deposits.confirmed](https://docs.zerohash.com/reference/connect-webhooks#depositfees-object-when-present)
+- [connect.withdrawals.submitted](https://docs.zerohash.com/reference/connect-webhooks#depositfees-object-when-present)
+- [connect.withdrawals.confirmed](https://docs.zerohash.com/reference/connect-webhooks#depositfees-object-when-present)
+
+#### Update to the latest SDK version
+
+- **Mobile (iOS):** 1.0.3
+- **Mobile (Android):** 1.0.3
+- **Capacitor:** 1.0.4
+- **Web:** 3.4.3
+
+#### Endpoints Impacted
+
+- Customers can now access Auth using their existing SDK [authentication](https://docs.zerohash.com/reference/api-authentication) scheme once configured by their zerohash customer representative
+- [Client access token](https://docs.zerohash.com/reference/post_client-auth-token) endpoint will instantiate the Auth SDK when the Platform has the Auth feature enabled for Account Funding SDK
+
+#### Relevant Documentation
+
+- [Auth documentation](/docs/auth)
+- [Mobile SDK documentation](/docs/mobile-sdks)
+- [Network fees in Connect webhooks](https://docs.zerohash.com/reference/connect-webhooks#depositfees-object-when-present)
+</Update>
+
+<Update label="July 20th, 2026" description="Informational – optional action from platforms">
+### Auth: Connect webhook fees, configurable asset precision, and staged exchange testing
+
+#### Summary
+
+Five AUTH updates are now available:
+
+1. Fees in Connect webhooks. Deposit and withdrawal webhooks now include a `fees` object with fee amount, asset, and payment model. Deposit fees are populated for deposits without conversion; withdrawal fees follow the `NETTED` or `ADDITIVE` payment model.
+2. Configurable asset precision for AUTH transfers. Platforms can set a maximum decimal precision per asset and network. Deposits and withdrawals submitted with more decimal places than the configured value are rejected, preventing sub-precision dust on the platform's ledger. To enable this feature, please reach out to your zerohash rep and they will configure your platform accordingly.
+3. Staged exchange rollouts for AUTH integrations. Platforms can restrict a new AUTH integration to a defined list of participants for production QA before making it available to all users. To enable this feature, please reach out to your zerohash rep and they will configure your platform accordingly.
+4. Preset deposit amount for the AUTH Fund flow. Platforms can pass `deposit_amount` inside `deposit_details` on the `/client_auth_token` request to preset the fund amount for the end user. The user lands on a prefilled amount and only sees accounts with sufficient balances to cover it. Enforcement is against the platform's existing FWC min and max deposit limits.
+5. Gemini whitelisting instruction enhancements. The Gemini AUTH flow now includes clearer whitelisting instructions based on feedback from Gemini on their process, reducing transfer failures and support cases.
+
+#### Endpoints Impacted
+
+Connect webhook events (fees added to payload):
+
+- `connect_deposit.status_changed`
+- `connect_withdrawal.status_changed`
+
+`POST /client_auth_token` — new optional `deposit_details.deposit_amount` field accepted for the FWC permission.
+
+No public API endpoints are impacted by the asset precision or staged exchange rollout features — both are enabled by zerohash on the platform's behalf and take effect inside the AUTH SDK experience.
+
+#### Relevant Documentation
+
+- [Connect webhooks](https://docs.zerohash.com/reference/connect-webhooks)
+- [AUTH Standalone](https://docs.zerohash.com/docs/auth-standalone)
+- [Account Funding Onboarding API + Fund SDK](/docs/fund-integration-guide-onboarding-api-fund-sdk-sdk#initialize-account-funding-flow)
+- [Fund SDK](/docs/fund-integration-guide-sdk#initialize-account-funding-flow)
+</Update>
+
+<Update label="June 29th, 2026" description="Informational, no action required from platforms">
+### USD1.ETH and WLFI.ETH now available across Trade and Transact
+
+#### Summary
+
+zerohash is pleased to announce the addition of two new assets, expanding your trading and platform capabilities.
+
+| Asset Name | Symbol | Notes |
+| --- | --- | --- |
+| USD1 on Ethereum | `USD1.ETH` | Not available in NY |
+| World Liberty Financial | `WLFI.ETH` | Not available in NY |
+
+#### Availability
+
+| Asset | RFQ | CLOB | Custody | Fund | Payments |
+| --- | --- | --- | --- | --- | --- |
+| `USD1.ETH` | ✔️ | ❌ | ✔️ | ✔️ | ✔️ |
+| `WLFI.ETH` | ✔️ | ✔️ | ✔️ | ✔️ | ✔️ |
+
+- Environments: Both assets are live in both CERT and PROD environments.
+- Geographic Restrictions: Both assets are not enabled in New York at this time.
+- Effective Date: Immediately available using the symbols listed above.
 
 ---
 
-## May 29, 2026
+#### RFQ Endpoints Impacted
 
-<CardGroup cols={1}>
-  <Card title="Standardized Error Codes for Account Funding and Payins Webhooks" icon="triangle-exclamation">
-    **Added** — Zero Hash has published the full, official set of `status_reason_code` values returned on webhooks for the **Account Funding** and **Payins** products. Each product maintains its own discrete set of codes, allowing platforms to build deterministic error handling logic against a stable, predictable set of values.
+The following executable endpoints now support the above assets:
 
-    No changes have been made to webhook structure, delivery behavior, or existing success (`true`) status codes.
+##### Buy/Sell
 
-    - [Account Funding error codes](https://docs.zerohash.com/reference/fund-transaction-update)
-    - [Payins error codes](https://docs.zerohash.com/reference/payins-transaction-updates)
-  </Card>
-</CardGroup>
+- Get quote: [POST /liquidity/rfq](https://docs.zerohash.com/reference/post_liquidity-rfq)
+- Execute quote: [POST /liquidity/execute](https://docs.zerohash.com/reference/post_liquidity-execute)
 
----
+##### Convert Withdraw
 
-## May 26, 2026
+- Get quote: [POST /convert\_withdraw/rfq](https://docs.zerohash.com/reference/post_convert-withdraw-rfq)
+- Execute quote: [POST /convert\_withdraw/execute](https://docs.zerohash.com/reference/post_convert-withdraw-execute)
 
-<CardGroup cols={1}>
-  <Card title="SDK Version 3.0.0 — New Architecture and Refreshed UI" icon="sparkles">
-    **Added** — Zero Hash has released SDK version `3.0.0` (`zh-web-sdk@3`). This release introduces a new architecture and a fully refreshed UI across all SDKs. Key changes:
+##### Deposit
 
-    - **Unified look and feel** across the full SDK suite (Buy, Sell, Fund, Onboarding, Payouts, and all others)
-    - **Light and dark mode support** — configure `'light'`, `'dark'`, or `'auto'` at initialization or change theme at runtime via `sdk.setTheme()`
-    - **Public API is unchanged** — all `AppIdentifier` values, `openModal`, `closeModal`, `setJWT`, `setFilters`, `isModalOpen`, and all `postMessage` event names and payloads remain identical
+- Create deposit address: [POST /deposits/digital\_asset\_address](https://docs.zerohash.com/reference/post_deposits-digital-asset-addresses)
 
-    **Installation:**
+##### Withdraw
 
-    ```bash
-    npm install zh-web-sdk@3
-    # or
-    yarn add zh-web-sdk@3
-    ```
+- Create withdrawal request: [POST /withdrawals/requests](https://docs.zerohash.com/reference/post_withdrawals-requests)
 
-    **Setting a theme:**
+##### Fund
 
-    ```typescript
-    const sdk = new ZeroHashSDK({
-      zeroHashAppsURL: "https://web-sdk.zerohash.com",
-      env: "prod",
-      theme: "dark"  // 'light' | 'dark' | 'auto'
-    });
-
-    // Change theme at runtime
-    sdk.setTheme({ theme: "auto" });
-    ```
-
-    **Deprecation timeline:**
-    - **Now through August 31, 2026** — v2.x and v3.x are supported in parallel
-    - **August 31, 2026** — v2.x (all versions up to and including 2.17.0) is fully deprecated; continued support is not guaranteed past this date
-
-    **SDKs included in this upgrade:** `crypto-withdrawals`, `crypto-buy`, `crypto-sell`, `fiat-deposits`, `fiat-withdrawals`, `fiat-account-link`, `crypto-account-link`, `crypto-pay`, `crypto-payouts`, `onboarding`, `fwc` (Account Funding), `participant-profile`, `update-participant`, `recovery`.
-
-    Contact your dedicated Relationship Manager for upgrade support.
-  </Card>
-</CardGroup>
+- [SDK support]
+- Get quote: [POST /fund/rfq](https://docs.zerohash.com/reference/post_fund-rfq)
+- Get fund transactions: [GET /fund/transactions](https://docs.zerohash.com/reference/get_fund-transactions)
 
 ---
 
-## May 21, 2026
+#### CLOB Endpoints Impacted
 
-<CardGroup cols={1}>
-  <Card title="ETH Staking Now Available via API" icon="layer-group">
-    **Added** — Zero Hash has launched staking, starting with Ethereum. Platforms can now enable users to stake ETH end-to-end through the API, covering discovery, execution, monitoring, rewards, and unstaking.
+The following executable endpoints now support the above assets:
 
-    **New `/stakes` API surface:**
-    - `POST /stakes` — Submit a stake
-    - `POST /stakes/{stake_id}/cancel` — Cancel a pre-broadcast stake
-    - `GET /stakes/{stake_id}/status` — Monitor stake status
-    - `POST /stakes/unstake` — Submit an unstake
-    - `GET /stakes/{participant_code}` — View portfolio
-    - `GET /stakes/{participant_code}/rewards` — View reward history
+- Create account: [POST /clob/accounts](https://docs.zerohash.com/reference/post_clob-accounts)
+- Get accounts: [GET /clob/accounts](https://docs.zerohash.com/reference/get_clob-accounts)
+- Update CLOB account: [PATCH /clob/accounts](https://docs.zerohash.com/reference/patch_clob-accounts)
+- Search orders: [POST /orders/v1/search\_orders](https://docs.zerohash.com/reference/post_orders-v1-search-orders)
+- Get open orders: [POST /orders/v1/get\_open\_orders](https://docs.zerohash.com/reference/post_orders-v1-get-open-orders)
+- Search executions: [POST /orders/v1/search\_executions](https://docs.zerohash.com/reference/post_orders-v1-search-executions)
+- Create order subscriptions: [POST /orders/v1/create\_order\_subscription](https://docs.zerohash.com/reference/post_orders-v1-create-order-subscription)
+- Submit order: [POST /orders/v1/insert\_order](https://docs.zerohash.com/reference/post_orders-v1-insert-order)
+- Cancel order: [POST /orders/v1/cancel\_order](https://docs.zerohash.com/reference/post_orders-v1-cancel-order)
+- Market data subscription: [POST /orders/v1/create\_market\_data\_subscription](https://docs.zerohash.com/reference/post_orders-v1-create-market-data-subscription)
+- List instruments: [POST /orders/v1/list\_instruments](https://docs.zerohash.com/reference/post_orders-v1-list-instruments)
+- Trade stats: [POST /orders/v1/get\_trade\_stats](https://docs.zerohash.com/reference/post_orders-v1-get-trade-stats)
 
-    **Discovery endpoints:**
-    - `GET /assets?staking_enabled=true` — List stakeable assets
-    - `GET /assets/{asset}/staking_info` — Get estimated APY, activation time, and unstaking period
+---
 
-    **Account types for staking lifecycle:**
-    - `available` — tradeable and withdrawable balances
-    - `collateral` — pending activation or unstaking
-    - `staked` — actively earning rewards
+#### Relevant Documentation
 
-    **Lifecycle:** Stakes move `Submitted → Broadcasted → Confirmed → Staked`. Unstakes follow `Submitted → Broadcasted → Confirmed → Unstaked`. Cancellation is only possible before broadcast.
+For a full list of supported assets and instruments, please use the links below.
 
-    **Prerequisites:** KYC verification complete, staking permitted in the participant's jurisdiction, and staking terms accepted per participant. Staking is currently **not available** in CA, MD, NJ, WI, or WA.
+##### Supported Assets
 
-    SOL staking is targeted for Q3 2026. Contact your dedicated Relationship Manager for platform fee configuration and UX implementation requirements.
-  </Card>
+- [Production](https://docs.zerohash.com/page/what-assets-do-you-support-two)
+- [Certification](https://docs.zerohash.com/page/cert-environment-assets)
 
-  <Card title="Updated Jurisdiction List — 2026 Annual Update" icon="map">
-    **Action Required** — Zero Hash has updated its list of Prohibited/Restricted Jurisdictions and Permitted Higher Risk Jurisdictions, effective June 20, 2026.
+##### Supported Instruments
 
-    **Prohibited/Restricted Jurisdictions — Additions:**
-    - **Singapore** — Platforms must ensure no new participants located in Singapore are submitted to Zero Hash immediately. Existing participants in Singapore must sell or withdraw all assets held with Zero Hash by **June 20, 2026**.
+- [Production](https://docs.zerohash.com/page/production-environment)
+- [Certification](https://docs.zerohash.com/page/certification-environment-instruments)
+</Update>
 
-    **Prohibited/Restricted Jurisdictions — Removals:**
-    - Guatemala, Guinea, Guinea-Bissau, Pakistan, and Zimbabwe — all moved to Permitted Higher Risk Geographies for a minimum of one year.
+<Update label="June 24th, 2026" description="Informational, no action required from platforms">
+### New 'Single API Call Payouts' API
 
-    **Permitted Higher Risk Jurisdictions — Additions:**
-    - Guatemala, Guinea, Guinea-Bissau, Kuwait, Pakistan, Papua New Guinea, and Zimbabwe
+#### Summary
 
-    **Permitted Higher Risk Jurisdictions — Removals:**
-    - Burkina Faso and Mozambique
+We've introduced [**Single API Call Payouts**](/docs/streamlined-payouts), designed for licensed financial institutions and organizations managing nested payors. It works best when you're not building custom payout UI yourself, and your workflows don't need to track state internally.
 
-    Platforms must implement controls to prevent submission of participants from newly restricted jurisdictions. Zero Hash will decline any such submissions.
-  </Card>
-</CardGroup>
+We've also renamed the first generation of our Payouts product to [**Modular Payouts**](/docs/modular-payouts) - built for platforms that want to own the payout experience end-to-end, manage complex creator or seller networks, and maintain full control over state, UX, and compliance tracking.
+
+#### Endpoints Impacted
+
+- [POST /payouts](https://docs.zerohash.com/reference/post_payouts)
+- [GET /payouts](https://docs.zerohash.com/reference/get_payouts)
+- [Single API Call Payouts Webhooks](https://docs.zerohash.com/reference/beta-payouts-webhooks)
+
+#### Relevant Documentation
+
+- [Payouts Home Page](/docs/payouts)
+- [Single API Call Payouts Home Page](/docs/streamlined-payouts)
+- [Single API Call Payouts End-to-End Integration Guide](/docs/streamlined-payouts)
+</Update>
+
+<Update label="June 8th, 2026" description="Informational, no action required from platforms">
+### HYPE, USDC.HYPE, and USDT.HYPE now available across Trade and Transact
+
+#### Summary
+
+zerohash is pleased to announce the addition of new assets, expanding your trading and platform capabilities.
+
+| Asset Name | Symbol | Notes |
+| --- | --- | --- |
+| HYPE on HyperEVM | `HYPE` | Not available in NY or EU |
+| USDC on HyperEVM | `USDC.HYPE` | Not available in NY or EU |
+| USDT on HyperEVM | `USDT.HYPE` | Not available in NY or EU |
+
+#### Availability
+
+| Asset | RFQ | CLOB | Custody | Fund | Payments |
+| --- | --- | --- | --- | --- | --- |
+| `HYPE` | ✔️ | ✔️ | ✔️ | ✔️ | ✔️ |
+| `USDC.HYPE` | ✔️ | ❌ | ✔️ | ✔️ | ✔️ |
+| `USDT.HYPE` | ✔️ | ❌ | ✔️ | ✔️ | ✔️ |
+
+- Environments: All assets are live in both CERT and PROD environments.
+- Geographic Restrictions: All assets are not enabled in New York or EU at this time.
+- Effective Date: Immediately available using the symbols listed above.
+
+---
+
+#### RFQ Endpoints Impacted
+
+The following executable endpoints now support the above assets:
+
+##### Buy/Sell
+
+- Get quote: [POST /liquidity/rfq](https://docs.zerohash.com/reference/post_liquidity-rfq)
+- Execute quote: [POST /liquidity/execute](https://docs.zerohash.com/reference/post_liquidity-execute)
+
+##### Convert Withdraw
+
+- Get quote: [POST /convert\_withdraw/rfq](https://docs.zerohash.com/reference/post_convert-withdraw-rfq)
+- Execute quote: [POST /convert\_withdraw/execute](https://docs.zerohash.com/reference/post_convert-withdraw-execute)
+
+##### Deposit
+
+- Create deposit address: [POST /deposits/digital\_asset\_address](https://docs.zerohash.com/reference/post_deposits-digital-asset-addresses)
+
+##### Withdraw
+
+- Create withdrawal request: [POST /withdrawals/requests](https://docs.zerohash.com/reference/post_withdrawals-requests)
+
+##### Fund
+
+- [SDK support]
+- Get quote: [POST /fund/rfq](https://docs.zerohash.com/reference/post_fund-rfq)
+- Get fund transactions: [GET /fund/transactions](https://docs.zerohash.com/reference/get_fund-transactions)
+
+---
+
+#### CLOB Endpoints Impacted
+
+The following executable endpoints now support the above assets:
+
+- Create account: [POST /clob/accounts](https://docs.zerohash.com/reference/post_clob-accounts)
+- Get accounts: [GET /clob/accounts](https://docs.zerohash.com/reference/get_clob-accounts)
+- Update CLOB account: [PATCH /clob/accounts](https://docs.zerohash.com/reference/patch_clob-accounts)
+- Search orders: [POST /orders/v1/search\_orders](https://docs.zerohash.com/reference/post_orders-v1-search-orders)
+- Get open orders: [POST /orders/v1/get\_open\_orders](https://docs.zerohash.com/reference/post_orders-v1-get-open-orders)
+- Search executions: [POST /orders/v1/search\_executions](https://docs.zerohash.com/reference/post_orders-v1-search-executions)
+- Create order subscriptions: [POST /orders/v1/create\_order\_subscription](https://docs.zerohash.com/reference/post_orders-v1-create-order-subscription)
+- Submit order: [POST /orders/v1/insert\_order](https://docs.zerohash.com/reference/post_orders-v1-insert-order)
+- Cancel order: [POST /orders/v1/cancel\_order](https://docs.zerohash.com/reference/post_orders-v1-cancel-order)
+- Market data subscription: [POST /orders/v1/create\_market\_data\_subscription](https://docs.zerohash.com/reference/post_orders-v1-create-market-data-subscription)
+- List instruments: [POST /orders/v1/list\_instruments](https://docs.zerohash.com/reference/post_orders-v1-list-instruments)
+- Trade stats: [POST /orders/v1/get\_trade\_stats](https://docs.zerohash.com/reference/post_orders-v1-get-trade-stats)
+
+---
+
+#### Relevant Documentation
+
+For a full list of supported assets and instruments, please use the links below.
+
+##### Supported Assets
+
+- [Production](https://docs.zerohash.com/page/what-assets-do-you-support-two)
+- [Certification](https://docs.zerohash.com/page/cert-environment-assets)
+
+##### Supported Instruments
+
+- [Production](https://docs.zerohash.com/page/production-environment)
+- [Certification](https://docs.zerohash.com/page/certification-environment-instruments)
+</Update>
+
+<Update label="May 29th, 2026">
+### Standardized Error Codes for Account Funding, Payins Webhooks
+
+### Summary
+
+This release publishes the full, official set of `status_reason_code` values returned on webhooks across the **Account Funding** and **Payins** products. Each product maintains its own discrete set of codes, fully documented below, so platforms can build deterministic error handling logic against a stable, predictable set of values.  
+  
+No changes have been made to webhook structure, delivery behavior, or existing successful (true) status codes.
+
+  
+
+See Account Funding error codes [here](https://docs.zerohash.com/reference/fund-transaction-update) and Payins error codes [here.](https://docs.zerohash.com/reference/payins-transaction-updates#status-reason-codes)
+</Update>
+
+<Update label="May 27th, 2026" description="Informational, no action required from platforms">
+### MON now available in NY
+
+#### Summary
+
+zerohash is pleased to announce the addition of new assets in NY, expanding your trading and platform capabilities.
+
+| Asset Name | Symbol | Notes |
+| --- | --- | --- |
+| Monad | `MON` | Previously unavailable in NY, now enabled |
+
+#### Availability
+
+| Asset | RFQ | CLOB | Custody | Fund | Payments |
+| --- | --- | --- | --- | --- | --- |
+| `MON` | ✔️ | ✔️ | ✔️ | ✔️ | ✔️ |
+
+- Environments: Asset is live in both CERT and PROD environments.
+- Effective Date: Immediately available using the symbol listed above.
+
+---
+
+#### RFQ Endpoints Impacted
+
+The following executable endpoints now support the above asset:
+
+##### Buy/Sell
+
+- Get quote: [POST /liquidity/rfq](https://docs.zerohash.com/reference/post_liquidity-rfq)
+- Execute quote: [POST /liquidity/execute](https://docs.zerohash.com/reference/post_liquidity-execute)
+
+##### Convert Withdraw
+
+- Get quote: [POST /convert\_withdraw/rfq](https://docs.zerohash.com/reference/post_convert-withdraw-rfq)
+- Execute quote: [POST /convert\_withdraw/execute](https://docs.zerohash.com/reference/post_convert-withdraw-execute)
+
+##### Deposit
+
+- Create deposit address: [POST /deposits/digital\_asset\_address](https://docs.zerohash.com/reference/post_deposits-digital-asset-addresses)
+
+##### Withdraw
+
+- Create withdrawal request: [POST /withdrawals/requests](https://docs.zerohash.com/reference/post_withdrawals-requests)
+
+##### Fund
+
+- [SDK support]
+- Get quote: [POST /fund/rfq](https://docs.zerohash.com/reference/post_fund-rfq)
+- Get fund transactions: [GET /fund/transactions](https://docs.zerohash.com/reference/get_fund-transactions)
+
+---
+
+#### CLOB Endpoints Impacted
+
+The following executable endpoints now support the above assets:
+
+- Create account: [POST /clob/accounts](https://docs.zerohash.com/reference/post_clob-accounts)
+- Get accounts: [GET /clob/accounts](https://docs.zerohash.com/reference/get_clob-accounts)
+- Update CLOB account: [PATCH /clob/accounts](https://docs.zerohash.com/reference/patch_clob-accounts)
+- Search orders: [POST /orders/v1/search\_orders](https://docs.zerohash.com/reference/post_orders-v1-search-orders)
+- Get open orders: [POST /orders/v1/get\_open\_orders](https://docs.zerohash.com/reference/post_orders-v1-get-open-orders)
+- Search executions: [POST /orders/v1/search\_executions](https://docs.zerohash.com/reference/post_orders-v1-search-executions)
+- Create order subscriptions: [POST /orders/v1/create\_order\_subscription](https://docs.zerohash.com/reference/post_orders-v1-create-order-subscription)
+- Submit order: [POST /orders/v1/insert\_order](https://docs.zerohash.com/reference/post_orders-v1-insert-order)
+- Cancel order: [POST /orders/v1/cancel\_order](https://docs.zerohash.com/reference/post_orders-v1-cancel-order)
+- Market data subscription: [POST /orders/v1/create\_market\_data\_subscription](https://docs.zerohash.com/reference/post_orders-v1-create-market-data-subscription)
+- List instruments: [POST /orders/v1/list\_instruments](https://docs.zerohash.com/reference/post_orders-v1-list-instruments)
+- Trade stats: [POST /orders/v1/get\_trade\_stats](https://docs.zerohash.com/reference/post_orders-v1-get-trade-stats)
+
+---
+
+#### Relevant Documentation
+
+For a full list of supported assets and instruments, please use the links below.
+
+##### Supported Assets
+
+- [Production](https://docs.zerohash.com/page/what-assets-do-you-support-two)
+- [Certification](https://docs.zerohash.com/page/cert-environment-assets)
+
+##### Supported Instruments
+
+- [Production](https://docs.zerohash.com/page/production-environment)
+- [Certification](https://docs.zerohash.com/page/certification-environment-instruments)
+</Update>
+
+<Update label="May 26th, 2026">
+### Account Ownership Attestation
+
+### Summary
+
+![](https://files.readme.io/617189879ddd4e3641d71e0b5e263f439e48f02b2eb63d3bb84dd36a66a397a7-exportsss.png)
+
+### Account ownership attestation for transaction flows
+
+zerohash now supports Attestation - a configurable compliance control that captures a user's explicit representation that they own and control the source or destination account in a transaction.
+
+### What it does
+
+When enabled, users are presented with an attestation screen (on the zerohash SDK) at the appropriate point in a transaction flow. They must acknowledge a disclosure statement confirming ownership before proceeding. The attestation is persisted and linked to the resulting transaction, creating an auditable record of the customer representation.
+
+### Supported SDKs
+
+Attestation can be enabled across the following products:
+
+| SDK `permission` | Description |
+| --- | --- |
+| `crypto-withdrawals` | Crypto withdrawals |
+| `crypto-pay` | Crypto/stablecoin payins |
+| `crypto-payouts` | Crypto/stablecoin payouts |
+| `fwc` | Account Funding |
+
+### How to enable
+
+Contact your zerohash relationship manager if you'd like this enabled, it is a quick and easy configuration on our end.
+</Update>
+
+<Update label="May 26th, 2026">
+### New SDK Version 3.0.0
+
+### Summary
+
+#### SDK Version 3.0.0
+
+zerohash is upgrading its SDK to [**version 3.0.0**](https://www.npmjs.com/package/zh-web-sdk/v/3.0.0), featuring a new architecture and a **fully refreshed UI**. All SDKs now share a unified look and feel, bringing cohesion across the entire suite. Platforms can also configure **light and dark mode** to match their product experience. For full details on the new UI and configuration options, see [here](https://docs.zerohash.com/docs/update-appearance).
+
+To give platforms time to transition, we will continue supporting all versions up to and including 2.17.0 **until August 31**, after which they will be **fully deprecated.**
+
+### Timeline
+
+- **Today**: [v3.0.0](https://www.npmjs.com/package/zh-web-sdk/v/3.0.0) is available on npm. v2.x is still fully supported.
+- **Now through Aug 31, 2026**: Both v2.x and v3.x are supported in parallel. Upgrade at your own pace.
+- **Aug 31, 2026**: v2.x is deprecated. Continued support is not guaranteed past this date.
+
+### How to upgrade
+
+The public API is unchanged, so the upgrade is just a version bump in most cases.
+
+#### 1. Install v3:
+
+```bash
+npm install zh-web-sdk@3
+### or
+yarn add zh-web-sdk@3
+```
+
+#### 2. (Optional) Set a theme:
+
+The new SDKs support `'light'`, `'dark'`, and `'auto'` themes. Default is `'light'`.
+
+```typescript
+const sdk = new ZeroHashSDK({
+  zeroHashAppsURL: "https://web-sdk.zerohash.com",
+  env: "prod",
+  theme: "dark"   // 'light' | 'dark' | 'auto'
+});
+```
+
+You can also change theme at runtime:
+
+```typescript
+sdk.setTheme({ theme: "auto" });
+```
+
+#### 3. Build and deploy.
+
+No code changes required to your `openModal`, `setJWT`, or `closeModal` calls. The new UIs render automatically.
+
+### What stays the same
+
+- All `AppIdentifier` values (`FUND`, `ONBOARDING`, `CRYPTO_BUY`, etc.)
+- `openModal`, `closeModal`, `setJWT`, `setFilters`, `isModalOpen`
+- JWT acquisition and authentication flow
+- All `postMessage` events you listen for today (`FUND_APP_LOADED`, `FUND_COMPLETED`, `FUND_FAILED`, etc.). Same names, same payloads.
+
+### SDK's in scope
+
+*All* SDK's are included in this upgrade. Listing out here for reference:
+
+| SDK `permission` | Description |
+| --- | --- |
+| `crypto-withdrawals` | Crypto withdrawals |
+| `crypto-buy` | Crypto buy |
+| `crypto-sell` | Crypto sell |
+| `fiat deposits` | Fiat deposits |
+| `fiat-withdrawals` | Fiat withdrawals |
+| `fiat-account-link` | Fiat - link account |
+| `crypto-account-link` | Crypto- link account |
+| `crypto-pay` | Crypto/stablecoin payins |
+| `crypto-payouts` | Crypto/stablecoin payouts |
+| `onboarding` | KYC for end users/natural persons |
+| `fwc` | Account Funding |
+| `participant-profile` | Display already-KYC'd user profile information |
+| `update-participant` | Update participant |
+| `recovery` | Recovery (ie, funds sent on the wrong chain and users can withdraw) |
+
+#### Support and Resources
+
+Please contact your dedicated Relationship Manager for questions about how to upgrade SDK's
+</Update>
+
+<Update label="May 20th, 2026">
+### Staking: ETH support now live via API
+
+#### Summary
+
+zerohash has launched staking, starting with Ethereum. Platforms can now enable users to stake ETH end-to-end through the API, covering discovery, execution, monitoring, rewards, and unstaking. SOL is targeted for Q3 2026, with additional assets to follow.
+
+Staking unlocks a new revenue stream and engagement surface for platforms. Users earn rewards on ETH they already hold, and platforms participate without standing up validator infrastructure or managing on-chain staking operations.
+
+Please refer to the full Staking guide here: [https://docs.zerohash.com/docs/staking](/docs/staking)
+
+#### What's new
+
+- **New** `/stakes` **API surface** for submitting ([POST /stakes](https://docs.zerohash.com/reference/post_stakes)), canceling pre-broadcast [(POST /stakes/\{stake\_id\}/cancel](https://docs.zerohash.com/reference/post_stakes-stake-id-cancel)), monitoring ([GET /stakes/\{stake\_id\}/status](https://docs.zerohash.com/reference/get_stakes-stake-id-status)), and unstaking ([POST /stakes/unstake](https://docs.zerohash.com/reference/post_stakes-unstake))
+- **Discovery endpoints**: [GET /assets?staking\_enabled=true](https://docs.zerohash.com/reference/get_assets) for stakeable assets,[GET /assets/\{asset\}/staking\_info](https://docs.zerohash.com/reference/get_assets-asset-staking-info) for estimated APY, activation time, and unstaking period
+- **Portfolio and rewards**: [GET /stakes/\{participant\_code\}](https://docs.zerohash.com/reference/get_stakes-participant-code) for portfolio overview, [GET /stakes/\{participant\_code\}/rewards](https://docs.zerohash.com/reference/get_stakes-participant-code-rewards) for reward history
+- **Three account types** to track lifecycle state, queryable via [GET /accounts?account\_type=\{type\}: available](https://docs.zerohash.com/reference/get_accounts-account-id) (tradeable/withdrawable), `collateral` (pending activation or unstaking), `staked` (actively earning)
+- **Real-time webhooks** across the full lifecycle: `stake.submitted` through stake.staked, the unstake counterparts, and `staking_reward.received` for reward distributions
+- **One-time terms acceptance** per participant enables staking across all supported assets
+
+#### Lifecycle and Balance Flow
+
+Stakes move Submitted → Broadcasted → Confirmed → Staked, with Canceled and Failed as terminal stake states.
+
+Unstakes follow Submitted → Broadcasted → Confirmed → Unstaked, with Canceled and Failed as terminal unstake states.
+
+Cancellation is only possible before broadcast.
+
+Funds transition `available` → `collateral` → `staked` when activating, and `staked` → `collateral` → `available` when unstaking. Only `available` balances can be traded, transferred, or withdrawn.
+
+The activation queue is worth flagging upfront in any user-facing flow. ETH stakes can take 1-4 weeks to start earning, and the unstaking period adds waiting time on the way out. Clear expectations at confirmation prevent most of the support volume platforms typically see on staking products.
+
+#### Prerequisites
+
+KYC verification complete, staking permitted in the participant's jurisdiction, and staking terms accepted. All `/stakes` calls are blocked until terms are accepted.
+
+Please note that at this time, staking is prohibited in the following states: CA, MD, NJ, WI, and WA.
+
+#### Implementation Notes
+
+- Pair webhooks with polling on [GET /stakes/\{stake\_id\}/status](https://docs.zerohash.com/reference/get_stakes-stake-id-status); webhooks are the primary signal, polling covers delivery gaps
+- Acknowledge webhooks with 200 OK, process asynchronously, and implement idempotency using `distribution_id` for reward events and `stake_id/unstake_id` + `status` for stake and unstake events
+- Rewards accrue until an unstake reaches the terminal unstaked state
+- Suppress staking UI entirely for participants in restricted jurisdictions
+- Common validation errors: `TERMS_NOT_ACCEPTED`, `INSUFFICIENT_BALANCE`, `JURISDICTION_RESTRICTED`; each returns a `user_message` suitable for display
+
+#### Quick Reference
+
+**Essential Endpoints:**
+
+- Discover stakeable assets: [GET /assets?staking\_enabled=true](https://docs.zerohash.com/reference/get_assets)
+- Validate available balance: [GET /accounts?account\_type=available](https://docs.zerohash.com/reference/get_accounts-account-id)
+- Check staking parameters: [GET /assets/\{asset\}/staking\_info](https://docs.zerohash.com/reference/get_assets-asset-staking-info)
+- Verify terms acceptance: [GET /participant/\{participant\_code\}](https://docs.zerohash.com/reference/get_participant-participant-code-full-info)
+- Update terms acceptance: PATCH /participants/customers/\{participant\_code\}
+- Submit stake: [POST /stakes](https://docs.zerohash.com/reference/post_stakes)
+- Cancel pending stake: [POST /stakes/\{stake\_id\}/cancel](https://docs.zerohash.com/reference/post_stakes-stake-id-cancel)
+- Monitor stake status: [GET /stakes/\{stake\_id\}/status](https://docs.zerohash.com/reference/get_stakes-stake-id-status)
+- View portfolio: [GET /stakes/\{participant\_code\}](https://docs.zerohash.com/reference/get_stakes-participant-code)
+- Track rewards: [GET /stakes/\{participant\_code\}/rewards](https://docs.zerohash.com/reference/get_stakes-participant-code-rewards)
+- Submit unstake: [POST /stakes/unstake](https://docs.zerohash.com/reference/post_stakes-unstake)
+- Cancel pending unstake: [POST /stakes/unstake/\{unstake\_id\}/cancel](https://docs.zerohash.com/reference/post_stakes-unstake-unstake-id-cancel)
+- Monitor unstake status: [GET /stakes/unstake/\{unstake\_id\}/status](https://docs.zerohash.com/reference/get_stakes-unstake-unstake-id-status)
+
+#### Support and Resources
+
+Please contact your dedicated Relationship Manager for:
+
+- Frontend standards and implementation requirements
+- Sample UX designs and the UX research report
+- Setting your platform fee
+- User education materials and user-facing FAQs
+- Any additional integration support
+</Update>
+
+<Update label="May 20th, 2026">
+### Updated List of Prohibited, Restricted, and Permitted Higher Risk Jurisdictions (2026 Annual List Update)
+
+#### Effective date
+
+May 21, 2026
+
+#### Release type
+
+- Actionable - Updates required for Platforms
+- Breaking - If appropriate IP and other preventive measures are not made by the relevant dates, Platforms will have newly submitted participants located in certain countries declined by zerohash:
+
+  - Existing Participants: The Platform must ensure that any existing participants in Singapore sell or withdraw all existing assets held with zerohash by June 20, 2026.
+  - New Participants: Platforms must immediately ensure no new participants located in these jurisdictions are submitted to zerohash. zerohash will decline any such submitted participants.
+
+#### Summary
+
+To ensure compliance with its targeted financial sanctions obligations and mitigate identified Anti Money Laundering/Countering the Financing of Terrorism/Countering the Financing of the Proliferation of Weapons of Mass Destruction (AML/CFT/CFP) risks, zerohash prohibits or restricts business activity involving certain jurisdictions and countries. zerohash also identifies other permitted geographies that are considered higher risk. zerohash reviews both of these lists at least annually and based upon relevant changes in legal and regulatory requirements and applicable AML/CFT/CFP risks.
+
+zerohash is issuing this notice to inform Platforms and other stakeholders of updates to the jurisdiction and country lists, which are effective within 30 days of this notice June 20, 2026 unless otherwise noted.
+
+#### Updates to zerohash List of Prohibited or Restricted Jurisdictions
+
+**Additions**
+
+- Singapore
+
+**Removals**
+
+- Guatemala, Guinea, Guinea-Bissau, Pakistan, and Zimbabwe
+- All will be added to the list of Permitted Higher Risk Geographies for a minimum of one year, extendable upon identification of risk-based reasons for continuation on that list.
+
+#### Explanation of Treatment of Prohibited and Restricted Jurisdictions
+
+Except as otherwise explicitly noted, zerohash will not do business with any entity or person located or formed in a prohibited or restricted jurisdiction. This applies to Platform partners and institutional or individual customers of zerohash llc and zerohash liquidity services llc and its various affiliates (collectively, zerohash) and the natural person or non-natural person (NNP) customers or transactors of any Platform partner.
+
+**Handling of Participants in Newly Listed Prohibited or Restricted Countries or Jurisdictions:**
+
+When a country or jurisdiction becomes listed, all existing zerohash direct or indirect business relationships will be revoked (immediately, if required by law or regulation) and accounts closed. Platform participants will be permitted to withdraw/sell their cryptocurrency holdings (unless prohibited by law or regulation).
+
+**Process for Restarting Relationships Involving Delisted Countries/Jurisdictions:**
+
+When a country or jurisdiction is removed from the list (delisted), zerohash will begin to permit the establishment of new business relationships, including with new Platform participants. Establishment of any new relationships will be subject to [enhanced due diligence measures](https://docs.zerohash.com/changelog/participants-added-fields-for-enhanced-due-diligence-edd), unless the restriction was based solely on zerohash first having to obtain a license or registration in that jurisdiction.
+
+#### Updates to zerohash’s List of Permitted Higher Risk Jurisdictions
+
+zerohash is updating its list of Permitted Higher Risk Geographies based upon the FATF’s “Grey List” updates of October 2025 and February 2026, and other public and proprietary assessments of AML/CFT/CFP, fraud, corruption, and other relevant risks. Additional limitations and restrictions may be placed on any or all of the jurisdictions listed below depending upon the specific zerohash product or service being provided or for other applicable reasons:
+
+**Additions**
+
+- Guatemala, Guinea, Guinea-Bissau, Kuwait, Pakistan, Papua New Guinea, and Zimbabwe
+
+**Removals**
+
+- Burkina Faso and Mozambique
+
+**Note**: zerohash will complete all ongoing enhanced due diligence measures begun before this date associated with those countries (for Platform Participants see: [Enhanced Due Diligence measures (EDD)](https://docs.zerohash.com/changelog/participants-added-fields-for-enhanced-due-diligence-edd).
+
+#### Related Documentation
+
+For additional general information regarding all the jurisdictions that zerohash supports, please refer to [Permitted and Prohibited/Restricted Jurisdictions](/docs/permitted-and-restricted-jurisdictions).
+</Update>
+
+<Update label="May 11th, 2026">
+### Citizenship Field Deprecation on Participant APIs
+
+#### Effective date
+
+**July 11, 2026**
+
+#### Release type
+
+Field Deprecation
+
+#### Summary
+
+The citizenship free-text field is being deprecated across all participant API endpoints. Going forward, `citizenship_code` (ISO 3166-1 alpha-2 country code, e.g., "US", "GB", "DE") will be the only accepted field for specifying citizenship.
+
+#### Reason
+
+The current citizenship field accepts any string, which adds complexity to compliance rule evaluation. Standardizing on ISO country codes ensures consistent data and enables citizenship-based policy enforcement.
+
+#### Affected Endpoints
+
+- POST /participants/customers/new
+- PATCH /participants/customers/\{participant\_code\}
+- POST /participants/beneficiaries/new
+- PATCH /participants/beneficiaries/\{participant\_code\}
+- POST /participants/entity/new
+- POST /participants/entity/\{participant\_code\}
+- PATCH /participants/entity/\{participant\_code\}/users/\{user\_code\}
+
+#### Required Action
+
+Platforms must replace any usage of the `citizenship` field with `citizenship_code` in API calls. Use ISO 3166-1 alpha-2 codes (e.g., "US" not "United States"). Complete migration before **July 11, 2026**.
+
+During the 60-day transition period, both fields are accepted. If both are sent, `citizenship_code` takes precedence.
+
+Once the 60-day transition period is completed, zerohash will remove `citizenship` from request schemas on all affected endpoints and from response payloads entirely.
+</Update>
+
+<Update label="April 29th, 2026" description="Informational, no action required from platforms">
+### Deposit Status Webhooks & GET /deposits/crypto Endpoints
+
+#### Summary
+
+zerohash has launched real-time webhooks and new REST endpoints for blockchain deposits. Platforms can now subscribe to deposit state change notifications and query deposit records directly, eliminating the need to poll for status updates.
+
+#### Use Case
+
+Platforms tracking blockchain deposits now have a consistent view of deposit state across push (webhook) and pull (REST) access patterns, with both surfaces returning the same canonical data model.
+
+#### What's New
+
+**Deposit Status Webhooks**
+
+Deposit status webhooks emit a signed notification on every state transition with a consistent payload, including:
+
+- `deposit_id` - unique deposit identifier
+- `state` - current deposit state
+- `participant_code`, `account_id` - account identifiers
+- `asset`, `amount` - deposit asset and amount
+- `transaction_hash`, `received_address`, `source_address` - on-chain transaction details
+- `timestamp` - time of the state change
+
+You can always reference this page for the complete list of deposit statuses on our webhooks [https://docs.zerohash.com/reference/deposit-status-updates](https://docs.zerohash.com/reference/deposit-status-updates)
+
+**New REST Endpoints for Deposit Records**
+
+In addition, two new public REST endpoints are available for querying deposit records:
+
+1. [GET /deposits/crypto/\{deposit\_id\}](https://docs.zerohash.com/reference/get_deposits-crypto-deposit-id) - retrieve a single deposit record by its ID
+2. [GET /deposits/crypto](https://docs.zerohash.com/reference/get_deposits-crypto) - retrieve a paginated list of deposit records, with optional filters for deposit IDs, account IDs / account groups, transaction hashes, assets, deposit states, and time range (`from` / `to` timestamps)
+
+Please reach out to your zerohash contact if you have any questions.
+</Update>
+
+<Update label="April 20th, 2026" description="Informational, no action required from platforms">
+### 16 new assets available across Trade and Transact
+
+#### Summary
+
+zerohash is pleased to announce the addition of the following new assets, expanding your trading and platform capabilities:
+
+| Asset Name | Symbol | Notes |
+| --- | --- | --- |
+| Ethena | `ENA.ETH` | Not available in NY |
+| Injective | `INJ.ETH` | Not available in NY |
+| Jito | `JTO.SOL` | Available in NY |
+| LayerZero | `ZRO.ETH` | Available in NY |
+| Morpho | `MORPHO.ETH` | Available in NY |
+| Ondo | `ONDO.ETH` | Available in NY |
+| Pyth Network | `PYTH.SOL` | Available in NY |
+| Wormhole | `W.SOL` | Available in NY |
+| Decentraland | `MANA.ETH` | Previously RFQ only, now supported on CLOB; Available in NY |
+| MultiversX | `EGLD` | Previously RFQ only, now supported on CLOB; Available in NY |
+| Pax Gold | `PAXG.ETH` | Previously RFQ only, now supported on CLOB; Available in NY |
+| Pudgy Penguins | `PENGU.SOL` | Previously RFQ only, now supported on CLOB; Not available in NY |
+| SEI | `SEI` | Previously RFQ only, now supported on CLOB; Available in NY |
+| Worldcoin | `WLD.WORLDCHAIN` | Previously RFQ only, now supported on CLOB; Available in NY |
+| ZKsync | `ZK.ZKSYNC` | Previously RFQ only, now supported on CLOB; Available in NY |
+| 0x | `ZRX.ETH` | Previously RFQ only, now supported on CLOB; Available in NY |
+
+#### Availability
+
+| Asset | RFQ | CLOB | Custody | Fund | Payments |
+| --- | --- | --- | --- | --- | --- |
+| `ENA.ETH` | ✔️ | ✔️ | ✔️ | ✔️ | ✔️ |
+| `INJ.ETH` | ✔️ | ✔️ | ✔️ | ✔️ | ✔️ |
+| `JTO.SOL` | ✔️ | ✔️ | ✔️ | ✔️ | ✔️ |
+| `ZRO.ETH` | ✔️ | ✔️ | ✔️ | ✔️ | ✔️ |
+| `MORPHO.ETH` | ✔️ | ✔️ | ✔️ | ✔️ | ✔️ |
+| `ONDO.ETH` | ✔️ | ✔️ | ✔️ | ✔️ | ✔️ |
+| `PYTH.SOL` | ✔️ | ✔️ | ✔️ | ✔️ | ✔️ |
+| `W.SOL` | ✔️ | ✔️ | ✔️ | ✔️ | ✔️ |
+| `MANA.ETH` | ✔️ | ✔️ | ✔️ | ✔️ | ✔️ |
+| `EGLD` | ✔️ | ✔️ | ✔️ | ✔️ | ✔️ |
+| `PAXG.ETH` | ✔️ | ✔️ | ✔️ | ✔️ | ✔️ |
+| `PENGU.SOL` | ✔️ | ✔️ | ✔️ | ✔️ | ✔️ |
+| `SEI` | ✔️ | ✔️ | ✔️ | ✔️ | ✔️ |
+| `WLD.WORLDCHAIN` | ✔️ | ✔️ | ✔️ | ✔️ | ✔️ |
+| `ZK.ZKSYNC` | ✔️ | ✔️ | ✔️ | ✔️ | ✔️ |
+| `ZRX.ETH` | ✔️ | ✔️ | ✔️ | ✔️ | ✔️ |
+
+- Environments: All assets are live in both CERT and PROD environments.
+- Geographic Restrictions: Please see notes above for NY availability.
+- Effective Date: Immediately available using the symbols listed above.
+
+---
+
+#### RFQ Endpoints Impacted
+
+The following executable endpoints now support the above assets:
+
+##### Buy/Sell
+
+- Get quote: [POST /liquidity/rfq](https://docs.zerohash.com/reference/post_liquidity-rfq)
+- Execute quote: [POST /liquidity/execute](https://docs.zerohash.com/reference/post_liquidity-execute)
+
+##### Convert Withdraw
+
+- Get quote: [POST /convert\_withdraw/rfq](https://docs.zerohash.com/reference/post_convert-withdraw-rfq)
+- Execute quote: [POST /convert\_withdraw/execute](https://docs.zerohash.com/reference/post_convert-withdraw-execute)
+
+##### Deposit
+
+- Create deposit address: [POST /deposits/digital\_asset\_address](https://docs.zerohash.com/reference/post_deposits-digital-asset-addresses)
+
+##### Withdraw
+
+- Create withdrawal request: [POST /withdrawals/requests](https://docs.zerohash.com/reference/post_withdrawals-requests)
+
+##### Fund
+
+- [SDK support]
+- Get quote: [POST /fund/rfq](https://docs.zerohash.com/reference/post_fund-rfq)
+- Get fund transactions: [GET /fund/transactions](https://docs.zerohash.com/reference/get_fund-transactions)
+
+---
+
+#### CLOB Endpoints Impacted
+
+The following executable endpoints now support the above assets:
+
+- Create account: [POST /clob/accounts](https://docs.zerohash.com/reference/post_clob-accounts)
+- Get accounts: [GET /clob/accounts](https://docs.zerohash.com/reference/get_clob-accounts)
+- Update CLOB account: [PATCH /clob/accounts](https://docs.zerohash.com/reference/patch_clob-accounts)
+- Search orders: [POST /orders/v1/search\_orders](https://docs.zerohash.com/reference/post_orders-v1-search-orders)
+- Get open orders: [POST /orders/v1/get\_open\_orders](https://docs.zerohash.com/reference/post_orders-v1-get-open-orders)
+- Search executions: [POST /orders/v1/search\_executions](https://docs.zerohash.com/reference/post_orders-v1-search-executions)
+- Create order subscriptions: [POST /orders/v1/create\_order\_subscription](https://docs.zerohash.com/reference/post_orders-v1-create-order-subscription)
+- Submit order: [POST /orders/v1/insert\_order](https://docs.zerohash.com/reference/post_orders-v1-insert-order)
+- Cancel order: [POST /orders/v1/cancel\_order](https://docs.zerohash.com/reference/post_orders-v1-cancel-order)
+- Market data subscription: [POST /orders/v1/create\_market\_data\_subscription](https://docs.zerohash.com/reference/post_orders-v1-create-market-data-subscription)
+- List instruments: [POST /orders/v1/list\_instruments](https://docs.zerohash.com/reference/post_orders-v1-list-instruments)
+- Trade stats: [POST /orders/v1/get\_trade\_stats](https://docs.zerohash.com/reference/post_orders-v1-get-trade-stats)
+
+---
+
+#### Relevant Documentation
+
+For a full list of supported assets and instruments, please use the links below.
+
+##### Supported Assets
+
+- [Production](https://docs.zerohash.com/page/what-assets-do-you-support-two)
+- [Certification](https://docs.zerohash.com/page/cert-environment-assets)
+
+##### Supported Instruments
+
+- [Production](https://docs.zerohash.com/page/production-environment)
+- [Certification](https://docs.zerohash.com/page/certification-environment-instruments)
+</Update>
+
+<Update label="April 10th, 2026" description="Informational, no action required from platforms">
+### EURC.ETH now available across Trade and Transact
+
+#### Summary
+
+zerohash is pleased to announce the addition of a new asset, expanding your trading and platform capabilities.
+
+| Asset Name | Symbol | Notes |
+| --- | --- | --- |
+| EURC on Ethereum | `EURC.ETH` | Not enabled in NY; only available with **EUR pairs** |
+
+#### Availability
+
+| Asset | RFQ | CLOB | Custody | Fund | Payments |
+| --- | --- | --- | --- | --- | --- |
+| `EURC.ETH` | ✔️ | ❌ | ✔️ | ✔️ | ✔️ |
+
+- Environments: Asset is live in both CERT and PROD environments.
+- Geographic Restrictions: Asset is not available in NY at this time.
+- Effective Date: Immediately available using the symbols listed above.
+
+---
+
+#### RFQ Endpoints Impacted
+
+The following executable endpoints now support the above assets:
+
+##### Buy/Sell
+
+- Get quote: [POST /liquidity/rfq](https://docs.zerohash.com/reference/post_liquidity-rfq)
+- Execute quote: [POST /liquidity/execute](https://docs.zerohash.com/reference/post_liquidity-execute)
+
+##### Convert Withdraw
+
+- Get quote: [POST /convert\_withdraw/rfq](https://docs.zerohash.com/reference/post_convert-withdraw-rfq)
+- Execute quote: [POST /convert\_withdraw/execute](https://docs.zerohash.com/reference/post_convert-withdraw-execute)
+
+##### Deposit
+
+- Create deposit address: [POST /deposits/digital\_asset\_address](https://docs.zerohash.com/reference/post_deposits-digital-asset-addresses)
+
+##### Withdraw
+
+- Create withdrawal request: [POST /withdrawals/requests](https://docs.zerohash.com/reference/post_withdrawals-requests)
+
+##### Fund
+
+- [SDK support]
+- Get quote: [POST /fund/rfq](https://docs.zerohash.com/reference/post_fund-rfq)
+- Get fund transactions: [GET /fund/transactions](https://docs.zerohash.com/reference/get_fund-transactions)
+
+---
+
+#### Relevant Documentation
+
+For a full list of supported assets and instruments, please use the links below.
+
+##### Supported Assets
+
+- [Production](https://docs.zerohash.com/page/what-assets-do-you-support-two)
+- [Certification](https://docs.zerohash.com/page/cert-environment-assets)
+
+##### Supported Instruments
+
+- [Production](https://docs.zerohash.com/page/production-environment)
+- [Certification](https://docs.zerohash.com/page/certification-environment-instruments)
+</Update>
+
+<Update label="April 3rd, 2026" description="Informational, no action required from platforms">
+### XPL now available in NY
+
+#### Summary
+
+zerohash is pleased to announce the addition of new assets in NY, expanding your trading and platform capabilities.
+
+| Asset Name | Symbol | Notes |
+| --- | --- | --- |
+| Plasma | `XPL` | Previously unavailable in NY, now enabled |
+
+#### Availability
+
+| Asset | RFQ | CLOB | Custody | Fund | Payments |
+| --- | --- | --- | --- | --- | --- |
+| `XPL` | ✔️ | ✔️ | ✔️ | ✔️ | ✔️ |
+
+- Environments: Asset is live in both CERT and PROD environments.
+- Effective Date: Immediately available using the symbol listed above.
+
+---
+
+#### RFQ Endpoints Impacted
+
+The following executable endpoints now support the above asset:
+
+##### Buy/Sell
+
+- Get quote: [POST /liquidity/rfq](https://docs.zerohash.com/reference/post_liquidity-rfq)
+- Execute quote: [POST /liquidity/execute](https://docs.zerohash.com/reference/post_liquidity-execute)
+
+##### Convert Withdraw
+
+- Get quote: [POST /convert\_withdraw/rfq](https://docs.zerohash.com/reference/post_convert-withdraw-rfq)
+- Execute quote: [POST /convert\_withdraw/execute](https://docs.zerohash.com/reference/post_convert-withdraw-execute)
+
+##### Deposit
+
+- Create deposit address: [POST /deposits/digital\_asset\_address](https://docs.zerohash.com/reference/post_deposits-digital-asset-addresses)
+
+##### Withdraw
+
+- Create withdrawal request: [POST /withdrawals/requests](https://docs.zerohash.com/reference/post_withdrawals-requests)
+
+##### Fund
+
+- [SDK support]
+- Get quote: [POST /fund/rfq](https://docs.zerohash.com/reference/post_fund-rfq)
+- Get fund transactions: [GET /fund/transactions](https://docs.zerohash.com/reference/get_fund-transactions)
+
+---
+
+#### CLOB Endpoints Impacted
+
+The following executable endpoints now support the above assets:
+
+- Create account: [POST /clob/accounts](https://docs.zerohash.com/reference/post_clob-accounts)
+- Get accounts: [GET /clob/accounts](https://docs.zerohash.com/reference/get_clob-accounts)
+- Update CLOB account: [PATCH /clob/accounts](https://docs.zerohash.com/reference/patch_clob-accounts)
+- Search orders: [POST /orders/v1/search\_orders](https://docs.zerohash.com/reference/post_orders-v1-search-orders)
+- Get open orders: [POST /orders/v1/get\_open\_orders](https://docs.zerohash.com/reference/post_orders-v1-get-open-orders)
+- Search executions: [POST /orders/v1/search\_executions](https://docs.zerohash.com/reference/post_orders-v1-search-executions)
+- Create order subscriptions: [POST /orders/v1/create\_order\_subscription](https://docs.zerohash.com/reference/post_orders-v1-create-order-subscription)
+- Submit order: [POST /orders/v1/insert\_order](https://docs.zerohash.com/reference/post_orders-v1-insert-order)
+- Cancel order: [POST /orders/v1/cancel\_order](https://docs.zerohash.com/reference/post_orders-v1-cancel-order)
+- Market data subscription: [POST /orders/v1/create\_market\_data\_subscription](https://docs.zerohash.com/reference/post_orders-v1-create-market-data-subscription)
+- List instruments: [POST /orders/v1/list\_instruments](https://docs.zerohash.com/reference/post_orders-v1-list-instruments)
+- Trade stats: [POST /orders/v1/get\_trade\_stats](https://docs.zerohash.com/reference/post_orders-v1-get-trade-stats)
+
+---
+
+#### Relevant Documentation
+
+For a full list of supported assets and instruments, please use the links below.
+
+##### Supported Assets
+
+- [Production](https://docs.zerohash.com/page/what-assets-do-you-support-two)
+- [Certification](https://docs.zerohash.com/page/cert-environment-assets)
+
+##### Supported Instruments
+
+- [Production](https://docs.zerohash.com/page/production-environment)
+- [Certification](https://docs.zerohash.com/page/certification-environment-instruments)
+</Update>
+
+<Update label="March 26th, 2026" description="Informational, no action required from platforms">
+### USDC.ARBITRUM, USDC.SEI, and USDC.XLM now available in NY
+
+#### Summary
+
+zerohash is pleased to announce the addition of new assets in NY, expanding your trading and platform capabilities.
+
+| Asset Name | Symbol | Notes |
+| --- | --- | --- |
+| USDC on Arbitrum | `USDC.ARBITRUM` | Previously unavailable in NY, now enabled |
+| USDC on Sei | `USDC.SEI` | Previously unavailable in NY, now enabled |
+| USDC on Stellar | `USDC.XLM` | Previously unavailable in NY, now enabled |
+
+#### Availability
+
+| Asset | RFQ | CLOB | Custody | Fund | Payments |
+| --- | --- | --- | --- | --- | --- |
+| `USDC.ARBITRUM` | ✔️ | ❌ | ✔️ | ✔️ | ✔️ |
+| `USDC.SEI` | ✔️ | ❌ | ✔️ | ✔️ | ✔️ |
+| `USDC.XLM` | ✔️ | ❌ | ✔️ | ✔️ | ✔️ |
+
+- Environments: Asset is live in both CERT and PROD environments.
+- Geographic Restrictions: All assets are available in NY.
+- Effective Date: Immediately available using the symbol listed above.
+
+---
+
+#### RFQ Endpoints Impacted
+
+The following executable endpoints now support the above asset:
+
+##### Buy/Sell
+
+- Get quote: [POST /liquidity/rfq](https://docs.zerohash.com/reference/post_liquidity-rfq)
+- Execute quote: [POST /liquidity/execute](https://docs.zerohash.com/reference/post_liquidity-execute)
+
+##### Convert Withdraw
+
+- Get quote: [POST /convert\_withdraw/rfq](https://docs.zerohash.com/reference/post_convert-withdraw-rfq)
+- Execute quote: [POST /convert\_withdraw/execute](https://docs.zerohash.com/reference/post_convert-withdraw-execute)
+
+##### Deposit
+
+- Create deposit address: [POST /deposits/digital\_asset\_address](https://docs.zerohash.com/reference/post_deposits-digital-asset-addresses)
+
+##### Withdraw
+
+- Create withdrawal request: [POST /withdrawals/requests](https://docs.zerohash.com/reference/post_withdrawals-requests)
+
+##### Fund
+
+- [SDK support]
+- Get quote: [POST /fund/rfq](https://docs.zerohash.com/reference/post_fund-rfq)
+- Get fund transactions: [GET /fund/transactions](https://docs.zerohash.com/reference/get_fund-transactions)
+
+---
+
+#### Relevant Documentation
+
+For a full list of supported assets and instruments, please use the links below.
+
+##### Supported Assets
+
+- [Production](https://docs.zerohash.com/page/what-assets-do-you-support-two)
+- [Certification](https://docs.zerohash.com/page/cert-environment-assets)
+
+##### Supported Instruments
+
+- [Production](https://docs.zerohash.com/page/production-environment)
+- [Certification](https://docs.zerohash.com/page/certification-environment-instruments)
+</Update>
+
+<Update label="February 27th, 2026" description="Informational, no action required from platforms">
+### USDCX.CANTON now available across Trade/Transact; CC now available in NY
+
+#### Summary
+
+zerohash is pleased to announce the addition of new assets, expanding your trading and platform capabilities.
+
+| Asset Name | Symbol | Notes |
+| --- | --- | --- |
+| USDCx (Canton) | `USDCX.CANTON` | Not available in NY |
+| CC | `CC` | Previously unavailable in NY, now enabled |
+
+#### Availability
+
+| Asset | RFQ | CLOB | Custody | Fund | Payments |
+| --- | --- | --- | --- | --- | --- |
+| `USDCx.CANTON` | ✔️ | ❌ | ✔️ | ✔️ | ✔️ |
+| `CC` | ✔️ | ✔️ | ✔️ | ✔️ | ✔️ |
+
+- Environments: Asset is live in both CERT and PROD environments.
+- Geographic Restrictions: USDCx is not enabled in NY at this time. CC is now enabled in NY.
+- Effective Date: Immediately available using the symbol listed above.
+
+---
+
+#### RFQ Endpoints Impacted
+
+The following executable endpoints now support the above asset:
+
+##### Buy/Sell
+
+- Get quote: [POST /liquidity/rfq](https://docs.zerohash.com/reference/post_liquidity-rfq)
+- Execute quote: [POST /liquidity/execute](https://docs.zerohash.com/reference/post_liquidity-execute)
+
+##### Convert Withdraw
+
+- Get quote: [POST /convert\_withdraw/rfq](https://docs.zerohash.com/reference/post_convert-withdraw-rfq)
+- Execute quote: [POST /convert\_withdraw/execute](https://docs.zerohash.com/reference/post_convert-withdraw-execute)
+
+##### Deposit
+
+- Create deposit address: [POST /deposits/digital\_asset\_address](https://docs.zerohash.com/reference/post_deposits-digital-asset-addresses)
+
+##### Withdraw
+
+- Create withdrawal request: [POST /withdrawals/requests](https://docs.zerohash.com/reference/post_withdrawals-requests)
+
+##### Fund
+
+- [SDK support]
+- Get quote: [POST /fund/rfq](https://docs.zerohash.com/reference/post_fund-rfq)
+- Get fund transactions: [GET /fund/transactions](https://docs.zerohash.com/reference/get_fund-transactions)
+
+---
+
+#### CLOB Endpoints Impacted
+
+The following executable endpoints now support the above assets:
+
+- Create account: [POST /clob/accounts](https://docs.zerohash.com/reference/post_clob-accounts)
+- Get accounts: [GET /clob/accounts](https://docs.zerohash.com/reference/get_clob-accounts)
+- Update CLOB account: [PATCH /clob/accounts](https://docs.zerohash.com/reference/patch_clob-accounts)
+- Search orders: [POST /orders/v1/search\_orders](https://docs.zerohash.com/reference/post_orders-v1-search-orders)
+- Get open orders: [POST /orders/v1/get\_open\_orders](https://docs.zerohash.com/reference/post_orders-v1-get-open-orders)
+- Search executions: [POST /orders/v1/search\_executions](https://docs.zerohash.com/reference/post_orders-v1-search-executions)
+- Create order subscriptions: [POST /orders/v1/create\_order\_subscription](https://docs.zerohash.com/reference/post_orders-v1-create-order-subscription)
+- Submit order: [POST /orders/v1/insert\_order](https://docs.zerohash.com/reference/post_orders-v1-insert-order)
+- Cancel order: [POST /orders/v1/cancel\_order](https://docs.zerohash.com/reference/post_orders-v1-cancel-order)
+- Market data subscription: [POST /orders/v1/create\_market\_data\_subscription](https://docs.zerohash.com/reference/post_orders-v1-create-market-data-subscription)
+- List instruments: [POST /orders/v1/list\_instruments](https://docs.zerohash.com/reference/post_orders-v1-list-instruments)
+- Trade stats: [POST /orders/v1/get\_trade\_stats](https://docs.zerohash.com/reference/post_orders-v1-get-trade-stats)
+
+---
+
+#### Relevant Documentation
+
+For a full list of supported assets and instruments, please use the links below.
+
+##### Supported Assets
+
+- [Production](https://docs.zerohash.com/page/what-assets-do-you-support-two)
+- [Certification](https://docs.zerohash.com/page/cert-environment-assets)
+
+##### Supported Instruments
+
+- [Production](https://docs.zerohash.com/page/production-environment)
+- [Certification](https://docs.zerohash.com/page/certification-environment-instruments)
+</Update>
+
+<Update label="February 18th, 2026" description="Informational, no action required from platforms">
+### Recovery SDK
+
+#### Summary
+
+zerohash has launched its new Recovery SDK - an embeddable component that empowers end users to self-serve recovery withdrawals. Platforms can integrate this SDK with minimal dev effort and by following the full, end-to-end [integration guide](https://docs.zerohash.com/docs/non-auth)
+
+#### Use Case
+
+**For platforms using the [Auth Standalone product](https://docs.zerohash.com/docs/auth-standalone), if transfers to non-Auth destinations are restricted, users can be seamlessly routed into the Recovery flow.**
+
+Powered by the Recovery SDK, this embedded experience allows users to complete a compliant self-serve recovery withdrawal, without requiring manual support intervention.
+
+Please reach out to your zerohash contact if you have any questions.
+
+#### Relevant Documentation
+
+- [Recovery SDK integration guide](https://docs.zerohash.com/docs/non-auth)
+- [Auth Validate](/docs/auth-validate)
+- [Auth - Home Page](/docs/auth)
+</Update>
+
+<Update label="February 17th, 2026" description="Informational, no action required from platforms.">
+### Crypto Trading Now Live in Europe
+
+#### Summary
+
+This release marks the official expansion of our Central Limit Order Book (CLOB) functionality into the European (EU) region. This infrastructure update allows institutional brokers and European participants to trade USD-denominated crypto pairs with optimized liquidity routing and a new flexible funding architecture.
+
+To accommodate various institutional needs, we have introduced a dual-model system for the EU:
+
+- Float Model: Mirrors the existing U.S. framework where trades settle directly against available balances.
+- Order-Based Suspense Model (New): Designed specifically for Institutional Brokers (IBs). This enables suspense-based trade orchestration and post-trade reconciliation, allowing for more complex settlement workflows.
+
+#### Relevant Documentation
+
+For details on CLOB integration and supported instruments, please use the links below.
+
+##### CLOB Documentation
+
+- [CLOB API Docs](https://docs.zerohash.com/reference/central-limit-order-book)
+- [CLOB Account Creation](https://api.cert.zerohash.com/clob/accounts)
+
+##### Supported Instruments
+
+- [CLOB Instrument List](https://api.cert.zerohash.com/orders/v1/list_instruments)
+</Update>
+
+<Update label="January 23rd, 2026">
+### CLOB FIX Messaging Enhancement: Balance Rejections
+
+#### FIX Order Gateway
+
+zerohash is happy to announce a new optional feature to allow CLOB participants to reliably identify `NewOrderSingle` and `OrderCancelReplaceRequest` rejections stemming from insufficient balance on the given account.
+
+##### NewOrderSingles
+
+If enabled, `NewOrderSingles` rejected due to insufficient buying power now have an `OrdRejReason` (Tag `<103>`) of `"Insufficient credit limit"` with value `25`, instead of `“Exchange option”` with the value `0`.
+
+##### OrderCancelReplaceRequest
+
+Similarly, if enabled, `OrderCancelReplaceRequests` rejected due to insufficient buying power now have a `CxlRejReason` (Tag `<102>`) of `“Insufficient credit limit”` with value `25`, instead of `“Exchange option”` with value of `2`.
+</Update>
+
+<Update label="January 8th, 2026" description="Informational, no action required from platforms">
+### MON now available on zerohash CLOB
+
+#### Summary
+
+zerohash is pleased to announce the addition of the following new asset on CLOB, expanding your trading and platform capabilities:
+
+| Asset Name | Symbol | Notes |
+| --- | --- | --- |
+| Monad | `MON` | Previously RFQ only; not available in NY. |
+
+#### Availability
+
+| Asset | RFQ | CLOB | Custody | Fund | Payments |
+| --- | --- | --- | --- | --- | --- |
+| `MON` | ✔️ | ✔️ | ✔️ | ✔️ | ✔️ |
+
+- Environments: Asset is live in both CERT and PROD environments.
+- Geographic Restrictions: Asset is not enabled in New York at this time.
+- Effective Date: Immediately available using the symbols listed above.
+
+---
+
+#### CLOB Endpoints Impacted
+
+The following executable endpoints now support the above asset:
+
+- Create account: [POST /clob/accounts](https://docs.zerohash.com/reference/post_clob-accounts)
+- Get accounts: [GET /clob/accounts](https://docs.zerohash.com/reference/get_clob-accounts)
+- Update CLOB account: [PATCH /clob/accounts](https://docs.zerohash.com/reference/patch_clob-accounts)
+- Search orders: [POST /orders/v1/search\_orders](https://docs.zerohash.com/reference/post_orders-v1-search-orders)
+- Get open orders: [POST /orders/v1/get\_open\_orders](https://docs.zerohash.com/reference/post_orders-v1-get-open-orders)
+- Search executions: [POST /orders/v1/search\_executions](https://docs.zerohash.com/reference/post_orders-v1-search-executions)
+- Create order subscriptions: [POST /orders/v1/create\_order\_subscription](https://docs.zerohash.com/reference/post_orders-v1-create-order-subscription)
+- Submit order: [POST /orders/v1/insert\_order](https://docs.zerohash.com/reference/post_orders-v1-insert-order)
+- Cancel order: [POST /orders/v1/cancel\_order](https://docs.zerohash.com/reference/post_orders-v1-cancel-order)
+- Market data subscription: [POST /orders/v1/create\_market\_data\_subscription](https://docs.zerohash.com/reference/post_orders-v1-create-market-data-subscription)
+- List instruments: [POST /orders/v1/list\_instruments](https://docs.zerohash.com/reference/post_orders-v1-list-instruments)
+- Trade stats: [POST /orders/v1/get\_trade\_stats](https://docs.zerohash.com/reference/post_orders-v1-get-trade-stats)
+
+---
+
+#### Relevant Documentation
+
+For a full list of supported assets and instruments, please use the links below.
+
+##### Supported Assets
+
+- [Production](https://docs.zerohash.com/page/what-assets-do-you-support-two)
+- [Certification](https://docs.zerohash.com/page/cert-environment-assets)
+
+##### Supported Instruments
+
+- [Production](https://docs.zerohash.com/page/production-environment)
+- [Certification](https://docs.zerohash.com/page/certification-environment-instruments)
+</Update>
+
+<Update label="December 30th, 2025" description="Informational, no action required from platforms">
+### MON and USDC.MONAD now available across Trade and Transact
+
+#### Summary
+
+zerohash is pleased to announce the addition of the following new assets, expanding your trading and platform capabilities:
+
+| Asset Name | Symbol | Notes |
+| --- | --- | --- |
+| Monad | `MON` | Not available in NY |
+| USDC on Monad | `USDC.MONAD` | Not available in NY |
+
+#### Availability
+
+| Asset | RFQ | CLOB | Custody | Fund | Payments |
+| --- | --- | --- | --- | --- | --- |
+| `MON` | ✔️ | ❌ | ✔️ | ✔️ | ✔️ |
+| `USDC.MONAD` | ✔️ | ❌ | ✔️ | ✔️ | ✔️ |
+
+- Environments: Both assets are live in both CERT and PROD environments.
+- Geographic Restrictions: Both assets are not enabled in New York at this time.
+- Effective Date: Immediately available using the symbols listed above.
+
+---
+
+#### RFQ Endpoints Impacted
+
+The following executable endpoints now support the above assets:
+
+##### Buy/Sell
+
+- Get quote: [POST /liquidity/rfq](https://docs.zerohash.com/reference/post_liquidity-rfq)
+- Execute quote: [POST /liquidity/execute](https://docs.zerohash.com/reference/post_liquidity-execute)
+
+##### Convert Withdraw
+
+- Get quote: [POST /convert\_withdraw/rfq](https://docs.zerohash.com/reference/post_convert-withdraw-rfq)
+- Execute quote: [POST /convert\_withdraw/execute](https://docs.zerohash.com/reference/post_convert-withdraw-execute)
+
+##### Deposit
+
+- Create deposit address: [POST /deposits/digital\_asset\_address](https://docs.zerohash.com/reference/post_deposits-digital-asset-addresses)
+
+##### Withdraw
+
+- Create withdrawal request: [POST /withdrawals/requests](https://docs.zerohash.com/reference/post_withdrawals-requests)
+
+##### Fund
+
+- [SDK support]
+- Get quote: [POST /fund/rfq](https://docs.zerohash.com/reference/post_fund-rfq)
+- Get fund transactions: [GET /fund/transactions](https://docs.zerohash.com/reference/get_fund-transactions)
+
+---
+
+#### Relevant Documentation
+
+For a full list of supported assets and instruments, please use the links below.
+
+##### Supported Assets
+
+- [Production](https://docs.zerohash.com/page/what-assets-do-you-support-two)
+- [Certification](https://docs.zerohash.com/page/cert-environment-assets)
+
+##### Supported Instruments
+
+- [Production](https://docs.zerohash.com/page/production-environment)
+- [Certification](https://docs.zerohash.com/page/certification-environment-instruments)
+</Update>
+
+<Update label="December 22nd, 2025" description="Informational, no action required from platforms">
+### CELO now available in New York
+
+#### Summary
+
+zerohash is pleased to announce enablement in NY for the following asset, expanding your trading and platform capabilities.
+
+| Asset Name | Symbol | Notes |
+| --- | --- | --- |
+| Celo | `CELO` | Now available in NY |
+
+#### Availability
+
+| Asset | RFQ | CLOB | Custody | Fund | Payments |
+| --- | --- | --- | --- | --- | --- |
+| `CELO` | ✔️ | ❌ | ✔️ | ✔️ | ✔️ |
+
+- Environments: Asset is live in both CERT and PROD environments.
+- Effective Date: Immediately available using the symbols listed above.
+
+---
+
+#### RFQ Endpoints Impacted
+
+The following executable endpoints now support the above assets:
+
+##### Buy/Sell
+
+- Get quote: [POST /liquidity/rfq](https://docs.zerohash.com/reference/post_liquidity-rfq)
+- Execute quote: [POST /liquidity/execute](https://docs.zerohash.com/reference/post_liquidity-execute)
+
+##### Convert Withdraw
+
+- Get quote: [POST /convert\_withdraw/rfq](https://docs.zerohash.com/reference/post_convert-withdraw-rfq)
+- Execute quote: [POST /convert\_withdraw/execute](https://docs.zerohash.com/reference/post_convert-withdraw-execute)
+
+##### Deposit
+
+- Create deposit address: [POST /deposits/digital\_asset\_address](https://docs.zerohash.com/reference/post_deposits-digital-asset-addresses)
+
+##### Withdraw
+
+- Create withdrawal request: [POST /withdrawals/requests](https://docs.zerohash.com/reference/post_withdrawals-requests)
+
+##### Fund
+
+- [SDK support]
+- Get quote: [POST /fund/rfq](https://docs.zerohash.com/reference/post_fund-rfq)
+- Get fund transactions: [GET /fund/transactions](https://docs.zerohash.com/reference/get_fund-transactions)
+
+---
+
+#### Relevant Documentation
+
+For a full list of supported assets and instruments, please use the links below.
+
+##### Supported Assets
+
+- [Production](https://docs.zerohash.com/page/what-assets-do-you-support-two)
+- [Certification](https://docs.zerohash.com/page/cert-environment-assets)
+
+##### Supported Instruments
+
+- [Production](https://docs.zerohash.com/page/production-environment)
+- [Certification](https://docs.zerohash.com/page/certification-environment-instruments)
+</Update>
+
+<Update label="December 19th, 2025" description="Informational, no action required from platforms">
+### USDC.BSC and USDT.BSC now available across Trade and Transact
+
+#### Summary
+
+zerohash is pleased to announce the addition of two new assets, expanding your trading and platform capabilities.
+
+| Asset Name | Symbol | Notes |
+| --- | --- | --- |
+| USDC on Binance Smart Chain | `USDC.BSC` | Custody precision is 18; Not available in NY |
+| Tether on Binance Smart Chain | `USDT.BSC` | Custody precision is 18; Not available in NY |
+
+<Warning>
+##### Please note these assets use non-standard precision. Custody precision is 18 for both USDC.BSC and USDT.BSC .
+</Warning>
+
+#### Availability
+
+| Asset | RFQ | CLOB | Custody | Fund | Payments |
+| --- | --- | --- | --- | --- | --- |
+| `USDC.BSC` | ✔️ | ❌ | ✔️ | ✔️ | ✔️ |
+| `USDT.BSC` | ✔️ | ❌ | ✔️ | ✔️ | ✔️ |
+
+- Environments: Both assets are live in both CERT and PROD environments.
+- Geographic Restrictions: Both assets are not enabled in New York at this time.
+- Effective Date: Immediately available using the symbols listed above.
+
+---
+
+#### RFQ Endpoints Impacted
+
+The following executable endpoints now support the above assets:
+
+##### Buy/Sell
+
+- Get quote: [POST /liquidity/rfq](https://docs.zerohash.com/reference/post_liquidity-rfq)
+- Execute quote: [POST /liquidity/execute](https://docs.zerohash.com/reference/post_liquidity-execute)
+
+##### Convert Withdraw
+
+- Get quote: [POST /convert\_withdraw/rfq](https://docs.zerohash.com/reference/post_convert-withdraw-rfq)
+- Execute quote: [POST /convert\_withdraw/execute](https://docs.zerohash.com/reference/post_convert-withdraw-execute)
+
+##### Deposit
+
+- Create deposit address: [POST /deposits/digital\_asset\_address](https://docs.zerohash.com/reference/post_deposits-digital-asset-addresses)
+
+##### Withdraw
+
+- Create withdrawal request: [POST /withdrawals/requests](https://docs.zerohash.com/reference/post_withdrawals-requests)
+
+##### Fund
+
+- [SDK support]
+- Get quote: [POST /fund/rfq](https://docs.zerohash.com/reference/post_fund-rfq)
+- Get fund transactions: [GET /fund/transactions](https://docs.zerohash.com/reference/get_fund-transactions)
+
+---
+
+#### Relevant Documentation
+
+For a full list of supported assets and instruments, please use the links below.
+
+##### Supported Assets
+
+- [Production](https://docs.zerohash.com/page/what-assets-do-you-support-two)
+- [Certification](https://docs.zerohash.com/page/cert-environment-assets)
+
+##### Supported Instruments
+
+- [Production](https://docs.zerohash.com/page/production-environment)
+- [Certification](https://docs.zerohash.com/page/certification-environment-instruments)
+</Update>
+
+<Update label="December 17th, 2025">
+### Update to CLOB Trading Model
+
+### Overview
+
+zerohash currently acts as the Central Counter Party (CCP) for trades that match on the Central Limit Order Book. We are transitioning away from acting as CCP and trades will now be directly booked against the counterparty of the trade which will remain anonymous.
+
+As part of this transition, we are updating the CLOB trade-booking structure such that the counterparty on each trade will appear as an anonymous participant, rather than the zerohash participant's inventory account.
+
+#### Non Material Update to GET /trades Endpoint
+
+##### Scenario 1: Customer Fills Against External Party
+
+The shape of the `parties` attribute will not change, however, the `participant_code` field will now always display `Anonymous`. The full payload remains the same, as seen below:
+
+```json
+{
+    "parties": [
+        {
+            "settling": true,
+            "participant_code": "CUST01",
+            "side": "buy",
+            "asset": "BTC",
+            "amount": "0.0001",
+            "liquidity_indicator": null,
+            "execution_id": "execution-id",
+            "order_id": "order-id",
+            "obligations_outstanding_timestamp": 1762201548140,
+            "current_obligations_met_timestamp": null,
+            "settlement_state": "settled",
+            "client_order_id": "client-order-id",
+            "collateral_percentage": null,
+            "account_label": "label",
+            "account_profile": "prefunded",
+            "trader": "PLAT01",
+            "commission": "0.11",
+            "commission_asset": "USD"
+        },
+        {
+            "participant_code": "Anonymous",
+            "side": "sell",
+            "asset": "USD",
+            "amount": "10.67",
+            "liquidity_indicator": null
+        }
+    ]
+}
+```
+
+##### Scenario 2: Customer Fills Against Internal Party
+
+Where two parties of the same platform execute against one another, the two parties will show in the same `parties` object. In the sample response below, `execution_id` should be used for either party to identify the trade.
+
+```json
+{
+  "parties": [
+    {
+      "settling": true,
+      "participant_code": "CUST01",
+      "side": "sell",
+      "asset": "USD",
+      "amount": "10",
+      "liquidity_indicator": null,
+      "execution_id": "6XRHR4TG003Y",
+      "order_id": "6WW50NV1862G",
+      "obligations_outstanding_timestamp": 1765456952163,
+      "current_obligations_met_timestamp": null,
+      "settlement_state": "obligations_outstanding",
+      "client_order_id": "1167639010536696210000",
+      "collateral_percentage": null,
+      "account_label": "0ca185ce-392b-4814-9eae-add8e629bdd4",
+      "account_profile": "nonprefunded",
+      "trader": "CUST01",
+      "commission": "0",
+      "commission_asset": "USD"
+    },
+    {
+      "settling": true,
+      "participant_code": "CUST02",
+      "side": "buy",
+      "asset": "ETH",
+      "amount": "0.0001",
+      "liquidity_indicator": null,
+      "execution_id": "6XRHR4TG203Y",
+      "order_id": "6WW50NV1662G",
+      "obligations_outstanding_timestamp": 1765456952163,
+      "current_obligations_met_timestamp": null,
+      "settlement_state": "obligations_outstanding",
+      "client_order_id": "1166639010536259566000",
+      "collateral_percentage": null,
+      "account_label": "dc087f25-0bd3-4b3d-9f40-b36607550149",
+      "account_profile": "nonprefunded",
+      "trader": "CUST02",
+      "commission": "0",
+      "commission_asset": "USD"
+    }
+```
+</Update>
+
+<Update label="December 5th, 2025" description="Informational, no action required from platforms">
+### CELO, USDT.CELO, and USDC.CELO now available for Custody, Trading, and Fund
+
+#### Summary
+
+zerohash is pleased to announce the addition of three new assets, expanding your trading and platform capabilities.
+
+These assets are now available to buy, sell, deposit, withdraw and [Fund](/docs/fund-overview):
+
+| Asset Name | Symbol | Notes |
+| --- | --- | --- |
+| Celo | `CELO` | Not available in New York |
+| Tether on Celo | `USDT.CELO` | Not available in New York |
+| USDC on Celo | `USDC.CELO` | Not available in New York |
+
+#### Availability
+
+- Environments: All assets are live in both CERT and PROD environments.
+- Geographic Restrictions: All assets are not enabled in New York at this time.
+- Effective Date: Immediately available using the symbols listed above.
+
+---
+
+#### RFQ Endpoints Impacted
+
+The following executable endpoints now support the above assets:
+
+##### Buy/Sell
+
+- Get quote: [GET /liquidity/rfq](https://docs.zerohash.com/reference/post_liquidity-rfq)
+- Get quote: [POST /liquidity/rfq](https://docs.zerohash.com/reference/post_liquidity-rfq)
+- Execute quote: [POST /liquidity/execute](https://docs.zerohash.com/reference/post_liquidity-execute)
+
+##### Convert Withdraw
+
+- Get quote: [POST /convert\_withdraw/rfq](https://docs.zerohash.com/reference/post_convert-withdraw-rfq)
+- Execute quote: [POST /convert\_withdraw/execute](https://docs.zerohash.com/reference/post_convert-withdraw-execute)
+
+##### Deposit
+
+- Create deposit address: [POST /deposits/digital\_asset\_address](https://docs.zerohash.com/reference/post_deposits-digital-asset-addresses)
+
+##### Withdraw
+
+- Create withdrawal request: [POST /withdrawals/requests](https://docs.zerohash.com/reference/post_withdrawals-requests)
+
+##### Fund
+
+- [SDK support]
+- Get quote: [POST /fund/rfq](https://docs.zerohash.com/reference/post_fund-rfq)
+- Get fund transactions: [GET /fund/transactions](https://docs.zerohash.com/reference/get_fund-transactions)
+
+---
+
+#### Relevant Documentation
+
+For a full list of supported assets and instruments, please use the links below.
+
+##### Supported Assets
+
+- [Production](https://docs.zerohash.com/page/what-assets-do-you-support-two)
+- [Certification](https://docs.zerohash.com/page/cert-environment-assets)
+
+##### Supported Instruments
+
+- [Production](https://docs.zerohash.com/page/production-environment)
+- [Certification](https://docs.zerohash.com/page/certification-environment-instruments)
+</Update>
+
+<Update label="December 3rd, 2025">
+### Multiple Tenant Accounts
+
+### Summary
+
+zerohash now supports a formal Customer Accounts model, enabling platforms to create and manage multi-participant CLOB trading accounts, including custodial (UTMA), trust, joint (JTIC / JTWROS), and accounts with an added financial advisor.
+
+New customer-account identifiers use the ZRN schema `zrn:zh:<geo>:accounts:customer:<id>`  
+Legacy unqualified IDs continue to be supported for full backward compatibility.
+
+Multi-tenant accounts now include configurable tenant roles (primary / secondary participants) and authorization levels (full-trading, limited-trading, or view-only). Platforms may also attach a financial advisor with controlled access.
+
+### No Action for Platforms
+
+No mandatory migration. Existing integrations keep working. But you may now support joint, custodial, or trust-based accounts by adopting the new account-type schema when calling `POST /accounts`.
+
+### Related Endpoints
+
+- Create customer account: [POST /accounts](https://docs.zerohash.com/reference/post_accounts)
+- Get account details: [GET /accounts/\{zrn\}/details](https://docs.zerohash.com/reference-link/get_accounts-zrn-details)
+- Update customer account: [PATCH /accounts/\{zrn\}](https://docs.zerohash.com/reference-link/patch_accounts-zrn)
+- Add tenant to customer account: [POST /accounts/\{zrn\}/tenants](https://docs.zerohash.com/reference-link/post_accounts-zrn-tenants)
+- Remove tenant from customer account: [DELETE /accounts/\{zrn\}/tenants/\{tenant\}](https://docs.zerohash.com/reference-link/delete_accounts-zrn-tenants-tenant)
+- Add advisor to customer account: [POST /accounts/\{zrn\}/advisors](https://docs.zerohash.com/reference-link/post_accounts-zrn-advisors)
+- Remove advisor from customer account: [DELETE /accounts/\{zrn\}/advisors](https://docs.zerohash.com/reference-link/delete_accounts-zrn-advisors-financial-advisor)
+
+For more information and example use cases, see our [Customer Accounts Guide](/docs/customer-accounts-guide)
+</Update>
+
+<Update label="December 3rd, 2025" description="Informational, no action required from platforms">
+### PENGU now available across Trade and Transact
+
+#### Summary
+
+zerohash is pleased to announce the addition of a new asset, Pudgy Penguins (`PENGU.SOL`), expanding your trading and platform capabilities.
+
+This asset is now available to buy, sell, deposit, withdraw and [Fund](/docs/fund-overview):
+
+| Asset Name | Symbol | Notes |
+| --- | --- | --- |
+| Pudgy Penguins | `PENGU.SOL` | Not available in New York |
+
+#### Availability
+
+| Asset | RFQ | CLOB | Custody | Fund | Payments |
+| --- | --- | --- | --- | --- | --- |
+| `PENGU.SOL` | ✔️ | ❌ | ✔️ | ✔️ | ✔️ |
+
+- Environments: Asset is live in both CERT and PROD environments.
+- Geographic Restrictions: Asset is not enabled in New York at this time.
+- Effective Date: Immediately available using the symbol listed above.
+
+---
+
+#### RFQ Endpoints Impacted
+
+The following executable endpoints now supports the above asset:
+
+##### Buy/Sell
+
+- Get quote: [POST /liquidity/rfq](https://docs.zerohash.com/reference/post_liquidity-rfq)
+- Execute quote: [POST /liquidity/execute](https://docs.zerohash.com/reference/post_liquidity-execute)
+
+##### Convert Withdraw
+
+- Get quote: [POST /convert\_withdraw/rfq](https://docs.zerohash.com/reference/post_convert-withdraw-rfq)
+- Execute quote: [POST /convert\_withdraw/execute](https://docs.zerohash.com/reference/post_convert-withdraw-execute)
+
+##### Deposit
+
+- Create deposit address: [POST /deposits/digital\_asset\_address](https://docs.zerohash.com/reference/post_deposits-digital-asset-addresses)
+
+##### Withdraw
+
+- Create withdrawal request: [POST /withdrawals/requests](https://docs.zerohash.com/reference/post_withdrawals-requests)
+
+##### Fund
+
+- [SDK support]
+- Get quote: [POST /fund/rfq](https://docs.zerohash.com/reference/post_fund-rfq)
+- Get fund transactions: [GET /fund/transactions](https://docs.zerohash.com/reference/get_fund-transactions)
+
+---
+
+#### Relevant Documentation
+
+For a full list of supported assets and instruments, please use the links below.
+
+##### Supported Assets
+
+- [Production](https://docs.zerohash.com/page/what-assets-do-you-support-two)
+- [Certification](https://docs.zerohash.com/page/cert-environment-assets)
+
+##### Supported Instruments
+
+- [Production](https://docs.zerohash.com/page/production-environment)
+- [Certification](https://docs.zerohash.com/page/certification-environment-instruments)
+</Update>
+
+<Update label="November 28th, 2025" description="Informational, no action required from platforms">
+### TRX and USDT.TRX now available across Trade and Transact
+
+#### Summary
+
+zerohash is pleased to announce the addition of two new assets, TRON (TRX) and Tether on TRON (USDT.TRX), expanding your trading and platform capabilities.
+
+| Asset Name | Symbol | Notes |
+| --- | --- | --- |
+| TRON | `TRX` | Not enabled in NY. |
+| Tether on TRON | `USDT.TRX` | Not available on CLOB; Not enabled in NY. |
+
+#### Availability
+
+| Asset | RFQ | CLOB | Fund | Payments |
+| --- | --- | --- | --- | --- |
+| `TRX` | ✔️ | ✔️ | ✔️ | ✔️ |
+| `USDT.TRX` | ✔️ | ❌ | ✔️ | ✔️ |
+
+- Environments: `TRX` is live in both CERT and PROD environments. `USDT.TRX` is only live in PROD.
+- Geographic Restrictions: Both assets are not enabled in New York at this time.
+- Effective Date: Immediately available using the symbols listed above.
+
+---
+
+#### RFQ Endpoints Impacted
+
+The following executable endpoints now support the above assets:
+
+##### Buy/Sell
+
+- Get quote: [POST /liquidity/rfq](https://docs.zerohash.com/reference/post_liquidity-rfq)
+- Execute quote: [POST /liquidity/execute](https://docs.zerohash.com/reference/post_liquidity-execute)
+
+##### Convert Withdraw
+
+- Get quote: [POST /convert\_withdraw/rfq](https://docs.zerohash.com/reference/post_convert-withdraw-rfq)
+- Execute quote: [POST /convert\_withdraw/execute](https://docs.zerohash.com/reference/post_convert-withdraw-execute)
+
+##### Deposit
+
+- Create deposit address: [POST /deposits/digital\_asset\_address](https://docs.zerohash.com/reference/post_deposits-digital-asset-addresses)
+
+##### Withdraw
+
+- Create withdrawal request: [POST /withdrawals/requests](https://docs.zerohash.com/reference/post_withdrawals-requests)
+
+##### Fund
+
+- [SDK support]
+- Get quote: [POST /fund/rfq](https://docs.zerohash.com/reference/post_fund-rfq)
+- Get fund transactions: [GET /fund/transactions](https://docs.zerohash.com/reference/get_fund-transactions)
+
+---
+
+#### CLOB Endpoints Impacted
+
+The following executable endpoints now support `TRX`:
+
+- Create account: [POST /clob/accounts](https://docs.zerohash.com/reference/post_clob-accounts)
+- Get accounts: [GET /clob/accounts](https://docs.zerohash.com/reference/get_clob-accounts)
+- Update CLOB account: [PATCH /clob/accounts](https://docs.zerohash.com/reference/patch_clob-accounts)
+- Search orders: [POST /orders/v1/search\_orders](https://docs.zerohash.com/reference/post_orders-v1-search-orders)
+- Get open orders: [POST /orders/v1/get\_open\_orders](https://docs.zerohash.com/reference/post_orders-v1-get-open-orders)
+- Search executions: [POST /orders/v1/search\_executions](https://docs.zerohash.com/reference/post_orders-v1-search-executions)
+- Create order subscriptions: [POST /orders/v1/create\_order\_subscription](https://docs.zerohash.com/reference/post_orders-v1-create-order-subscription)
+- Submit order: [POST /orders/v1/insert\_order](https://docs.zerohash.com/reference/post_orders-v1-insert-order)
+- Cancel order: [POST /orders/v1/cancel\_order](https://docs.zerohash.com/reference/post_orders-v1-cancel-order)
+- Market data subscription: [POST /orders/v1/create\_market\_data\_subscription](https://docs.zerohash.com/reference/post_orders-v1-create-market-data-subscription)
+- List instruments: [POST /orders/v1/list\_instruments](https://docs.zerohash.com/reference/post_orders-v1-list-instruments)
+- Trade stats: [POST /orders/v1/get\_trade\_stats](https://docs.zerohash.com/reference/post_orders-v1-get-trade-stats)
+
+---
+
+#### Relevant Documentation
+
+For a full list of supported assets and instruments, please use the links below.
+
+##### Supported Assets
+
+- [Production](https://docs.zerohash.com/page/what-assets-do-you-support-two)
+- [Certification](https://docs.zerohash.com/page/cert-environment-assets)
+
+##### Supported Instruments
+
+- [Production](https://docs.zerohash.com/page/production-environment)
+- [Certification](https://docs.zerohash.com/page/certification-environment-instruments)
+</Update>
+
+<Update label="November 20th, 2025" description="Informational, no action required from platforms">
+### TIA now available on zerohash CLOB and RFQ
+
+#### Summary
+
+zerohash is pleased to announce expanded CLOB and RFQ support for Celestia (TIA).
+
+This asset is now available for trading (buy/sell), deposits, withdrawals, custody, and [Fund](/docs/fund-overview) operations:
+
+| Asset Name | Symbol | Notes |
+| --- | --- | --- |
+| Celestia | `TIA` | Available in NY |
+
+#### Availability
+
+- Environments: TIA is live in both CERT and PROD environments.
+- Effective Date: Immediately available using the symbol listed above.
+
+---
+
+#### RFQ Endpoints Impacted
+
+The following executable endpoints now support the above assets:
+
+##### Buy/Sell
+
+- Get quote: [POST /liquidity/rfq](https://docs.zerohash.com/reference/post_liquidity-rfq)
+- Execute quote: [POST /liquidity/execute](https://docs.zerohash.com/reference/post_liquidity-execute)
+
+##### Convert Withdraw
+
+- Get quote: [POST /convert\_withdraw/rfq](https://docs.zerohash.com/reference/post_convert-withdraw-rfq)
+- Execute quote: [POST /convert\_withdraw/execute](https://docs.zerohash.com/reference/post_convert-withdraw-execute)
+
+##### Deposit
+
+- Create deposit address: [POST /deposits/digital\_asset\_address](https://docs.zerohash.com/reference/post_deposits-digital-asset-addresses)
+
+##### Withdraw
+
+- Create withdrawal request: [POST /withdrawals/requests](https://docs.zerohash.com/reference/post_withdrawals-requests)
+
+##### Fund
+
+- [SDK support]
+- Get quote: [POST /fund/rfq](https://docs.zerohash.com/reference/post_fund-rfq)
+- Get fund transactions: [GET /fund/transactions](https://docs.zerohash.com/reference/get_fund-transactions)
+
+---
+
+#### CLOB Endpoints Impacted
+
+The following executable endpoints now support the above assets:
+
+- Create account: [POST /clob/accounts](https://docs.zerohash.com/reference/post_clob-accounts)
+- Get accounts: [GET /clob/accounts](https://docs.zerohash.com/reference/get_clob-accounts)
+- Update CLOB account: [PATCH /clob/accounts](https://docs.zerohash.com/reference/patch_clob-accounts)
+- Search orders: [POST /orders/v1/search\_orders](https://docs.zerohash.com/reference/post_orders-v1-search-orders)
+- Get open orders: [POST /orders/v1/get\_open\_orders](https://docs.zerohash.com/reference/post_orders-v1-get-open-orders)
+- Search executions: [POST /orders/v1/search\_executions](https://docs.zerohash.com/reference/post_orders-v1-search-executions)
+- Create order subscriptions: [POST /orders/v1/create\_order\_subscription](https://docs.zerohash.com/reference/post_orders-v1-create-order-subscription)
+- Submit order: [POST /orders/v1/insert\_order](https://docs.zerohash.com/reference/post_orders-v1-insert-order)
+- Cancel order: [POST /orders/v1/cancel\_order](https://docs.zerohash.com/reference/post_orders-v1-cancel-order)
+- Market data subscription: [POST /orders/v1/create\_market\_data\_subscription](https://docs.zerohash.com/reference/post_orders-v1-create-market-data-subscription)
+- List instruments: [POST /orders/v1/list\_instruments](https://docs.zerohash.com/reference/post_orders-v1-list-instruments)
+- Trade stats: [POST /orders/v1/get\_trade\_stats](https://docs.zerohash.com/reference/post_orders-v1-get-trade-stats)
+
+---
+
+#### Relevant Documentation
+
+For a full list of supported assets and instruments, please use the links below.
+
+##### Supported Assets
+
+- [Production](https://docs.zerohash.com/page/what-assets-do-you-support-two)
+- [Certification](https://docs.zerohash.com/page/cert-environment-assets)
+
+##### Supported Instruments
+
+- [Production](https://docs.zerohash.com/page/production-environment)
+- [Certification](https://docs.zerohash.com/page/certification-environment-instruments)
+</Update>
+
+<Update label="November 11th, 2025" description="Informational, no action required from platforms">
+### CC now available on zerohash CLOB and RFQ
+
+#### Summary
+
+zerohash is pleased to announce expanded CLOB and RFQ support for Canton Coin (CC).
+
+This asset is now available for trading (buy/sell), deposits, withdrawals, custody, and [Fund](/docs/fund-overview) operations:
+
+| Asset Name | Symbol | Notes |
+| --- | --- | --- |
+| Canton Coin | `CC` | Previously only available for Custody; not available in New York |
+
+#### Availability
+
+- Environments: CC is live in both CERT and PROD environments.
+- Geographic Restrictions: CC is not enabled in New York at this time.
+- Effective Date: Immediately available using the symbol listed above.
+
+---
+
+#### RFQ Endpoints Impacted
+
+The following executable endpoints now support the above assets:
+
+##### Buy/Sell
+
+- Get quote: [POST /liquidity/rfq](https://docs.zerohash.com/reference/post_liquidity-rfq)
+- Execute quote: [POST /liquidity/execute](https://docs.zerohash.com/reference/post_liquidity-execute)
+
+##### Convert Withdraw
+
+- Get quote: [POST /convert\_withdraw/rfq](https://docs.zerohash.com/reference/post_convert-withdraw-rfq)
+- Execute quote: [POST /convert\_withdraw/execute](https://docs.zerohash.com/reference/post_convert-withdraw-execute)
+
+##### Deposit
+
+- Create deposit address: [POST /deposits/digital\_asset\_address](https://docs.zerohash.com/reference/post_deposits-digital-asset-addresses)
+
+##### Withdraw
+
+- Create withdrawal request: [POST /withdrawals/requests](https://docs.zerohash.com/reference/post_withdrawals-requests)
+
+##### Fund
+
+- [SDK support]
+- Get quote: [POST /fund/rfq](https://docs.zerohash.com/reference/post_fund-rfq)
+- Get fund transactions: [GET /fund/transactions](https://docs.zerohash.com/reference/get_fund-transactions)
+
+---
+
+#### CLOB Endpoints Impacted
+
+The following executable endpoints now support the above assets:
+
+- Create account: [POST /clob/accounts](https://docs.zerohash.com/reference/post_clob-accounts)
+- Get accounts: [GET /clob/accounts](https://docs.zerohash.com/reference/get_clob-accounts)
+- Update CLOB account: [PATCH /clob/accounts](https://docs.zerohash.com/reference/patch_clob-accounts)
+- Search orders: [POST /orders/v1/search\_orders](https://docs.zerohash.com/reference/post_orders-v1-search-orders)
+- Get open orders: [POST /orders/v1/get\_open\_orders](https://docs.zerohash.com/reference/post_orders-v1-get-open-orders)
+- Search executions: [POST /orders/v1/search\_executions](https://docs.zerohash.com/reference/post_orders-v1-search-executions)
+- Create order subscriptions: [POST /orders/v1/create\_order\_subscription](https://docs.zerohash.com/reference/post_orders-v1-create-order-subscription)
+- Submit order: [POST /orders/v1/insert\_order](https://docs.zerohash.com/reference/post_orders-v1-insert-order)
+- Cancel order: [POST /orders/v1/cancel\_order](https://docs.zerohash.com/reference/post_orders-v1-cancel-order)
+- Market data subscription: [POST /orders/v1/create\_market\_data\_subscription](https://docs.zerohash.com/reference/post_orders-v1-create-market-data-subscription)
+- List instruments: [POST /orders/v1/list\_instruments](https://docs.zerohash.com/reference/post_orders-v1-list-instruments)
+- Trade stats: [POST /orders/v1/get\_trade\_stats](https://docs.zerohash.com/reference/post_orders-v1-get-trade-stats)
+
+---
+
+#### Relevant Documentation
+
+For a full list of supported assets and instruments, please use the links below.
+
+##### Supported Assets
+
+- [Production](https://docs.zerohash.com/page/what-assets-do-you-support-two)
+- [Certification](https://docs.zerohash.com/page/cert-environment-assets)
+
+##### Supported Instruments
+
+- [Production](https://docs.zerohash.com/page/production-environment)
+- [Certification](https://docs.zerohash.com/page/certification-environment-instruments)
+</Update>
+
+<Update label="November 11th, 2025" description="Informational, no action required from platforms">
+### XPL now available on zerohash CLOB
+
+#### Summary
+
+zerohash is pleased to announce support for Plasma (XPL) on our CLOB. This asset is now available for trading (buy/sell), deposits, withdrawals, custody, and [Fund](/docs/fund-overview) operations:
+
+| Asset Name | Symbol | Notes |
+| --- | --- | --- |
+| Plasma | `XPL` | Previously RFQ only; not available in New York |
+
+#### Availability
+
+- Environments: Asset is live in both CERT and PROD environments.
+- Geographic Restrictions: XPL is not enabled for New York users at this time.
+- Effective Date: Immediately available using the symbol listed above.
+
+---
+
+#### CLOB Endpoints Impacted
+
+The following executable endpoints now support the above assets:
+
+- Create account: [POST /clob/accounts](https://docs.zerohash.com/reference/post_clob-accounts)
+- Get accounts: [GET /clob/accounts](https://docs.zerohash.com/reference/get_clob-accounts)
+- Update CLOB account: [PATCH /clob/accounts](https://docs.zerohash.com/reference/patch_clob-accounts)
+- Search orders: [POST /orders/v1/search\_orders](https://docs.zerohash.com/reference/post_orders-v1-search-orders)
+- Get open orders: [POST /orders/v1/get\_open\_orders](https://docs.zerohash.com/reference/post_orders-v1-get-open-orders)
+- Search executions: [POST /orders/v1/search\_executions](https://docs.zerohash.com/reference/post_orders-v1-search-executions)
+- Create order subscriptions: [POST /orders/v1/create\_order\_subscription](https://docs.zerohash.com/reference/post_orders-v1-create-order-subscription)
+- Submit order: [POST /orders/v1/insert\_order](https://docs.zerohash.com/reference/post_orders-v1-insert-order)
+- Cancel order: [POST /orders/v1/cancel\_order](https://docs.zerohash.com/reference/post_orders-v1-cancel-order)
+- Market data subscription: [POST /orders/v1/create\_market\_data\_subscription](https://docs.zerohash.com/reference/post_orders-v1-create-market-data-subscription)
+- List instruments: [POST /orders/v1/list\_instruments](https://docs.zerohash.com/reference/post_orders-v1-list-instruments)
+- Trade stats: [POST /orders/v1/get\_trade\_stats](https://docs.zerohash.com/reference/post_orders-v1-get-trade-stats)
+
+---
+
+#### Relevant Documentation
+
+For a full list of supported assets and instruments, please use the links below.
+
+##### Supported Assets
+
+- [Production](https://docs.zerohash.com/page/what-assets-do-you-support-two)
+- [Certification](https://docs.zerohash.com/page/cert-environment-assets)
+
+##### Supported Instruments
+
+- [Production](https://docs.zerohash.com/page/production-environment)
+- [Certification](https://docs.zerohash.com/page/certification-environment-instruments)
+</Update>
+
+<Update label="November 4th, 2025" description="Informational, no action required from platforms">
+### CC now available for Custody
+
+#### Summary
+
+zerohash is expanding its asset support with the addition of Canton Coin (CC), now available for custody and platform integration.
+
+| Asset Name | Symbol | Notes |
+| --- | --- | --- |
+| Canton Coin | `CC` | Custody only; not available in New York |
+
+#### Availability
+
+- Environments: Live in both CERT and PROD environments.
+- Geographic Restrictions: This asset is not enabled for New York participants at this time.
+- Effective Date: Immediately available using the symbol listed above.
+
+---
+
+#### Endpoints Impacted
+
+The following executable endpoints now support the above asset:
+
+##### Deposit
+
+- Create deposit address: [POST /deposits/digital\_asset\_address](https://docs.zerohash.com/reference/post_deposits-digital-asset-addresses)
+
+##### Withdraw
+
+- Create withdrawal request: [POST /withdrawals/requests](https://docs.zerohash.com/reference/post_withdrawals-requests)
+
+---
+
+#### Relevant Documentation
+
+For a full list of supported assets and instruments, please use the links below.
+
+##### Supported Assets
+
+- [Production](https://docs.zerohash.com/page/what-assets-do-you-support-two)
+- [Certification](https://docs.zerohash.com/page/cert-environment-assets)
+
+##### Supported Instruments
+
+- [Production](https://docs.zerohash.com/page/production-environment)
+- [Certification](https://docs.zerohash.com/page/certification-environment-instruments)
+</Update>
+
+<Update label="October 27th, 2025" description="Informational, no action required from platforms">
+### XPL and USDT.XPL now available for Custody, Trading, and Fund
+
+#### Summary
+
+zerohash is pleased to announce the addition of two new assets, Plasma (XPL) and Tether on Plasma (USDT.XPL), expanding your trading and platform capabilities.
+
+These assets are now available to buy, sell, deposit, withdraw and [Fund](/docs/fund-overview):
+
+| Asset Name | Symbol | Notes |
+| --- | --- | --- |
+| Plasma | `XPL` | Not available in New York |
+| Tether on Plasma | `USDT.XPL` | Not available in New York |
+
+#### Availability
+
+- Environments: Both assets are live in both CERT and PROD environments.
+- Geographic Restrictions: Both assets are not enabled in New York at this time.
+- Effective Date: Immediately available using the symbols listed above.
+
+---
+
+#### RFQ Endpoints Impacted
+
+The following executable endpoints now support the above assets:
+
+##### Buy/Sell
+
+- Get quote: [POST /liquidity/rfq](https://docs.zerohash.com/reference/post_liquidity-rfq)
+- Execute quote: [POST /liquidity/execute](https://docs.zerohash.com/reference/post_liquidity-execute)
+
+##### Convert Withdraw
+
+- Get quote: [POST /convert\_withdraw/rfq](https://docs.zerohash.com/reference/post_convert-withdraw-rfq)
+- Execute quote: [POST /convert\_withdraw/execute](https://docs.zerohash.com/reference/post_convert-withdraw-execute)
+
+##### Deposit
+
+- Create deposit address: [POST /deposits/digital\_asset\_address](https://docs.zerohash.com/reference/post_deposits-digital-asset-addresses)
+
+##### Withdraw
+
+- Create withdrawal request: [POST /withdrawals/requests](https://docs.zerohash.com/reference/post_withdrawals-requests)
+
+##### Fund
+
+- [SDK support]
+- Get quote: [POST /fund/rfq](https://docs.zerohash.com/reference/post_fund-rfq)
+- Get fund transactions: [GET /fund/transactions](https://docs.zerohash.com/reference/get_fund-transactions)
+
+---
+
+#### Relevant Documentation
+
+For a full list of supported assets and instruments, please use the links below.
+
+##### Supported Assets
+
+- [Production](https://docs.zerohash.com/page/what-assets-do-you-support-two)
+- [Certification](https://docs.zerohash.com/page/cert-environment-assets)
+
+##### Supported Instruments
+
+- [Production](https://docs.zerohash.com/page/production-environment)
+- [Certification](https://docs.zerohash.com/page/certification-environment-instruments)
+</Update>
+
+<Update label="October 22nd, 2025" description="Informational, no action required from platforms">
+### APE, ATOM, BNB, FIL, GALA.ETH, GRT, NEAR, PUMP.SOL, TON, and TRUMP.SOL now available on zerohash CLOB and RFQ
+
+#### Summary
+
+zerohash is pleased to announce expanded CLOB and RFQ support for 10 additional digital assets. These assets are now available for trading (buy/sell), deposits, withdrawals, custody, and [Fund](/docs/fund-overview) operations:
+
+| Asset Name | Symbol | Notes |
+| --- | --- | --- |
+| Ape Coin | `APE` | Previously custody only, now available on CLOB |
+| Cosmos | `ATOM` |   |
+| BNB | `BNB` | Not available in New York |
+| Filecoin | `FIL` |   |
+| Gala | `GALA.ETH` |   |
+| The Graph | `GRT` | Previously custody only, now available on CLOB |
+| NEAR Protocol | `NEAR` |   |
+| Pump | `PUMP.SOL` | Not available in New York |
+| Toncoin | `TON` |   |
+| Trump | `TRUMP.SOL` | Not available in New York |
+
+#### Availability
+
+- Environments: TRUMP and PUMP are currently available in PROD only. All other assets are live in both CERT and PROD environments.
+- Geographic Restrictions: BNB, PUMP, TRUMP, and TRX are not enabled for New York users.
+- Effective Date: Immediately available using the symbols listed above.
+
+---
+
+#### RFQ Endpoints Impacted
+
+The following executable endpoints now support the above assets:
+
+##### Buy/Sell
+
+- Get quote: [POST /liquidity/rfq](https://docs.zerohash.com/reference/post_liquidity-rfq)
+- Execute quote: [POST /liquidity/execute](https://docs.zerohash.com/reference/post_liquidity-execute)
+
+##### Convert Withdraw
+
+- Get quote: [POST /convert\_withdraw/rfq](https://docs.zerohash.com/reference/post_convert-withdraw-rfq)
+- Execute quote: [POST /convert\_withdraw/execute](https://docs.zerohash.com/reference/post_convert-withdraw-execute)
+
+##### Deposit
+
+- Create deposit address: [POST /deposits/digital\_asset\_address](https://docs.zerohash.com/reference/post_deposits-digital-asset-addresses)
+
+##### Withdraw
+
+- Create withdrawal request: [POST /withdrawals/requests](https://docs.zerohash.com/reference/post_withdrawals-requests)
+
+##### Fund
+
+- [SDK support]
+- Get quote: [POST /fund/rfq](https://docs.zerohash.com/reference/post_fund-rfq)
+- Get fund transactions: [GET /fund/transactions](https://docs.zerohash.com/reference/get_fund-transactions)
+
+---
+
+#### CLOB Endpoints Impacted
+
+The following executable endpoints now support the above assets:
+
+- Create account: [POST /clob/accounts](https://docs.zerohash.com/reference/post_clob-accounts)
+- Get accounts: [GET /clob/accounts](https://docs.zerohash.com/reference/get_clob-accounts)
+- Update CLOB account: [PATCH /clob/accounts](https://docs.zerohash.com/reference/patch_clob-accounts)
+- Search orders: [POST /orders/v1/search\_orders](https://docs.zerohash.com/reference/post_orders-v1-search-orders)
+- Get open orders: [POST /orders/v1/get\_open\_orders](https://docs.zerohash.com/reference/post_orders-v1-get-open-orders)
+- Search executions: [POST /orders/v1/search\_executions](https://docs.zerohash.com/reference/post_orders-v1-search-executions)
+- Create order subscriptions: [POST /orders/v1/create\_order\_subscription](https://docs.zerohash.com/reference/post_orders-v1-create-order-subscription)
+- Submit order: [POST /orders/v1/insert\_order](https://docs.zerohash.com/reference/post_orders-v1-insert-order)
+- Cancel order: [POST /orders/v1/cancel\_order](https://docs.zerohash.com/reference/post_orders-v1-cancel-order)
+- Market data subscription: [POST /orders/v1/create\_market\_data\_subscription](https://docs.zerohash.com/reference/post_orders-v1-create-market-data-subscription)
+- List instruments: [POST /orders/v1/list\_instruments](https://docs.zerohash.com/reference/post_orders-v1-list-instruments)
+- Trade stats: [POST /orders/v1/get\_trade\_stats](https://docs.zerohash.com/reference/post_orders-v1-get-trade-stats)
+
+---
+
+#### Relevant Documentation
+
+For a full list of supported assets and instruments, please use the links below.
+
+##### Supported Assets
+
+- [Production](https://docs.zerohash.com/page/what-assets-do-you-support-two)
+- [Certification](https://docs.zerohash.com/page/cert-environment-assets)
+
+##### Supported Instruments
+
+- [Production](https://docs.zerohash.com/page/production-environment)
+- [Certification](https://docs.zerohash.com/page/certification-environment-instruments)
+</Update>
+
+<Update label="October 21st, 2025" description="Informational, no action required from platforms">
+### USDC.BASE, USDC.APT, USDC.AVAX, USDC.ZKSYNC, and USDC.SUI now available in New York
+
+#### Release Details
+
+- **Release Date:** October 21, 2025
+
+#### Summary
+
+zerohash is pleased to announce New York support for the following assets to buy, sell, deposit, withdraw and [Fund](/docs/fund-overview):
+
+- USDC on Base (symbol `USDC.BASE`)
+- USDC on Aptos (symbol `USDC.APT`)
+- USDC on Avalanche (symbol `USDC.AVAX`)
+- USDC on zkSync (symbol `USDC.ZKSYNC`)
+- USDC on SUI (symbol `USDC.SUI`)
+
+All assets are available in our PROD environments in New York.
+
+#### Action Required
+
+These assets are immediately available using the above symbols.
+
+#### RFQ Endpoints Impacted
+
+The following executable endpoints now support the above assets:
+
+##### Buy/Sell
+
+- Get quote: [POST /liquidity/rfq](https://docs.zerohash.com/reference/post_liquidity-rfq)
+- Execute quote: [POST /liquidity/execute](https://docs.zerohash.com/reference/post_liquidity-execute)
+
+##### Convert Withdraw
+
+- Get quote: [POST /convert\_withdraw/rfq](https://docs.zerohash.com/reference/post_convert-withdraw-rfq)
+- Execute quote: [POST /convert\_withdraw/execute](https://docs.zerohash.com/reference/post_convert-withdraw-execute)
+
+##### Deposit
+
+- Create deposit address: [POST /deposits/digital\_asset\_address](https://docs.zerohash.com/reference/post_deposits-digital-asset-addresses)
+
+##### Withdraw
+
+- Create withdrawal request: [POST /withdrawals/requests](https://docs.zerohash.com/reference/post_withdrawals-requests)
+
+##### Fund
+
+- [SDK support]
+- Get quote: [POST /fund/rfq](https://docs.zerohash.com/reference/post_fund-rfq)
+- Get fund transactions: [GET /fund/transactions](https://docs.zerohash.com/reference/get_fund-transactions)
+
+#### Relevant Documentation
+
+For a full list of supported assets and instruments, please use the links below.
+
+##### Supported Assets
+
+- [Production](https://docs.zerohash.com/page/what-assets-do-you-support-two)
+- [Certification](https://docs.zerohash.com/page/cert-environment-assets)
+
+##### Supported Instruments
+
+- [Production](https://docs.zerohash.com/page/production-environment)
+- [Certification](https://docs.zerohash.com/page/certification-environment-instruments)
+</Update>
+
+<Update label="October 20th, 2025">
+### CLOB Jurisdiction-Based Asset Availability
+
+Platforms can now list assets that may not be tradable in all jurisdictions. For example, assets restricted in New York can now be offered in other states where those assets are permitted.
+
+### How to Determine NY Availability on CLOB Instruments
+
+Call `GET /assets` endpoint
+
+- `ny_allowed`= true : CLOB instruments are available for trading to NY participants
+- `ny_allowed` = false : CLOB instruments are **NOT** available for trading to NY participants
+
+### Example FIX Rejection
+
+If a NY-based user attempts to place an order on an asset not available for trading in NY, the following error will occur:
+
+```
+8=FIXT.1.1|9=381|35=8|34=10|49=ANON_SENDER|52=20251017-22:40:38.268709097|56=ANON_TARGET|57=ANON_SUB|1=ANON_ACCOUNT|6=0.001|11=691638963376187068000|14=0.00000000|17=ANON_ORDERID|22=8|31=0.003|32=0.00000000|37=ANON_EXECID|38=0.00100000|39=8|40=K|44=0.004|48=WBTC/USD|54=1|55=WBTC/USD|58=Account may not trade this symbol|59=3|60=20251017-22:40:38.261231896|99=0.001|103=0|150=8|151=0.00000000|528=I|582=58|8000=O|10=094|
+```
+
+  
+
+<Info>
+##### Users who update their address from a non-NY address to a NY address will be permitted to sell and withdraw the NY restricted assets for up to 30 days. Subject to platform configurations.
+</Info>
+</Update>
+
+<Update label="October 17th, 2025" description="Informational, no action required from platforms">
+### RTP Support for Platforms
+
+#### Summary
+
+**Platforms** can now fund their various USD accounts for the following products, via the RTP (Real Time Payments) Network:
+
+| Product | Purpose |
+| --- | --- |
+| Buy/Sell | Fund a float account for subsequent customer buys |
+| Payins | Fund a refund float account for subsequent shopper refunds |
+| Payouts | Fund a float account for subsequent payout transactions |
+| On and Off Ramp | Fund a float account for subsequent on ramp transactions |
+| Remittances | Fund a float account for subsequent remittance transactions |
+
+#### How it works
+
+When initiating an RTP transfer to fund your account with zerohash, please ensure the **remittance information field** (also known as "memo" or "remittance note") is populated with your unique platform\_code, hyphonated with the word "FLOAT". For example, `PLAT01-FLOAT` (PLAT01 is a hypothetical `participant_code` for the Platform).
+
+This ensures funds are correctly and automatically applied to your account. Please note that the very first deposit sent from a unique account and routing number combination will need to be manually credited to your account and mapped to your `participant_code`, however subsequent ones are automatically and immediately applied.
+
+Note: Most banking portals or APIs label this field as:
+
+- "Memo"
+- "Message to Recipient"
+- "Remittance Info"
+- "Note"
+- "Addenda"
+
+If you don’t see this field or are unsure where to enter this info, please contact your bank’s support team for help with RTP formatting.
+
+#### Getting Started
+
+zerohash supports RTP through select banking partners only. Please consult your zerohash representative to confirm that RTP is enabled for the specific bank account selected for your integration.
+
+#### Action Required
+
+n.a
+
+#### Endpoints Impacted
+
+- [GET /deposits](https://docs.zerohash.com/reference/get_deposits) - your credited deposits will be present in the response of this endpoint
+</Update>
+
+<Update label="September 12th, 2025">
+### New tier for business customer submission
+
+#### Release date
+
+September 12th, 2025
+
+#### Release Type:
+
+Informational, no action required from platforms
+
+#### Summary
+
+zeroHash now allows **approved** Platforms to onboard business customers with reduced API field requirements, requiring fewer data points and less information than traditional full KYB onboarding.
+
+**NOTE:** These entities are considered non-customers of zerohash, do not hold accounts with us or take ownership of the funds at any point in the flow. However, zerohash still needs basic information in order to carry out our own diligence requirements.
+
+Your Platform must be approved by our Legal and Compliance department before using this new feature. Get in touch with your zerohash rep to begin this process, if interested.
+
+Example [POST /participants/entity/new](https://docs.zerohash.com/reference/post_participants-entity-new) request with reduced API field requirements:
+
+```json
+{
+    "platform_code": "PLAT01",
+    "legal_name": "Freelancer Platform XYZ Inc.",
+    "contact_number": "15553765432",
+    "address_one": "1 Main St.",
+    "address_two": "Suite 1000",
+    "city": "Chicago",
+    "postal_code": "12345",
+    "jurisdiction_code": "US-IL",
+    "tax_id": "883987654",
+    "id_issuing_authority": "United States",
+    "sanction_screening": "pass",
+    "sanction_screening_timestamp":1677252628000,
+    "partial": true,
+    "signed_agreements": [
+  {
+    "type": "crypto_payouts_service_terms",
+    "region": "us",
+    "signed_timestamp": 1603378501286
+  }
+]  
+}
+```
+</Update>
+
+<Update label="September 6th, 2025">
+### Ability to invalidate a JWT token
+
+#### Release date
+
+September 5th, 2025
+
+#### Release Type:
+
+Informational, no action required from platforms
+
+#### Summary
+
+A new API endpoint has been introduced, allowing Platforms to programmatically invalidate JWT tokens. JWT tokens are used to [invoke our SDK's](https://docs.zerohash.com/reference/retrieving-access-token), for context.
+
+This enhancement provides greater control over session management and improves overall security.
+
+##### How to invalidate a JWT token
+
+- Make a request to our new endpoint: `POST /revoke_auth_token`
+- Pass a body like so:
+
+```json
+{
+  "token": "${jwt}"
+}
+```
+
+- The response will be a "204 no context" on successful revoking of the JWT token.
+
+#### Related Documentation
+
+- [Acquire Access Token](https://docs.zerohash.com/reference/retrieving-access-token)
+</Update>
+
+<Update label="September 6th, 2025" description="Informational, no action required from platforms">
+### CRV, LDO, SAND, OP.OPTIMISM, USDT.ARBITRUM, USDT.OPTIMISM now available for Custody, Trading, and Fund
+
+#### Release Details
+
+- **Release Date:** September 15, 2025
+
+#### Summary
+
+zerohash is pleased to announce support for the following assets to buy, sell, deposit, withdraw and [Fund](/docs/fund-overview):
+
+- CRV (symbol `CRV.ETH`)
+- LDO (symbol `LDO.ETH`)
+- SAND (symbol `SAND` previously supported for custody only)
+- OP on Optimism (symbol `OP.OPTIMISM`)
+- USDT on Arbitrum (symbol `USDT.ARBITRUM`)
+- USDT on Optimism (symbol `USDT.OPTIMISM`)
+
+All assets are available in both our CERT and PROD environments.
+
+#### Action Required
+
+These assets are immediately available using the above symbols.
+
+#### Endpoints Impacted
+
+The following executable endpoints now support the above assets:
+
+##### Buy/Sell
+
+- Get quote: [POST /liquidity/rfq](https://docs.zerohash.com/reference/post_liquidity-rfq)
+- Execute quote: [POST /liquidity/execute](https://docs.zerohash.com/reference/post_liquidity-execute)
+
+##### Convert Withdraw
+
+- Get quote: [POST /convert\_withdraw/rfq](https://docs.zerohash.com/reference/post_convert-withdraw-rfq)
+- Execute quote: [POST /convert\_withdraw/execute](https://docs.zerohash.com/reference/post_convert-withdraw-execute)
+
+##### Deposit
+
+- Create deposit address: [POST /deposits/digital\_asset\_address](https://docs.zerohash.com/reference/post_deposits-digital-asset-addresses)
+
+##### Withdraw
+
+- Create withdrawal request: [POST /withdrawals/requests](https://docs.zerohash.com/reference/post_withdrawals-requests)
+
+##### Fund
+
+- [SDK support]
+- Get quote: [POST /fund/rfq](https://docs.zerohash.com/reference/post_fund-rfq)
+- Get fund transactions: [GET /fund/transactions](https://docs.zerohash.com/reference/get_fund-transactions)
+
+#### Relevant Documentation
+
+For a full list of supported assets and instruments, please use the links below.
+
+##### Supported Assets
+
+- [Production](https://docs.zerohash.com/page/what-assets-do-you-support-two)
+- [Certification](https://docs.zerohash.com/page/cert-environment-assets)
+
+##### Supported Instruments
+
+- [Production](https://docs.zerohash.com/page/production-environment)
+- [Certification](https://docs.zerohash.com/page/certification-environment-instruments)
+</Update>
+
+<Update label="September 6th, 2025" description="Informational, no action required from platforms">
+### SAND now available for Trading on the zerohash CLOB
+
+#### Release Details
+
+- **Release Date:** September 17, 2025
+
+#### Summary
+
+zerohash is pleased to announce CLOB support for SAND to buy, sell, deposit and withdraw ([https://docs.zerohash.com/docs/fund-overview](/docs/fund-overview)).
+
+SAND is available for trading in both the CERT and PROD environments.
+
+#### Action Required
+
+This asset is immediately available using the above symbols.
+
+#### Endpoints Impacted
+
+The following executable endpoints now support the above assets:
+
+- Create account: [POST /clob/accounts](https://docs.zerohash.com/reference/post_clob-accounts)
+- Get accounts: [GET /clob/accounts](https://docs.zerohash.com/reference/get_clob-accounts)
+- Update CLOB account: [PATCH /clob/accounts](https://docs.zerohash.com/reference/patch_clob-accounts)
+- Search orders: [POST /orders/v1/search\_orders](https://docs.zerohash.com/reference/post_orders-v1-search-orders)
+- Get open orders: [POST /orders/v1/get\_open\_orders](https://docs.zerohash.com/reference/post_orders-v1-get-open-orders)
+- Search executions: [POST /orders/v1/search\_executions](https://docs.zerohash.com/reference/post_orders-v1-search-executions)
+- Create order subscriptions: [POST /orders/v1/create\_order\_subscription](https://docs.zerohash.com/reference/post_orders-v1-create-order-subscription)
+- Submit order: [POST /orders/v1/insert\_order](https://docs.zerohash.com/reference/post_orders-v1-insert-order)
+- Cancel order: [POST /orders/v1/cancel\_order](https://docs.zerohash.com/reference/post_orders-v1-cancel-order)
+- Market data subscription: [POST /orders/v1/create\_market\_data\_subscription](https://docs.zerohash.com/reference/post_orders-v1-create-market-data-subscription)
+- List instruments: [POST /orders/v1/list\_instruments](https://docs.zerohash.com/reference/post_orders-v1-list-instruments)
+- Trade stats: [POST /orders/v1/get\_trade\_stats](https://docs.zerohash.com/reference/post_orders-v1-get-trade-stats)
+
+#### Relevant Documentation
+
+For a full list of supported assets and instruments, please use the links below.
+
+##### Supported Assets
+
+- [Production](https://docs.zerohash.com/page/what-assets-do-you-support-two)
+- [Certification](https://docs.zerohash.com/page/cert-environment-assets)
+
+##### Supported Instruments
+
+- [Production](https://docs.zerohash.com/page/production-environment)
+- [Certification](https://docs.zerohash.com/page/certification-environment-instruments)
+</Update>
+
+<Update label="August 12th, 2025">
+### Account Funding: deposit expiration webhook
+
+#### Release date
+
+Aug 13th, 2025
+
+#### Release Type:
+
+Informational, no action required from platforms
+
+#### Summary
+
+Applicable to the Account Funding product, ZeroHash has added a new webhook event to notify your platform when an End Customer’s fund transaction does not complete successfully - that is, when no deposit or fiat conversion has occurred. This event serves as a clear signal that no balance updates or account changes should be made, helping prevent discrepancies and ensuring accurate account state management.
+
+The webhook will fire 30 minutes after the JWT token is generated and no fund activity is detected.
+
+Example payload (see `reason` field):
+
+```json
+ 	
+{
+  "participant_code": "XXC653",
+  "fund_asset": "ETH",
+  "quoted_currency": "USD",
+  "source_address": "-",
+  "deposit_address": "0x30E76aDa6a159D742a33Ec1aF6Bd58FeB666145E",
+  "quantity": "0",
+  "notional": "0",
+  "fund_id": "143121c8-5f32-48bc-8277-5212d47a07ed",
+  "transaction_id": "",
+  "account_label": "general",
+  "success": false,
+  "reason": "deposit session has expired.",
+  "reference_id": "e460e9c3-973b-48a1-9f3b-51840a283f09",
+  "raw_fee_bps": "0",
+  "deposit_fee_bps": "0",
+  "raw_fee_notional": "0.00",
+  "deposit_fee_notional": "0.00"
+}
+```
+
+#### Related Documentation
+
+- [Webhook overview](https://docs.zerohash.com/reference/overview)
+- [Account Funding webhooks](https://docs.zerohash.com/reference/account-funding-1)
+</Update>

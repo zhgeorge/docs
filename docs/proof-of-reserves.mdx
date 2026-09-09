@@ -1,0 +1,305 @@
+---
+title: "Proof of Reserves"
+description: "Cryptographically verifiable attestations of participant balances held by zerohash"
+---
+
+## Overview
+
+zerohash's Proof of Reserves (PoR) API provides a cryptographic mechanism for partners to prove to their clients, end users, auditors, and regulators that the digital assets zerohash holds for their platform reconcile to the balances credited to individual participants. Each attestation is a signed commitment, published daily for every supported asset, that any party can verify independently, without relying on a manual disclosure or a point-in-time audit.
+
+Each publication is a Merkle Sum Tree (MST): every participant balance zerohash holds for your platform is a leaf, and each internal node commits to the hash and total balance of the subtree beneath it. zerohash signs the root with an Ed25519 key, producing a commitment to the exact set of participant balances at snapshot time.
+
+With that commitment, two checks become possible:
+
+- **Totals**: Anyone with the signed root can confirm the total balance zerohash held for your platform at snapshot. The signature guarantees the number came from zerohash and has not been altered.
+- **Inclusion**: Your platform can retrieve, for any participant, a proof that their balance is included in the total. The proof reveals only sibling hashes and subtree sums along the path from the leaf to the root, not any individual balance.
+
+Both checks run locally. Verification requires only the Ed25519 public key, which zerohash publishes and rotates through the same API. Partners can pin or independently attest to the key out of band for stronger guarantees.
+
+Signed commitments are designed to complement, not replace, financial statement audits and regulatory reporting.
+
+**Scope**
+
+PoR covers digital assets zerohash holds for your platform. It does not cover fiat, off-chain positions, or assets held outside the zerohash ledger. Each tree covers one asset, one platform, one point in time; cross-asset totals require verifying multiple signed commitments. Snapshots are point-in-time: a verified commitment attests to what was true at `snapshot_ts`, not what is true now.
+
+---
+
+## Quickstart
+
+This walkthrough performs one full verification cycle: fetch the current signing keys, fetch the latest signed root commitment, verify the signature, fetch an inclusion proof for one of your participants, and verify the proof against the signed root.
+
+### Prerequisites
+
+- API key, secret, and passphrase issued by zerohash
+- PoR access enabled for your platform (contact your zerohash representative)
+- Libraries available in your language for HMAC-SHA256, base64, CBOR decode, Ed25519 signature verification, and SHA-256
+
+### Walkthrough
+
+1. [`GET /por/keys`](https://docs.zerohash.com/reference/get_por-keys) to retrieve the current signing keys. Cache the response for the session.
+2. [`GET /por/roots/asset/latest`](https://docs.zerohash.com/reference/get_por-roots-asset-snapshot) to retrieve the latest signed root commitment.
+3. [`POST /por/proofs/asset/latest`](https://docs.zerohash.com/reference/post_por-proofs-asset-snapshot) with the participant you want to prove.
+4. Verify locally. Verify the root commitment signature first (Verification Step 1), then fold the proof path against the verified root (Verification Step 2). If Step 1 fails, stop; do not attempt inclusion verification against an unverified commitment.
+
+Use `latest` for both the roots and proofs calls. zerohash publishes at most one snapshot per asset per day, so calling /por/roots/\{asset\}/latest immediately followed by /por/proofs/\{asset\}/latest will refer to the same snapshot in normal operation.
+
+**Note:** Do not re-encode `commitment_cbor` after decoding it. The signature is over the exact bytes returned by the API; re-encoding may produce different bytes even for the same logical values and will cause signature verification to fail.
+
+---
+
+## Authentication
+
+PoR endpoints use the standard zerohash HMAC-SHA256 authentication scheme. If you have already integrated any other zerohash API, your existing signing code works unchanged. See [API Authentication](/docs/authentication) for the full reference.
+
+A few things worth calling out for PoR specifically:
+
+- Base64-decode `api_secret` before using it as the HMAC key. The secret is issued to you as a base64 string; the raw bytes are what HMAC-SHA256 expects.
+- Include as the request body when signing GET requests. The signing payload is `timestamp + METHOD + path + body_json`, and `body_json` must be (not the empty string) for requests with no body.
+- Timestamps must be within 30 seconds of server time, otherwise the request returns `401`.
+- No platform identifier is passed in the request. Your platform identity is derived server-side from the API key, and is what scopes the tree you get back.
+- Any valid API key issued to your platform works; no special scope is required. Access to the PoR endpoints must be enabled by zerohash for your platform before use. Requests from a platform that has not been enabled return `404`. `GET /por/keys` is ungated; a `200` from that endpoint confirms the route is live before testing the platform-gated roots and proofs routes.
+
+---
+
+## Endpoints
+
+### 1. Get signing keys
+
+**Endpoint:** [GET /por/keys](https://docs.zerohash.com/reference/get_por-keys)
+
+Returns the published Ed25519 public keys used to sign root commitments. Fetch this once per session (or cache with a short TTL) and use it to verify signatures returned by the roots and proofs endpoints. See Verification Step 1 for how the keys are used.
+
+No request body.
+
+#### Response fields
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `keys[].key_id` | string | Key identifier. Bound into each signed commitment so you can look up the correct key. |
+| `keys[].public_key` | string | Ed25519 public key, DER SubjectPublicKeyInfo, base64 (standard encoding). |
+| `keys[].valid_from_snapshot_date` | string | First snapshot date covered by this key (YYYY-MM-DD, inclusive). |
+| `keys[].valid_to_snapshot_date` | string | Last snapshot date covered (YYYY-MM-DD, inclusive). An empty value means open-ended, i.e. the current key. |
+
+**Sample response:**
+
+```json
+{
+  "keys": [
+    {
+      "key_id": "<key-id>",
+      "public_key": "MCowBQYDK2VwAyEAv7xA3rF2pQ8kLmN9sHjCdWuIoYeXbZT6gPnVqKt5RhE=",
+      "valid_from_snapshot_date": "2026-01-01",
+      "valid_to_snapshot_date": ""
+    }
+  ]
+}
+```
+
+### 2. Get signed root commitment
+
+**Endpoint:** [GET /por/roots/asset/snapshot](https://docs.zerohash.com/reference/get_por-roots-asset-snapshot)
+
+Returns the signed Merkle Sum Tree root commitment for the given asset and snapshot. See Verification Step 1 for how to verify the signature.
+
+#### Path parameters
+
+| Parameter | Description |
+| --- | --- |
+| `asset` | Asset identifier, such as `ETH`, `BTC`, or `USDC.ETH`. Cross-chain assets use dotted notation (.). |
+| `snapshot` | Use `latest`. See the snapshot pinning section below. |
+
+No request body.
+
+#### Response fields
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `platform_id` | string | Your platform identifier (server-injected from your API key). |
+| `asset_id` | string | The asset this tree covers. Equals your chain-qualified request parameter. |
+| `spec_version` | string | Commitment schema version. Currently `1.0.0`. |
+| `publication_seq` | string | Global monotonic counter per `(platform, asset, account_type)` tree. Returned as a quoted decimal string; see note above. See publication\_seq semantics. |
+| `db_snapshot_id` | string | Content-hash identifier of the internal snapshot. Informational only. See snapshot pinning. |
+| `snapshot_ts` | string | RFC 3339 UTC timestamp of the snapshot. |
+| `root_hash` | string | Merkle root hash, lowercase hex, 32 bytes. Convenience field only. Decode `commitment_cbor` for the authoritative value. |
+| `root_sum` | string | Total balance across all leaves, lowercase hex, 16 bytes big-endian (u128). Convenience field only, same caveat as `root_hash`. |
+| `commitment_cbor` | bytes (base64) | Canonical-CBOR signed payload. This is the exact byte string signed by zerohash. |
+| `signature` | bytes (base64) | Ed25519 signature over `commitment_cbor`. |
+| `signing_key_id` | string | Identifies which key from `/por/keys` to use for signature verification. |
+
+**Note on** `publication_seq` **type:** The underlying value is a 64-bit unsigned integer. Per the proto3 JSON encoding rules, it is returned as a quoted decimal string `"42"`, not 42). Parse it accordingly.
+
+**Sample response:**
+
+```json
+{
+  "platform_id": "PLAT01",
+  "asset_id": "ETH",
+  "spec_version": "1.0.0",
+  "publication_seq": "42",
+  "db_snapshot_id": "46713a8f2e3c9d4b5a6f7e8d9c0b1a2e3f4d5c6b7a8e9f0c1d2e3f4a5b6c7d8e",
+  "snapshot_ts": "2026-08-11T00:00:00Z",
+  "root_hash": "a3f2e1d0c9b8a7f6e5d4c3b2a1f0e9d8c7b6a5f4e3d2c1b0a9f8e7d6c5b4a3f2",
+  "root_sum": "0000000000000000000000174876e800",
+  "commitment_cbor": "qmtyb290X2hhc2hYIKPy4dDJuKf25dTDsqH...",
+  "signature": "7xK2mN9pQvLrT4sWjYhF1bCuDzXeOaRiUo...",
+  "signing_key_id": "<key-id>"
+}
+```
+
+### 3. Get inclusion proof
+
+**Endpoint:** [POST /por/proofs/asset/snapshot](https://docs.zerohash.com/reference/post_por-proofs-asset-snapshot)
+
+Returns the Merkle inclusion proof for a single participant. The response embeds a copy of the root commitment, the participant's leaf data, and the proof path needed to recompute the root locally. See Verification Step 2 for how to fold the proof.
+
+Path parameters are the same as /por/roots/\{asset\}/\{snapshot\}.
+
+#### Request body
+
+- `participant_code` (string): The participant's zerohash `participant_code` to retrieve a proof for.
+
+#### Response fields
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `leaf.platform_code` | string | Your platform identifier. |
+| `leaf.asset` | string | Asset this leaf covers. |
+| `leaf.participant_code` | string | The participant you queried. |
+| `leaf.balance` | string | Participant's balance in base units, as a decimal string (u128). |
+| `proof_path[]` | array | Ordered list of sibling nodes from leaf to root (leaf-first). |
+| `proof_path[].sibling_hash` | string | Sibling node hash, lowercase hex, 32 bytes. |
+| `proof_path[].sibling_sum` | string | Sibling subtree sum, decimal string (u128). |
+| `proof_path[].direction` | string | The sibling's position at this level: `"LEFT"` or `"RIGHT"`. |
+| `root` | object | Full signed root commitment (same structure as `/por/roots`). |
+
+**Sample response:**
+
+```json
+{
+  "leaf": {
+    "platform_id": "PLAT01",
+    "asset_id": "ETH",
+    "participant_id": "CUST01",
+    "balance": "1000000000000000000"
+  },
+  "proof_path": [
+    {
+      "sibling_hash": "b4c3d2e1f0a9b8c7d6e5f4a3b2c1d0e9f8a7b6c5d4e3f2a1b0c9d8e7f6a5b4c3",
+      "sibling_sum": "2000000000000000000",
+      "direction": "RIGHT"
+    },
+    {
+      "sibling_hash": "c5d4e3f2a1b0c9d8e7f6a5b4c3d2e1f0a9b8c7d6e5f4a3b2c1d0e9f8a7b6c5d4",
+      "sibling_sum": "3000000000000000000",
+      "direction": "LEFT"
+    }
+  ],
+  "root": {
+    "platform_id": "PLAT01",
+    "asset_id": "ETH",
+    "spec_version": "1.0.0",
+    "publication_seq": "42",
+    "db_snapshot_id": "46713a8f2e3c9d4b5a6f7e8d9c0b1a2e3f4d5c6b7a8e9f0c1d2e3f4a5b6c7d8e",
+    "snapshot_ts": "2026-08-11T00:00:00Z",
+    "root_hash": "a3f2e1d0c9b8a7f6e5d4c3b2a1f0e9d8c7b6a5f4e3d2c1b0a9f8e7d6c5b4a3f2",
+    "root_sum": "0000000000000000000000174876e800",
+    "commitment_cbor": "qmtyb290X2hhc2hYIKPy4dDJuKf25dTDsqH...",
+    "signature": "7xK2mN9pQvLrT4sWjYhF1bCuDzXeOaRiUo...",
+    "signing_key_id": "<key-id>"
+  }
+}
+```
+
+---
+
+## Verification
+
+Verification is entirely local. No external calls are required once you have the API responses.
+
+### Step 1: Verify the root commitment signature
+
+1. Base64-decode `commitment_cbor` to raw bytes.
+2. CBOR-decode those bytes. The decoded map contains the following fields:
+
+| CBOR key | Type | Description |
+| --- | --- | --- |
+| `root_hash` | bytes (32) | Merkle root hash. |
+| `root_sum` | bytes (16) | u128 big-endian total balance. |
+| `snapshot_ts` | int64 | Unix seconds, UTC. |
+| `db_snapshot_id` | bytes | Snapshot identifier. |
+| `evidence_pkg_sha256` | bytes (32) | SHA-256 of the internal evidence bundle. |
+| `platform_code` | text | Your platform identifier. |
+| `asset` | text | Asset. Equals your chain-qualified request parameter. |
+| `account_type` | text | Account type covered by this tree. Always `"available"`. |
+| `spec_version` | text | Schema version, such as `1.0.0`. |
+| `publication_seq` | uint64 | Global monotonic counter per `(platform, asset, account_type)`. |
+| `asset_precision` | uint8 | Decimal precision for the asset. |
+| `asset_config_version` | text | Opaque asset configuration version. Empty string. |
+
+**Sample decoded CBOR:**
+
+```json
+{
+  "root_hash": "<32 bytes>",
+  "root_sum": "<16 bytes big-endian u128>",
+  "snapshot_ts": 1786752000,
+  "db_snapshot_id": "<bytes>",
+  "evidence_pkg_sha256": "<32 bytes>",
+  "platform_code": "PLAT01",
+  "asset": "ETH",
+  "account_type": "available",
+  "spec_version": "1.0.0",
+  "publication_seq": 42,
+  "asset_precision": 18,
+  "asset_config_version": ""
+}
+```
+
+3. Assert that `platform_code` and `asset` in the decoded CBOR match what you requested. The CBOR `asset` equals your chain-qualified request parameter (a request for `USDC.ETH` produces `USDC.ETH` in the signed CBOR).
+4. Look up the key whose `key_id` matches `signing_key_id` from the response. Parse `public_key` as a DER-encoded Ed25519 SubjectPublicKeyInfo (base64-decode first).
+5. Ed25519-verify `signature` (base64-decoded) over the raw `commitment_cbor` bytes (base64-decoded) using that public key.
+6. Extract `root_hash` (32 bytes) and `root_sum` (16 bytes big-endian u128) from the decoded CBOR. Use these values, not the JSON convenience fields, as the expected values in Step 2.
+
+### Step 2: Verify the inclusion proof
+
+1. **Compute the leaf hash**. Hash the participant's `platform_code`, `asset`, `participant_code`, and `balance` together using SHA-256 with a fixed domain tag `0x00`) and length-prefixed fields. The full construction is specified in the zerohash PoR Technical Reference Document.
+2. **Fold the proof path from leaf to root.** Starting from the leaf hash and balance, process each step in `proof_path` (leaf-first) by combining the running node with its sibling according to `direction` `LEFT` or `RIGHT`). Each parent hash is computed over both child hashes and their sums using SHA-256 with a domain tag `0x01`). The parent sum is the u128 sum of the two children.
+3. **Compare the result against the commitment.** The final computed hash and sum must equal `root_hash` and `root_sum` from the CBOR-decoded commitment. A match proves the participant's balance is included in the signed tree.
+
+---
+
+## Snapshot Pinning
+
+Use latest for both the roots and proofs calls. zerohash publishes at most one snapshot per asset per day, so calling /por/roots/\{asset\}/latest immediately followed by /por/proofs/\{asset\}/latest will refer to the same snapshot in normal operation. The `db_snapshot_id` returned in the roots response is informational; it is not a valid value for the \{snapshot\} path parameter.
+
+---
+
+## publication_seq Semantics
+
+`publication_seq` is a monotonic counter scoped to `(platform, asset, account_type)`. When zerohash resolves `latest`, it selects the commitment with the newest snapshot date first, then the highest `publication_seq` within that date. A rebuild on a prior day does not supersede a first build on a newer day.
+
+Partners should track the `publication_seq` from the most recently verified root and reject any future root whose sequence number is lower. This provides anti-replay protection within a given `(platform, asset, account_type)` tree.
+
+---
+
+## Error Handling
+
+| HTTP status | Meaning |
+| --- | --- |
+| `200` | Success. |
+| `400` | Bad request (missing or invalid parameters). |
+| `401` | Authentication failed. Check the signature; the timestamp must be within 30 seconds of server time. |
+| `404` | Snapshot or participant not found for this platform. |
+| `500` | Internal error. Retry with exponential backoff. |
+
+A `404` on `/por/proofs` typically means the participant has no balance for the requested asset in the given snapshot.
+
+---
+
+## Implementation Notes
+
+- Always decode commitment\_cbor to obtain the authoritative `root_hash` and `root_sum`. The top-level JSON convenience fields must not be used as the trust anchor.
+- Handle signature key rotation using the `valid_from_snapshot_date` and `valid_to_snapshot_date` fields in `/por/keys`. Always match `signing_key_id` from the commitment to the correct key entry rather than assuming a single active key.
+- Cross-chain assets. Use the dotted . notation in the path parameter `USDC.ETH`). The CBOR `asset` equals that value.
+- Track `publication_seq` per tree. It is scoped to `(platform, asset, account_type)`. If you verify multiple assets, track one anti-replay floor per tree.
+- `/por/keys` is ungated. A `200` from that endpoint confirms the route is live before testing the platform-gated roots and proofs routes.

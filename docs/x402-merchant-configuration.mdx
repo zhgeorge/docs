@@ -1,0 +1,89 @@
+---
+title: "x402 Merchant Configuration"
+description: "Configure the endpoints, pricing, assets, and streaming settings your merchant will use to accept x402 payments from agents."
+---
+
+This guide walks Platforms through configuring their merchant's x402 payment, settlement, and streaming requirements.
+
+These configurations will be referenced in either usage of the zerohash x402 middleware or the implementation of your own middleware using the `/verify` and `/settle` endpoints.
+
+## Overview & Concepts
+
+Merchant's must configure their x402 settings to specify which endpoints, assets, networks, and streaming preferences for use in our [Accept (payins) solution.](/docs/accept-payins)
+
+---
+
+## Steps
+
+### 1 - Onboard your merchant
+
+Complete [these](/docs/know-your-agent) steps to onboard your merchant to your Platform.
+
+---
+
+### 2 - Configure your merchant's x402 settings
+
+The following settings can be configured for x402 payment acceptance & streaming:
+
+**Standard Configurations**
+
+- Endpoints to enable for x402
+- Price-per-endpoint-request
+- Supported assets
+- Supported networks
+- Maximum allowed requests per Shopper's agent
+
+**Streaming Configurations**
+
+- Price-per-session
+- Session length
+- Maximum allowed sessions per Shopper's agent
+
+`POST /participants/:id/x402/configurations`
+
+```json
+{
+    "x402": [
+        {
+            "supported_endpoints": [
+                "endpoint_url": "",
+                "price_per_endpoint": "",
+                "streaming": {
+                    "price_per_session": 0,
+                    "session_length": 0,
+                    "maxRequestsPerAgent",
+                    "maxSessionsPerAgent": 0
+                }
+            ],
+            "asset": [
+                "USDC"
+            ],
+            "network": [
+                "base"
+            ]
+        }
+    ]
+}
+```
+
+---
+
+### 3 - Verify Your Configuration
+
+To confirm that your server is properly configured:
+
+1. Send an unauthenticated HTTP request (without payment headers) to your paid endpoint
+2. Confirm that your server returns an HTTP `402 Payment Required` response containing your pricing and payout parameters
+
+**Sample Request:**
+
+```http
+GET /api/v1/data HTTP/1.1
+Host: api.yourdomain.com
+```
+
+**Expected Response (**`402 Payment Required`**):**
+
+`PAYMENT-REQUIRED` header in HTTP response containing `PAYMENT-REQUIRED` object (base64encoded)
+
+Once this test succeeds, your server is ready to accept and settle on-chain agent payments facilitated through zerohash. Reach out to your Platform administrator if you encounter any authentication or configuration issues.

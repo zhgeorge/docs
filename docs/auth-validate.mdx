@@ -1,0 +1,192 @@
+---
+title: "AUTH Controls"
+description: "The on-chain compliance layer: Secure linking, source validation, and fraud prevention"
+---
+
+## Introduction
+
+AUTH is built with several granular controls, designed to give compliance teams confidence when enabling stablecoin and crypto transfers. These controls help ensure transfers meet regulatory and internal risk requirements.
+
+This page covers the following controls:
+
+1. **Connection Sources:** Configure your integration to allow transfers only to and from custodial accounts (ie, centralized exchanges), non-custodial accounts (e.g. Metamask, Phantom wallets), or both. Restricting AUTH Connections to only custodial accounts ensures all counterparties are fully KYC’d.
+2. **Asset & Network Configurations:** Full flexibility to enable only the assets and networks your Platform wants to accept or send to.
+3. **Travel Rule-Powered Account Matching:** As a member of the TRUST network, zerohash can receive sender PII from participating centralized exchanges for transactions above applicable thresholds.
+4. **Non-AUTH Deposit Blocking:** Deposits initiated outside of the AUTH user experience can be automatically rejected.
+
+## Connection Sources
+
+You have complete flexibility to choose which exchange and wallet accounts you want to present as options to your customers:
+
+![](https://files.readme.io/d8e391eb1e71aaa9f7f492d44ba7965f5123f216c6ded8e916085b19448aab97-Custodial_vs._Non-custodial_Accounts.png)
+
+Simply instruct zerohash on your desired preference, and we’ll handle the configuration on our end.
+
+## Asset & Network Configurations
+
+The zerohash platform supports flexibility in configuring which assets are supported, e.g. BTC, ETH, SOL, XRP as well as which specific networks are enabled in AUTH e.g. Ethereum network, BASE, etc.
+
+Additionally, fine-grain transactional limits are available including daily limits or fixed minimums and maximums.
+
+## Travel Rule-Powered Account Matching
+
+There are 2 types of solutions we can offer:
+
+### Post-crediting Name Match
+
+#### Report details and mechanics
+
+As a TRUST network member, zerohash goes beyond standard Travel Rule compliance by not only exchanging sender PII for transactions above regulatory thresholds but also aggregating that data to generate an insightful **“same-name exception” report**. This report leverages our advanced account matching logic (mentioned above) to identify discrepancies between sending and receiving accounts.
+
+Delivered to you daily, this report provides actionable insights to help your compliance team or automated systems quickly identify and respond to potential risks, such as locking or disabling flagged participants via the [Lock customer endpoint](https://docs.zerohash.com/reference/post_participants-customers-participant-code-lock), streamlining your compliance workflow and strengthening your risk controls.
+
+**NOTE:** The Travel Rule (as implemented in the United States) requires certain financial institutions to include or transmit certain information (identifying the sender, receiver, and transaction) on certain transmittals of funds in if the transaction is \$3,000 or more in value.
+
+Reports can be delivered via sftp.
+
+![](https://files.readme.io/5490787be90f86376349097d2919ae9e6f889628506307776bdc4c3180ab653a-Travel_Rule-Powered_Account_Matching.png)
+
+### Account Match Logic
+
+zerohash can perform account matching between the user in our system and the corresponding account within the external exchange system.
+
+**Logic**
+By default, our out-of-the-box name matching logic performs a standard comparison of First Name and Last Name fields. We apply a string similarity algorithm called Jaro-Winkler, which generates a score between 0 and 1:
+
+- A score of 1.0 indicates a perfect match
+- Lower scores reflect less similarity between the names
+
+We recommend a default threshold of 0.75 (ie, 75%), but this value is fully configurable based on your organization’s needs and risk tolerance.
+
+### Pre-crediting Name Match
+
+With Pre-crediting Name Matching, zerohash will not credit end customer accounts until a name match has been performed between the zerohash account, and the source exchange account. Here's how it works:
+
+1. User selects a centralized exchange account as a funding source with AUTH-enabled Account Funding SDK
+2. User initiates withdrawal from the exchange for an amount over \$3,000
+3. The asset lands on-chain at the end user's zerohash wallet address
+4. zerohash receives the asset on-chain, but the assets remain **"Processing"** - meaning they are locked and unavailable for use until the automated name-match is satisfied.
+   1. zerohash sends a webhook to the Platform
+   2. zerohash sends an email to the end customer (if the Platform is enabled for this)
+5. zerohash instantly begins monitoring for travel rule PII to be received from the sending centralized exchange
+6. Once the PII is received, zerohash performs a name match according to the [Account Match logic above](/docs/auth-validate#account-match-logic)
+   1. if the account can be matched, zerohash will convert the funds to fiat
+      1. zerohash sends a webhook to the Platform
+      2. zerohash sends an email to the end customer (if the Platform is enabled for this)
+   2. If the account cannot be matched, do not convert the funds and move the funds to the `recovery_quarantine` account\_label
+      1. zerohash sends a webhook to the Platform
+      2. zerohash sends an email to the end customer (if the Platform is enabled for this)
+         1. The end customer can self-serve a withdrawal to the wallet address of their choice
+
+**Webhook Example - Failed Account Match**
+
+We will send a [Fund webhook](https://docs.zerohash.com/reference/fund-transaction-update) to the Platform indicating that we have the funds, but have not performed the account match yet. Example payload:
+
+```json
+{
+  "participant_code": "CUST01",
+  "fund_asset": "USDC.BASE",
+  "quoted_currency": "USD",
+  "source_address": "0x3A45a60c62EE6cD616B1C4510404Eba88116044I",
+  "deposit_address": "0x34f53Aea3ba8b60B0ed19106baF43A4f3F73f248",
+  "quantity": "3400",
+  "fund_id": "5155f7c9-95cb-4556-ab89-c178943a7111",
+  "deposit_timestamp": 1750412525409770895,
+  "transaction_id": "a07407e8f98c21b037b4aa0cbc852b8489c5e122fcc3d4b33b7827d0605ad8ff",
+  "account_label": "general",
+  "success": false,
+  "reason" : "deposit received, however the Travel Rule-based account match has not completed yet",
+  "source": {
+    "integration": "coinbase",
+    "type": "CUSTODIAL"
+  },
+  "raw_fee_bps": "0",
+  "deposit_fee_bps": "0",
+  "raw_fee_notional": "0.00",
+  "deposit_fee_notional": "0.00"
+}
+```
+
+**Standard Fund Complete webhook**
+
+```json
+{
+  "participant_code": "CUST01",
+  "fund_asset": "USDC.BASE",
+  "rate": "1",
+  "quoted_currency": "USD",
+  "source_address": "0x3A45a60c62EE6cD616B1C4510404Eba88116044I",
+  "deposit_address": "0x34f53Aea3ba8b60B0ed19106baF43A4f3F73f248",
+  "quantity": "3400",
+  "notional": "3400",
+  "fund_id": "5155f7c9-95cb-4556-ab89-c178943a7111",
+  "fund_timestamp": 1750404905186631445,
+  "deposit_timestamp": 1750404905037719568,
+  "transaction_id": "a07407e8f98c21b037b4aa0cbc852b8489c5e122fcc3d4b33b7827d0605ad8ff",
+  "account_label": "general",
+  "success": true,
+  "source": {
+    "integration": "cbase",
+    "type": "CUSTODIAL"
+  },
+  "reference_id": "d098e59b-8023-4477-8b63-68fda3c53a30",
+  "raw_fee_bps": "0.00",
+  "raw_fee_notional": "0.00",
+  "deposit_fee_bps": "0.00",
+  "deposit_fee_notional": "0.00"
+}
+```
+
+**Send Failure Webhook with Reason**
+
+```json
+{
+  "participant_code": "CUST01",
+  "fund_asset": "USDC.BASE",
+  "quoted_currency": "USD",
+  "source_address": "0x3A45a60c62EE6cD616B1C4510404Eba88116044I",
+  "deposit_address": "0x34f53Aea3ba8b60B0ed19106baF43A4f3F73f248",
+  "quantity": "3400",
+  "fund_id": "5155f7c9-95cb-4556-ab89-c178943a7111",
+  "deposit_timestamp": 1750412525409770895,
+  "transaction_id": "a07407e8f98c21b037b4aa0cbc852b8489c5e122fcc3d4b33b7827d0605ad8ff",
+  "account_label": "general",
+  "success": false,
+  "reason" : "Travel Rule-based account match failed",
+  "source": {
+    "integration": "cbase",
+    "type": "CUSTODIAL"
+  },
+  "raw_fee_bps": "0",
+  "deposit_fee_bps": "0",
+  "raw_fee_notional": "0.00",
+  "deposit_fee_notional": "0.00"
+}
+```
+
+## Non-AUTH Deposit Blocking
+
+Platforms can configure their AUTH integration to **block non-**AUTH **transfers** - transfers that are initiated outside of the standard zerohash AUTH flow. While such cases are rare, it's important for platforms to detect and handle them gracefully to maintain a secure and consistent user experience.
+
+For example:
+
+- User A completes an AUTH-driven transfer, properly linking their exchange account.
+- Since blockchain addresses are public, the user could discover their deposit address via a block explorer and attempt a second deposit from a non-custodial account.
+- zerohash can detect this scenario and block the non-AUTH deposit from crediting the user.
+- If this happens, the user can seamlessly recover their funds using our [Recovery](/docs/recovery) options
+
+### Recovery steps
+
+#### 1. Non-AUTH deposit received
+
+A deposit is made that bypasses the intended AUTH flow. The deposit will be credited to the customer's account, on the zerohash ledger, under an non-AUTH deposit-specific `account_label` of `recovery_quarantine`.
+
+The deposit will not credit the customer's trading power on the exchange/CLOB, for example, and they will not be able to withdraw these funds or otherwise alter the balance except by initiating a withdrawal via any of the [Recovery options.](/docs/recovery)
+
+#### 2. Webhook triggered
+
+zerohash sends a `deposit.status_changed` to the Platform that will specify a `state` of `recovery_quarantine`
+
+#### 3. Platform recovers funds
+
+The Platform or user can recover funds through one of our [Recovery](/docs/recovery) options (either Platform-hosted or zerohash-hosted solutions available.)

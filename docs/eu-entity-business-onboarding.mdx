@@ -1,0 +1,41 @@
+---
+title: "EU Entity (Business) Onboarding"
+---
+
+## EU Entity (Business) Onboarding
+
+`POST /participants/entity/new` accepts both US and EU businesses through a single endpoint. Set `jurisdiction_code` to route a payload to EU processing. The request body is a set of titled variants keyed by jurisdiction and entity type; **EU businesses are onboarded under a reliance model**, so they map to the entity-type-specific "**EU – … – Reliance**" variants — e.g. `EU - Corporation - Reliance`, `EU - LLC - Reliance`, `EU - Trust / Estate - Reliance` — each with its own required-field set. There is no non-reliance EU variant. See [Create Entity](https://docs.zerohash.com/reference/post_participants-entity-new) for the full schema and example payloads.
+
+### What's different for EU entities
+
+In addition to the base business details required for every entity (legal name, entity type, registered address, contact details, tax id, control persons, beneficial owners), EU entities must also provide:
+
+| Field | Description |
+| --- | --- |
+| `chamber_of_commerce_number` | Chamber of commerce registration number |
+| `id_number` + `id_number_type` | LEI (`id_number_type: legal_entity_identifier`) |
+| `board_members` | At least one board member (distinct from control persons/beneficial owners) |
+| `activity_locations` | ISO 3166-1 alpha-2 country code(s) of business activity |
+| `expected_annual_volume` | Expected annual transaction volume tier |
+| `entity_source_of_funds` | Primary source of funds (`entity_source_of_funds_description` required if `other`) |
+| `risk_rating` | Reliance: the platform's own risk rating for the entity |
+| `sanction_screening` + `sanction_screening_timestamp` | Reliance: the platform's attestation that it screened the party, with the timestamp of that screening. **Also required on each board member.** |
+
+Optional (not required by the schema):
+
+| Field | Description |
+| --- | --- |
+| `is_complex_structure`, `declaration_no_effective_control`, `declaration_no_foreseeable_changes` | Ownership-structure attestations |
+| `entity_sub_type` | Further classifies trust entities (`trust_llc`, `trust_sole_proprietorship`, `trust_other`) |
+
+Every EU entity requires at minimum one board member, one control person, and one beneficial owner. Board members can only be submitted at entity **creation** — see [Entity User Management](https://docs.zerohash.com/reference/entity-user-managment) for how to read or update them afterward.
+
+### Required documents
+
+EU entities must submit the following documents via [Submit Entity Documents](https://docs.zerohash.com/reference/post_participants-entity-documents):
+
+- `lei_certificate`
+- `excerpt_of_the_chamber_of_commerce`
+- `annual_accounts`
+- `power_of_authorization` (power of attorney or board resolution authorizing the submitter)
+- `legal_opinion` — additionally required if the entity was created with `is_complex_structure: true`

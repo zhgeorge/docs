@@ -1,0 +1,25 @@
+---
+title: "USDC Trading Pairs"
+---
+
+USDC Swaps on RFQ give platforms a way to offer digital asset trading quoted directly in **USDC on the Ethereum network**, so end users can buy and sell crypto out of their USDC balance without a separate USDC to USD conversion. The customer-facing quote, trade, and balance movement are all denominated in USDC. For supported instruments, see [here.](/docs/supported-instruments-1)
+
+## Use Cases
+
+- **USDC-native platforms** that hold USDC on behalf of end users and want to trade without converting to USD first.
+- **Stablecoin wallets and neobanks** offering crypto buy/sell against a USDC balance.
+- **Cross-border and payments flows** where USDC is the working currency.
+- **Platforms reducing conversion friction**, eliminating the doubled fees and slippage of a USDC to USD to asset round trip.
+
+## Flow
+
+1. The platform requests a quote for a `<UNDERLYING>/USDC.ETH` pair (buy or sell). The quote returns denominated in USDC.
+   1. Specify `underlying` asset (reference supported instruments [here)](/docs/supported-instruments-1) and `quoted_currency` as `USDC.ETH` in the [RFQ payload](https://docs.zerohash.com/reference/post_liquidity-rfq)
+2. The platform executes the quote. Credit is checked natively against the customer's USDC.ETH balance
+3. The trade settles in the same manner as a regular fiat denominated pair
+
+## Key Features
+
+- **USDC-native trading.** End users trade directly from their USDC balance, with no USDC to USD conversion step.
+- **USD-par reporting.** Each USDC-pair trade is recorded at 1:1 par for compliance, reporting, and TaxBit tax purposes.
+- **Buy and sell support** across the supported underlyings, in both US and EU regions.

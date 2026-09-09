@@ -1,123 +1,108 @@
 ---
-title: "Crypto Tax Reporting Overview for Zero Hash Platforms"
-sidebarTitle: "Tax Overview"
-description: "Understand taxable events, Zero Hash Tax-as-a-Service, US and EEA tax form obligations, and how KYC data drives compliant tax reporting for your platform."
+title: "Tax Overview"
+sidebarTitle: "Tax"
 ---
 
-Zero Hash offers a Tax-as-a-Service (TaaS) product that helps platforms meet their tax reporting obligations without building a separate tax infrastructure. Whether your platform enables users to buy and sell crypto, issue crypto rewards, or pay employees in digital assets, Zero Hash's TaaS suite collects the required data at onboarding and generates the appropriate tax forms on your behalf. This overview explains what constitutes a taxable event, which tax forms may be issued, and how Zero Hash supports compliance for both US and EEA platforms.
+As a committed provider for crypto's current and future infrastructure, zerohash is proud to offer a Tax-as-a-Service (TaaS) product to Platforms.
 
-<Note>
-  This page provides general informational guidance and does not constitute legal or tax advice. Zero Hash and its affiliates do not provide legal, financial, or tax advice. Consult a professional financial advisor for guidance specific to your business. Zero Hash's Tax as a Service product is only available to end users if the platform through which they are transacting has enabled tax services.
-</Note>
+## Crypto tax: what are my responsibilities?
 
-## What Constitutes a Taxable Event
+- A taxable event is any action or transaction that may result in taxes owed to the government.
+  - Information such as transaction dates, the assets Fair market value \{FMV\} at time of purchase and sale that are related to the taxable event are required to be reported to the IRS by individuals.
+    - See "*What Constitutes a Taxable Event*" for more information.
+- To aid end users in their personal tax compliance and to comply with federal law tax forms may be provided to users who have transactions exceeding certain thresholds.
+  - See "*What Tax Form(s) Might I Receive?*" for details on US tax forms.
 
-A taxable event is any action or transaction that may result in taxes owed to a government authority. For crypto, taxable events typically include:
+## zerohash tax for business
 
-- **Sale of a digital asset** for fiat currency (e.g., selling BTC for USD)
-- **Exchange of one digital asset for another** (e.g., swapping ETH for USDC)
-- **Receipt of crypto as income** (e.g., crypto rewards, staking yields, or salary payments in crypto)
+At zerohash, compliance is always our number one priority. As such, we provide a full tax-as-a-service suite of products for all of your reporting needs. Whether you’re enabling your customers to buy/sell, issuing crypto rewards or even paying your employees in crypto, we’ve got you covered.
 
-For each taxable event, the IRS and other tax authorities require information such as the transaction date, the fair market value (FMV) of the asset at the time of purchase, and the FMV at the time of sale or exchange.
+## zerohash tax for consumers
 
-## How Zero Hash Helps Platforms Handle Tax Reporting
+If you engaged in qualifying transactions on a platform that uses our TaaS product, and met the required thresholds to receive a tax form, the relevant forms will be delivered to you.
 
-Zero Hash's TaaS product handles the full reporting lifecycle:
+**Disclaimer:** This article is intended to provide basic, helpful information surrounding crypto taxes, and does not serve as formal legal or tax advice. Zero Hash and its affiliates do not provide legal, financial, or tax advice. Please consult a professional financial advisor if you have additional questions surrounding how to properly record and report your crypto activity. Zero Hash’s Tax as a Service Product is only available to end users if the platform through which the end user is using the Zero Hash crypto services enables the tax services.
 
-<CardGroup cols={2}>
-  <Card title="Data collection at onboarding" icon="clipboard-list">
-    Zero Hash collects tax classification data (W-9 or W-8) during participant onboarding, either via the KYC SDK or via API fields on the participant submission endpoints.
-  </Card>
-  <Card title="Threshold monitoring" icon="chart-bar">
-    Zero Hash monitors transaction activity against IRS reporting thresholds and determines when a tax form must be issued for a given participant.
-  </Card>
-  <Card title="Form generation" icon="file-text">
-    Zero Hash generates and delivers the appropriate tax forms (1099-B, 1099-DA) to participants who meet the reporting thresholds.
-  </Card>
-  <Card title="Backup withholding enforcement" icon="shield">
-    For participants who have not completed their tax profile, Zero Hash enforces backup withholding on applicable transactions beginning in FY 2027.
-  </Card>
-</CardGroup>
+## zerohash US tax guidelines
 
-## Tax Forms That May Be Issued
+If your platform is partnered with zerohash LLC, users transacting may be subject to tax depending on their activity. It is important for platform customers to provide their tax classification and certification at onboarding so that zerohash can collect the data and ensure tax profile completeness. For platforms looking to understand how to pass this data to zerohash quickly and efficiently, you may reference the below guides:
 
-### US Participants
+- [W-9 Implementation Guide](/docs/w-9-implementation-guide)
+- [W-8 Implementation Guide](/docs/w-8-implementation-guide-api)
 
-Participants transacting on US-regulated platforms partnered with Zero Hash LLC may receive the following forms:
+Starting in FY 2027, IRS tax guidelines around digital assets will take effect. This means that users who have not completed their tax profile with zerohash will be subject to backup withholding. More specifically, for any sale of digital assets, 24% of the proceeds will be withheld and remitted to the IRS.
 
-| Form | Description | Trigger |
-|------|-------------|---------|
-| **1099-B** | Proceeds from broker transactions | Sale or exchange of digital assets exceeding IRS reporting thresholds |
-| **1099-DA** | Digital asset proceeds from broker transactions | New IRS form effective FY 2027 governing digital asset sales |
+## zerohash EEA tax guidelines
 
-<Info>
-  Starting in FY 2027, IRS tax guidelines around digital assets will take full effect. Participants who have not completed their tax profile with Zero Hash will be subject to **24% backup withholding** on the proceeds of any digital asset sale. Zero Hash remits withheld amounts directly to the IRS.
-</Info>
-
-### EEA Participants
-
-For platforms operating within an EEA country, Zero Hash collects additional data points to comply with DAC8/CARF reporting guidelines. See the [Crypto Tax Overview: EEA Requirements](#eea-tax-requirements) section below for details.
-
-## The Role of KYC Data in Tax Compliance
-
-Tax compliance depends on accurate participant identity data collected at onboarding. For US participants, this means capturing:
-
-- **Taxpayer Identification Number (TIN)** — the 9-digit SSN or EIN
-- **W-form certification** — a timestamped attestation that the participant has certified their tax status
-- **Backup withholding status** — whether the participant has an IRS B-Notice on file
-- **FATCA and payee exemption codes** — applicable for institutional or exempt participants
-
-For EEA participants, Zero Hash requires several additional fields to support DAC8/CARF reporting:
-
-- `tax_residence` — the participant's tax jurisdiction if different from their residential address
-- `tin_jurisdiction_reason` — the reason for any jurisdiction mismatch (e.g., `working_abroad`, `dual_residency`)
-- `self_certification_timestamp` — a required attestation for all EEA participants
-- `incorporation_address` — required for entity customers
-
-<Tip>
-  For a step-by-step guide on collecting and submitting W-9 data via the API, see the [W-9 Implementation Guide](/docs/w-9-implementation-guide). For the KYC SDK tax data collection flow, see [Tax Data Collection via KYC-as-a-Service](/docs/tax-data-collection-kycaas).
-</Tip>
-
-## EEA Tax Requirements
+If your platform is operating within an EEA country, zerohash will require additional data points on your customers to ensure compliance with DAC8/CARF reporting guidelines. These additional fields are:
 
 ### Tax Identification Number
 
-EEA platforms must submit the `tax_id` field formatted according to each country's specification as defined by the OECD. Zero Hash validates the `tax_id` format against both the participant's residential `jurisdiction_code` and their tax residence `jurisdiction_code` (if different).
+- Existing `tax_id` field that is required for customers onboarded to an EEA platform
 
-The following table shows the TIN format requirements by country:
+  - Platforms should format tax identification numbers in the appropriate formatting as specified by [https://www.oecd.org/](https://www.oecd.org/)
+  - The `tax_id` format is validated against both the `jurisdiction_code` of the residential address and the `jurisdiction_code` of the tax residence (if tax residence is provided at onboarding)
+    - So long as the ``tax_id` adheres to either format, it will be accepted
 
-| Code | Country | Structure |
-|------|---------|-----------|
-| AT | Austria | 9 numerals |
-| BE | Belgium | 11 numerals |
-| DE | Germany | 11 numerals |
-| FR | France | 13 numerals (first digit 0, 1, 2, or 3) |
-| IT | Italy | 6 letters + 2 numerals + 1 letter + 2 numerals + 1 letter + 3 numerals + 1 letter |
-| ES | Spain | 8 numerals + 1 letter, or 1 character + 7 numerals + 1 letter |
-| NL | Netherlands | 9 numerals |
-| SE | Sweden | 10 numerals |
-| UK/GB | United Kingdom | 10 numerals, or 2 letters + 6 numerals + 1 character |
+### Tax ID Validations
 
-For the full list of country-specific regex patterns, refer to the [OECD TIN guidance](https://www.oecd.org/).
+| Code | Country | Regex Pattern(s) | Structure Description |
+| --- | --- | --- | --- |
+| AT | Austria | ^[0-9]9\$ | 9 numerals |
+| BE | Belgium | ^[0-9]11\$ | 11 numerals |
+| BG | Bulgaria | ^[0-9]10\$ | 10 numerals |
+| HR | Croatia | ^[0-9]11\$ | 11 numerals |
+| CY | Cyprus | ^[0-9]8[A-Z]\$ | 8 numerals followed by a letter |
+| CZ | Czech Rep. | ^[0-9]9\$ ^[0-9]10\$ | 9 or 10 numerals |
+| DK | Denmark | ^[0-9]10\$ | 10 numerals |
+| EE | Estonia | ^[0-9]11\$ | 11 numerals |
+| FI | Finland | ^[0-9]6[+-A][0-9]3[0-9A-Z]\$ | 6 numerals + 1 character (+, -, or A) + 3 numerals + 1 character |
+| FR | France | ^[0-3][0-9]12\$ | 13 numerals (1st numeral always 0, 1, 2 or 3) |
+| DE | Germany | ^[0-9]11\$ | 11 numerals |
+| EL | Greece | ^[0-9]9\$ | 9 numerals |
+| HU | Hungary | ^[0-9]10\$ | 10 numerals |
+| IS | Iceland | ^[0-9]10\$ | 10 numerals |
+| IE | Ireland | ^[0-9]7[A-Z]\$ ^[0-9]7[A-Z]2\$ | 7 numerals + either 1 or 2 letters |
+| IT | Italy | ^[A-Z]6[0-9]2[A-Z][0-9]2[A-Z][0-9]3[A-Z]\$ | 6 letters + 2 numerals + 1 letter + 2 numerals + 1 letter + 3 numerals + 1 letter |
+| LV | Latvia | ^[0-9]11\$ | 11 numerals |
+| LI | Liechtenstein | ^[0-9]12\$ | 4 to 12 numerals |
+| LT | Lithuania | ^[0-9]11\$ | 11 numerals |
+| LU | Luxembourg | ^[0-9]13\$ | 13 numerals |
+| MT | Malta | ^[0-9]7[MGAPLHBZ]\$ ^[0-9]9\$ | 7 numerals + 1 letter (M, G, A, P, L, H, B or Z) or 9 numerals |
+| NL | Netherlands | ^[0-9]9\$ | 9 numerals |
+| NO | Norway | ^[0-9]11\$ | 11 numerals |
+| PL | Poland | ^[0-9]10\$ ^[0-9]11\$ | 10 or 11 numerals |
+| PT | Portugal | ^[0-9]9\$ | 9 numerals |
+| RO | Romania | ^[0-9]13\$ | 13 numerals |
+| SK | Slovakia | ^[0-9]9\$ ^[0-9]10\$ | 9 or 10 numerals |
+| SI | Slovenia | ^[0-9]8\$ | 8 numerals |
+| ES | Spain | ^[0-9]8[A-Z]\$ ^[0-9LKMXYZ][0-9]7[A-Z]\$ | 8 numerals + 1 letter, or 1 character (numeral, L, K, M, X, Y or Z) + 7 numerals + 1 control letter |
+| SE | Sweden | ^[0-9]10\$ | 10 numerals |
+| UK/GB | United Kingdom | ^[0-9]10\$ ^[A-Z]2[0-9]6[ABCD ]\$ | 10 numerals or 2 letters + 6 numerals + 1 character (A, B, C, D or space) |
 
-### Tax Residence Mismatch
+### Tax Residence
 
-If a participant's tax jurisdiction differs from their residential address jurisdiction, you must provide:
+- New `tax_residence` object for customers onboarded to an EEA platform that may have a taxable `jurisdiction_code` that is different from their residential ``jurisdiction_code`
+  - Platforms are required to provide this new tax residence jurisdiction if the end-user fits the above description
 
-- `tax_residence.jurisdiction_code` — the participant's taxable jurisdiction
-- `tin_jurisdiction_reason` — one of: `working_abroad`, `studying_abroad`, `dual_residency`, `business_abroad`, `real_estate_abroad`, or `other`
+### TIN Jurisdiction Reason
 
-<Warning>
-  If `tin_jurisdiction_reason` is omitted and a jurisdiction mismatch is detected, it defaults to `other`, placing the participant in a `submitted` state pending manual compliance review. Using any of the first five explicit reason codes allows the standard approval flow to proceed.
-</Warning>
+- New `tin_jurisdiction_reason` field that is an optional field in the event taxable `jurisdiction_code` that is different from their residential ``jurisdiction_code`
+  - Platforms can choose from the following enum values as reason codes for the difference:
+    - `working_abroad`
+    - `studying_abroad`
+    - `dual_residency`
+    - `business_abroad`
+    - `real_estate_abroad`
+    - `other`
+  - If `other` is selected, the user will be onboarded into a "submitted" state for compliance to conduct a manual review.
+    - Note that if `tin_jurisdiction_reason` is not provided at onboarding, and there is a mismatch in jurisdiction codes, this field is defaulted to `other` and the user will go through the manual review process
+    - Use of any of the first 5 enum values will result in regular approval flow, so long as other mandatory fields are provided at time of onboarding
 
-## Related Guides
+### Self-Certification
 
-<CardGroup cols={2}>
-  <Card title="W-9 Implementation Guide" icon="file-invoice" href="/docs/w-9-implementation-guide">
-    Collect and submit W-9 certification data for US persons via API.
-  </Card>
-  <Card title="Tax Data Collection via KYC SDK" icon="id-card" href="/docs/tax-data-collection-kycaas">
-    How Zero Hash collects W-9 and W-8BEN data within the KYC onboarding SDK.
-  </Card>
-</CardGroup>
+- New `self_certification_timestamp` field required for customers onboarded to an EEA platform to attest their information is accurate for reporting. This is mandatory at onboarding for all end-users of the platform.
+
+### Address of Incorporation
+
+- New `incorporation_address` object required for entity customers onboarded to an EEA platform. Platforms must specify the full incorporation address (street address, city, postal code, country) of the entity.

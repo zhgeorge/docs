@@ -1,0 +1,126 @@
+---
+title: "Streaming Acceptance"
+description: "Accept streaming payments"
+---
+
+## Overview & Concepts
+
+Streaming Acceptance is an extension of zerohash's [agentic payments acceptance](/docs/accept-payins) solution. For a one-time transaction, an agent signs a payment and the exchange clears in a single HTTP round trip. Streaming works differently: an agent signs one authorization to cover the first full session and is able to access the endpoint for the duration of the session.
+
+The solution encompasses the following steps:
+
+1. [Configure the zerohash x402 middleware connector](/docs/payments-facilitator-configuration) for your Platform's to support streaming. Note: streaming payments is only supported by the zerohash official middleware (an extension of the open-source x402 middleware framework).
+2. [Configure merchants x402 streaming payins parameters](/docs/x402-merchant-configuration) such as price-per-session, session length, maximum requests per agent, and maximum sessions per agent.
+3. Configure merchants x402 payins parameters such as defining a session unit (per second, token, or megabyte), a price-per-unit, a maximum session spend cap, and a settlement/increment period.
+4. [Integrate to the Agentic Streaming integration guide](/docs/stream-onchain-money#streaming-integration-guide), below.
+5. Start accepting streaming agentic payments.
+
+zerohash is applying this streaming payments rail to:
+
+- **Streaming and session access:** Live data feeds, running model output, and video or audio streams billed by the second, the token, or the megabyte.
+- **Creator and publisher paywalls:** Per-article, per-video, or per-download pricing collected at the moment of access, with no subscription required.
+- **Public API monetization for AI agents:** Market data, inference, geolocation, or search APIs that charge per call instead of running on API keys and postpaid invoices.
+- **Agentic commerce for platforms:** Marketplaces and SaaS platforms exposing usage-based tools directly to autonomous agents, on the same settlement model as their existing merchants.
+
+## Roles
+
+| Role | Example | Description |
+| --- | --- | --- |
+| Platform | Fetch | Integrates zerohash and configures the x402 middleware; makes the API calls to zerohash on behalf of merchants |
+| Merchant | Skyline Weather Co. | The business exposing a paid endpoint (e.g., /forecast); returns the 402 Payment Required response and fulfills the request once payment settles |
+| Shopper | John Smith | The human accountable under KYA for the agent's actions |
+| Shopper's Agent | John's research agent | Initiates the payment request on behalf of the Shopper |
+| zerohash | - | Acts as payment facilitator |
+
+1. **Shopper's Agent initiates an x402 request.** The agent calls the x402-enabled endpoint directly: `GET /forecast?city=chicago` . The merchant can [configure the x402 payins parameters](/docs/x402-merchant-configuration) such as price-per-session, session length, maximum requests per agent, and maximum sessions per agent through the [zerohash middleware solution](/docs/payments-facilitator-configuration).
+2. **Merchant returns payment requirements in response to Shopper's Agent.** The zerohash [middleware](/docs/payments-facilitator-configuration) responds with `402 Payment Required` with the KYA requirements to onboard a Shopper's agent and merchant's x402 configurations.
+
+   **Shopper's Agent resubmits x402 request with payment & KYA requirements**  - Shopper's agent includes all requirements in `X-PAYMENT` header of request.
+3. **zerohash authorize's the payment via** `POST /verify`**.** The Platform submits the payment and KYA requirements to zerohash's `/verify` endpoint on the agent's behalf. zerohash checks the request against the merchant's configured `product_permissions` and transaction limits (see Set agent permissions and limits) and confirms whether it's authorized - no funds move at this step.
+
+## Streaming Integration Guide
+
+The agent's session spend cap is enforced against merchant's x402 streaming configuration. A session cap is the maximum amount a merchant wants an agent to spend within a given frame.
+
+x402 streaming is only supported through the [zerohash middleware.](/docs/payments-facilitator-configuration) The spend sessions are defined at first x402 request, and settlement terms are done in batches according to the merchant's configuration.
+
+How a streaming session completes:
+
+**1 - Shopper's Agent initiates an x402 request -** The agent calls the merchant's x402 streaming enabled endpoint, requesting access: `GET /stream/market-data`
+
+**2 - Merchant returns streaming payment requirements in response to Shopper's Agent.** The merchant's [middleware](/docs/payments-facilitator-configuration) responds with `402 Payment Required` with the KYA requirements to onboard a Shopper's agent, session unit, price-per-unit, and maximum cap it will accept.
+
+```json
+  {
+    //KYA requirements
+    "accepts": [
+      {
+        "scheme": "upto",
+        "network": "base",
+        "asset": "USDC",
+        "price_per_unit": "0.0001",
+        "unit": "second",
+        "max_session_amount": "5.00",
+        "pay_to": "0xSkylineAddress"
+      }
+    ]
+  }
+```
+
+**3 - Shopper's Agent resubmits x402 request with streaming payment & KYA requirements**  - Shopper's agent includes all requirements in `X-PAYMENT` header of request that includes an authorization for the first full session.
+
+**4 - zerohash authorize's the payment via** `POST /verify`**.** The Platform submits the payment and KYA requirements to zerohash's `/verify` endpoint on the agent's behalf. zerohash checks:
+
+1. The request against the merchant's configured `product_permissions` transaction, assets, network, and session limits; and,
+2. Validates the payment authorization signature; and,
+3. Performs KYA on Shopper's Agent and sending wallet
+
+If the above checks pass, then zerohash moves to settle the first session.
+
+Response:
+
+```json
+{
+    "status": "verified",
+    "session_id": "SESSION-8821",
+    "participant_code": "CUST01",
+    "account_label": "AGENT01"
+  }
+```
+
+**5 - zerohash initializes first session with on-chain settlement** - zerohash uses settles the first session's duration using the payment authorization from the Shopper's Agent. The session is opened with the merchant's maximum session limit.
+
+**6 - Shopper's agent begins streaming session -** Once zerohash confirms settlement, the zerohash [middleware](/docs/payments-facilitator-configuration) returns `200 OK` with the requested resource. The agent is now free to use the unlocked streaming resource for the duration of the session.
+
+**7 - Shopper's agent extends session with incremental payments** - The shopper's agent submits requests to extend their session using the `/settle` endpoint anytime before the session ends. The extension payment must be for the full amount of the session cost and can only be extended for one future session at a time. Example: an agent is in an active streaming payments session and sends a `/settle` request to extend their session for another 60 seconds. They cannot extend another 60 seconds until the current session ends.
+
+`POST /settle` call:
+
+```json
+  {
+    "session_id": "SESSION-8821",
+    "participant_code": "CUST01",
+    "account_label": "AGENT01",
+    "increment_amount": "0.006",
+    "asset": "USDC.BASE"
+  }
+```
+
+Response:
+
+```json
+{
+    "status": "settled",
+    "settlement_type": "internal_ledger",
+    "session_id": "SESSION-8821",
+    "cumulative_amount": "0.006",
+    "remaining_cap": "4.994",
+    "settled_at": "2026-07-29T12:01:00Z"
+  }
+```
+
+<Info>
+If cumulative usage would exceed `max_session_amount`, the session is closed automatically and no further increments are charged - the agent is never billed beyond its authorized cap.
+</Info>
+
+**6 - Session closes:** When the agent's last session expires, or the cap is reached, the session is automatically closed.

@@ -1,0 +1,152 @@
+---
+title: "API - Recovery Integration Guide"
+description: "Use zerohash's API's to allow your customers to recover funds"
+---
+
+## Overview & Concepts
+
+Platform-hosted Recovery lets your Platform build its own recovery experience directly into your product, rather than routing customers to [zerohash's hosted recovery UI](/docs/recovery-sdk-integration-guide). Your Platform calls zerohash's withdrawal APIs directly, owns the UI/UX end-to-end, and is responsible for surfacing quote details, confirming intent, and tracking settlement status back to the customer.
+
+This guide covers the API-only path: locking a network fee quote, executing the withdrawal, and tracking it to completion - via [GET /withdrawals/locked\_network\_fee](https://docs.zerohash.com/reference/get_withdrawals-locked-network-fee), [POST /withdrawals/execute](https://docs.zerohash.com/reference/post_withdrawals-execute), webhooks, and [GET /withdrawals/requests](https://docs.zerohash.com/reference/get_withdrawals-requests).
+
+The solution encompasses the following steps:
+
+- Lock a network fee quote via [GET /withdrawals/locked\_network\_fee](https://docs.zerohash.com/reference/get_withdrawals-locked-network-fee)
+- Execute the withdrawal via [POST /withdrawals/execute](https://docs.zerohash.com/reference/post_withdrawals-execute)
+- Track settlement via webhooks and/or [GET /withdrawals/requests](https://docs.zerohash.com/reference/get_withdrawals-requests)
+
+## Fee Model
+
+By default, the customer pays the network fee - it's deducted from the withdrawal amount, not charged on top of it. If a customer requests to withdraw 500 USDC on Ethereum, and the network fee quote comes back at 2.15 USDC, the customer receives `net_withdrawal_quantity`: 497.85 USDC on-chain - the requested amount minus the fee, not the requested amount in full.
+
+## Authentication
+
+Authentication follows our standard API Authentication practices of HMAC signing. Your API key must have write permission on the /withdrawals resource to call either endpoint in this flow.
+
+### What triggers recovery
+
+For customers depositing via Classic Transfer (i.e., scanning a QR code and sending from their own external wallet, rather than a custodial/API-linked flow), the following scenarios cause the deposit to fail rather than complete normally:
+
+- The amount sent is below the platform's configured minimum threshold
+- The amount sent is above the platform's configured maximum threshold
+- The customer sends an asset the platform hasn't configured for the product (e.g., the customer sends ETH, but the platform only supports USDC deposits)
+
+<Info>
+When any of these scenarios occurs, the funds are not lost - they land in a dedicated `recovery_quarantine` account label under the customer's participant record, rather than being credited to their normal available balance.
+</Info>
+
+## Steps
+
+### 1 - Lock a network fee quote
+
+[GET /withdrawals/locked\_network\_fee](https://docs.zerohash.com/reference/get_withdrawals-locked-network-fee)
+
+Request either a specific amount or `max_amount`: true to quote the full available balance. You must also supply either `withdrawal_account_id` (a pre-whitelisted destination) or `withdrawal_address` (a raw address).
+
+Example request:
+
+`GET /withdrawals/locked_network_fee?participant_code=ABCDEF&asset=USDC.ETH&amount=500&withdrawal_address=0x7f41A26C0CB9D5a1e57BE9cF10F8354b77CD8ab3`
+
+Example response:
+
+```json
+{
+  "participant_code": "ABCDEF",
+  "account_group": "JMCH0H",
+  "account_label": "general",
+  "asset": "USDC.ETH",
+  "amount": "500",
+  "max_amount": false,
+  "withdrawal_account_id": "",
+  "withdrawal_address": "0x7f41A26C0CB9D5a1e57BE9cF10F8354b77CD8ab3",
+  "destination_tag": "",
+  "no_destination_tag": false,
+  "withdrawal_quote_id": "bdc4c936-8505-4e61-b859-f3a5a6bdc880",
+  "network_fee": "2.15",
+  "network_fee_notional": "2.15",
+  "net_withdrawal_quantity": "497.85",
+  "net_withdrawal_notional": "497.85",
+  "amount_notional": "500.00",
+  "withdrawal_fee": "0"
+}
+```
+
+<Note>
+Time-sensitive `withdrawal_quote_id` is only valid for **30 seconds**. Your Platform should present the quote (network fee, net amount the customer will receive) and confirm intent quickly, then call `/execute` immediately upon confirmation - a stale quote will need to be re-requested.
+</Note>
+
+### 2 - Execute the withdrawal
+
+`POST /withdrawals/execute`
+
+Reference the `withdrawal_quote_id` from step 1. No participant, asset, or amount fields are passed again - everything was already locked into the quote.
+
+Example request:
+
+```json
+{
+  "withdrawal_quote_id": "bdc4c936-8505-4e61-b859-f3a5a6bdc880",
+  "client_withdrawal_request_id": "b30739eb-173d-45f9-a03e-281e7c4db22c"
+}
+```
+
+Example response:
+
+```json
+{
+  "network_fee": "2.15",
+  "network_fee_notional": "2.15",
+  "on_chain_status": "PENDING",
+  "withdrawal_fee": "0",
+  "client_withdrawal_request_id": "b30739eb-173d-45f9-a03e-281e7c4db22c"
+}
+```
+
+`on_chain_status` starts as `PENDING` immediately upon execution and transitions to `CONFIRMED` once the transaction settles on-chain - tracked going forward via webhooks and `GET /withdrawals/requests`, covered next.
+
+### 3 - Track settlement
+
+Webhooks (recommended for real-time tracking). Subscribe to `account_balance.changed` - set `x-zh-hook-payload-type` to that value. Whenever the withdrawal moves the participant's balance, you'll get a notification carrying a `withdrawal_pending movement`, tied back to your withdrawal via `withdrawal_request_id`:
+
+```json
+{
+  "account_group": "JMCH0H",
+  "account_label": "general",
+  "account_type": "available",
+  "asset": "USDC.ETH",
+  "balance": "497.85",
+  "movements": [
+    {
+      "account_id": "a33bb05d-7e06-4069-921d-a83deebfc319",
+      "change": "500",
+      "movement_id": "c979b77b-80a0-49da-b287-0cc044731954",
+      "movement_timestamp": 1746113199139,
+      "movement_type": "withdrawal_pending",
+      "withdrawal_request_id": "44b23087-8845-4667-9fa8-03b7055dba6b"
+    }
+  ],
+  "participant_code": "ABCDEF",
+  "run_id": "4150535",
+  "run_type": "withdrawal",
+  "timestamp": 1746113199073
+}
+```
+
+<Info>
+This webhook fires whenever the **balance** changes — it tells you *that* a withdrawal debited the account and by how much, tied to `withdrawal_request_id`. It doesn't carry `on_chain_status` (`PENDING`/`CONFIRMED`) or the ledger `status` (`PENDING`/`APPROVED`/`SETTLED`) — for those, poll `GET /withdrawals/requests` using the same `withdrawal_request_id` to get the full state.
+</Info>
+
+`GET /withdrawals/requests` (recommended as a fallback/reconciliation check, or if webhooks aren't configured). Poll for the withdrawal's current state directly:
+
+`GET /withdrawals/requests?client_withdrawal_request_id=b30739eb-173d-45f9-a03e-281e7c4db22c`
+
+You can also filter by `on_chain_status` `PENDING` or `CONFIRMED`) or status, useful for a periodic reconciliation job that catches any withdrawal your Platform might have missed a webhook for.
+
+## Core APIs
+
+The following APIs are used in this solution:
+
+- [GET /withdrawals/locked\_network\_fee](https://docs.zerohash.com/reference/get_withdrawals-locked-network-fee)
+- [POST /withdrawals/execute](https://docs.zerohash.com/reference/post_withdrawals-execute)
+- [GET /withdrawals/requests](https://docs.zerohash.com/reference/get_withdrawals-requests)
+- [Webhooks - Account Balance Updates](https://docs.zerohash.com/reference/account-balance)

@@ -1,237 +1,327 @@
 ---
-title: "IRS W-9 Implementation Guide for Zero Hash Platforms"
-sidebarTitle: "W-9 Guide"
-description: "Collect, certify, and submit IRS W-9 tax data for US persons via the Zero Hash API — covering individuals, entities, new participants, and updates."
+title: "W-9 Implementation Guide - API"
+description: "Guide to providing relevant W-9 details during user onboarding"
 ---
 
-A W-9 is the IRS form that US persons — citizens, green-card holders, US tax residents, and US-formed entities — use to certify their US tax status and provide their Taxpayer Identification Number (TIN). A valid W-9 on file with Zero Hash exempts the participant from the 24% backup withholding applied to US-source income. This guide explains when W-9 collection is required, what data you need to collect in your product UI, and how to submit that data to Zero Hash via API.
+## What is a W-9?
 
-<Note>
-  Unlike the W-8 family of forms, the W-9 has no variants. The same form applies to every US person regardless of whether they are an individual or an entity, and regardless of entity type (corporation, partnership, LLC, trust, estate, etc.).
-</Note>
+**W-9** — the IRS form US persons (citizens, green-card holders, US tax residents, and US-formed entities) use to certify their US tax status and provide their Taxpayer Identification Number (SSN for individuals, EIN for entities). A valid W-9 on file exempts the participant from 24% backup withholding on US-source income.
 
-## When Is W-9 Collection Required?
+zerohash supports the generation of certified W-9 forms via API. Unlike the [W-8](/docs/w-8-implementation-guide-api) family, the W-9 has no variants. The same form is used for every US person regardless of whether they are an individual or an entity, and regardless of entity type (corporation, partnership, LLC, trust, estate, etc.).
 
-Collect W-9 data for every participant onboarded through Zero Hash's **US** flow who meets either of the following criteria:
+If you have any questions on what requirements apply to your specific customer demographic / how to classify users based on the above descriptions, reach out via your zerohash contact and we will assist you.
 
-- **Individuals** — Collect a W-9 when the participant is a US citizen, green-card holder, or US tax resident. A US citizen living abroad with a US tax ID still requires a W-9.
-- **Entities** — Collect a W-9 when the entity is formed or organized under US law: US corporations, US partnerships, US LLCs, US trusts, US estates, and similar structures.
+## When should platforms collect W-9 information?
 
-<Info>
-  Participants onboarded through Zero Hash's EU or other non-US entities are governed by local tax documentation requirements and do not need a W-9 form.
-</Info>
+Any time you onboard a US person through zerohash's **US** flow. Participants onboarded through zerohash's EU or other non-US entities are governed by local tax documentation requirements and do not need a W-form.
 
-## If You Already Collect Certified W-9 Forms
+- **Individuals** — collect a W-9 when the participant is a US citizen, green-card holder, or US tax resident
+  - Note: A US Citizen with a US tax ID living abroad still requires a W-9
+- **Entities** — collect a W-9 when the entity is formed or organized under US law (US corporations, US partnerships, US LLCs, US trusts, US estates, etc.)
 
-If your platform already collects certified W-9 documents from customers, you do not need to rebuild your collection flow. Complete the following:
+## Do you already collect certified W-9 forms?
 
-1. Upload the document via `POST /participants/documents` with the appropriate document type.
-2. Ensure the participant record has `"is_w_form_certified": true` and a corresponding `w_form_certification` timestamp set at onboarding.
-3. If the participant is subject to backup withholding, set `"is_not_subject_backup_withholding": false`.
+All you need to do is:
 
-Apply this retroactively for pre-existing customers and maintain it on an ongoing basis for new customers.
+- Upload them via [POST /participants/documents](https://docs.zerohash.com/reference/post_participants-documents) with the appropriate document type
+- Ensure the user is marked `"is_w_form_certified": true` AND specify the time at which they certified via `w_form_certification` when onboarded
+- If the user is subject to backup withholding, be sure to indicate that at onboarding with `"is_not_subject_backup_withholding": false`
 
-## Collect W-9 Fields in Your UI
+And you're done. Make sure to do this for pre-existing customers and on an ongoing basis for new customers. If any taxpayer PII changes with respect to their W-9 form data, please ensure that a new W-9 is passed to zerohash via the same endpoint as above.
 
-If you do not already collect certified W-9 data, add the following fields to your customer onboarding journey. See the [Tax Data Collection via KYC-as-a-Service](/docs/tax-data-collection-kycaas) page if you want to understand how Zero Hash collects this data in its own KYC SDK.
+If the above doesn't apply to you, see the below instructions. If you're already onboarding US customers via zerohash APIs, you're 90% there.
 
-### Required for all US individuals
+## Collect the W-9 fields in your UX
 
-- **TIN/SSN** — 9 digits, no dashes
-- **Typed name as signature** — the customer's full legal name, used as their electronic signature
-- **Mailing address** — only required if different from the residential address captured in your standard onboarding flow
-- **Backup withholding indicator** — a checkbox asking whether the customer has been notified by the IRS that they are subject to backup withholding
-- **W-9 attestation checkbox** — the customer confirms the standard IRS certification language (see [Section 2 of the IRS W-9 form](https://www.irs.gov/pub/irs-pdf/fw9.pdf))
-- **Exemption codes (optional):**
-  - `payee_exemption` — codes `1`–`13` or `NONE`
-  - `fatca_reporting_exemption` — codes `A`–`M` or `NONE`
+Collect these new data points in your customer journey. If you want a frame of reference, look at how zerohash will collect this data in its own KYC SDK experience [here.](https://docs.zerohash.com/docs/tax-data-collection-kycaas)
 
-### Additional fields for US entities
+- Their TIN/SSN (9 digits, no dashes)
+- Their typed name as the signature
+- Mailing address — only if different from the residential address already captured via your normal participant onboarding
+- Their optional exemption codes:
+  - `payee_exemption` field that captures enum values for any applicable payee exemption codes `1` - `13` or `NONE` on the IRS form W-9
+  - `fatca_reporting_exemption` field that captures enum values for any applicable fatca exemption codes `A` - `M` or `NONE` on the IRS form W-9
+- An indicator that collects whether a user is subject to backup withholdings by the IRS
+- A checkbox confirming the W-9 attestations (user is not subject to backup withholding, no B-Notice on file)
+  - What is a B-Notice? A B-notice is an IRS letter telling a payer (like zerohash) that a customer's name and taxpayer ID don't match IRS records. This triggers a requirement to collect a corrected W-9
+  - Platforms should show IRS attestation language to display alongside the checkbox to collect a proper attestation (see certification language in Section 2 of W-9 [here](https://www.irs.gov/pub/irs-pdf/fw9.pdf))
 
-- **Entity DBA name** — the trade name if different from the legal registered name
-- **Entity type** — must be one of the following supported values:
+If you are also onboarding NNPs (entities), you should also collect:
 
-| Value | Description |
-|-------|-------------|
-| `C_CORPORATION` | C Corporation |
-| `S_CORPORATION` | S Corporation |
-| `PARTNERSHIP` | Partnership |
-| `TRUST_ESTATE` | Trust or Estate |
-| `LLC_C` | LLC taxed as a C Corporation |
-| `LLC_P` | LLC taxed as a Partnership |
-| `LLC_S` | LLC taxed as an S Corporation |
-| `SOLE_PROPRIETOR` | Sole Proprietorship |
-| `OTHER` | Other entity type |
+- The entity DBA (doing-business-as) name, the public-facing trade name an entity operates under, when it's different from its legal registered name
+- Note: Entity type must be specified as one of the following to properly generate a certified W-9 form:
+  - C\_CORPORATION
+  - S\_CORPORATION
+  - PARTNERSHIP
+  - TRUST\_ESTATE
+  - LLC\_C (LLC that has elected to be taxed as a C corporation)
+  - LLC\_P (LLC taxed as a partnership)
+  - LLC\_S (LLC that has elected to be taxed as an S corporation)
+  - SOLE\_PROPRIETOR
+  - OTHER
 
-## Submit W-9 Data to Zero Hash
+## Send the data to zerohash
 
-You submit W-9 data using the same participant endpoints you already use for onboarding. The W-9 fields are simply additional fields in the same request body.
+Platforms can use the same endpoints they're already integrated with provide the required tax data:
 
-<Tabs>
-  <Tab title="New Individual">
-    Submit a new individual participant with W-9 data via `POST /participants/customers/new`:
+**If you are onboarding net new individual participants**
 
-    ```json
+Example [POST /participants/customers/new](https://docs.zerohash.com/reference/post_participants-customers-new) request:
+
+```json
+{
+  "first_name": "John",
+  "last_name": "Smith",
+  "email": "test@example.com",
+  "address_one": "123 Main St.",
+  "address_two": "Suite 1000",
+  "city": "Chicago",
+  "zip": "12345",
+  "jurisdiction_code": "US-IL",
+  "phone_number": "15557778888",
+  "date_of_birth": "1985-09-02",
+  "id_number_type": "us_passport",
+  "id_number": "123456789",
+  "citizenship_code": "US",
+  "country": "USA",
+  "tax_id": "000-00-0000",
+  "risk_rating": null,
+  "signed_timestamp": 1603378501286,
+  "kyc": "pass",
+  "kyc_timestamp": 1603378501286,
+  "onboarded_location": "US-FL",
+  "sanction_screening": "pass",
+  "sanction_screening_timestamp": 1603378501286,
+  "idv": "pass",
+  "employment_status": "full_time",
+  "industry": "adult_entertainment",
+  "source_of_funds": "salary",
+  "signed_agreements": [
     {
-      "first_name": "John",
-      "last_name": "Smith",
+      "type": "user_agreement",
+      "region": "us",
+      "signed_timestamp": 1603378501286
+    }
+  ],
+  "b_notice_receipt": false,
+  "w_form_certification": 1667504636159,
+  "signature": "signature_data",
+  "signature_timestamp": 1667504636159,
+  "payee_exemption": "NONE",
+  "fatca_reporting_exemption": "NONE",
+  "is_not_subject_backup_withholding": true,
+  "is_w_form_certified": true
+}
+```
+
+**If you are updating already-created individual participants**
+
+Example [PATCH /participants/customers/\{participant\\\\\\\\_code\}](https://docs.zerohash.com/reference/patch_participants-customers-participant-code) request:
+
+```json
+{
+ "b_notice_receipt": false,
+ "is_w_form_certified": true,
+ "w_form_certification": 1667504636159,
+ "signature": "signature_data",
+ "signature_timestamp": 1667504636159,
+ "payee_exemption": "NONE",
+ "fatca_reporting_exemption": "NONE",
+ "is_not_subject_backup_withholding": true,
+,
+}
+```
+
+**Entity Participants**
+
+**If you are onboarding net new entity participants**
+
+Example [POST /participants/entity/new](https://docs.zerohash.com/reference/post_participants-entity-new) request:
+
+```json
+{
+  "platform_code": "PLAT01",
+  "entity_name": "Entity Name",
+  "legal_name": "Legal Name",
+  "contact_number": "15557778888",
+  "website": "company.com",
+  "date_established": "1985-09-02",
+  "entity_type": "llc_s",
+  "address_one": "123 Main St.",
+  "address_two": "Suite 1000",
+  "city": "Chicago",
+  "postal_code": "12345",
+  "tax_id": "000-00-0000",
+  "id_issuing_authority": null,
+  "risk_rating": null,
+  "sanction_screening": "pass",
+  "sanction_screening_timestamp": 1603378501286,
+  "self_certification_timestamp": 1667504636159,
+  "signed_timestamp": 1603378501286,
+  "signed_agreements": [
+    {
+      "type": "user_agreement",
+      "region": "us",
+      "signed_timestamp": 1603378501286
+    }
+  ],
+  "submitter_email": "test@example.com",
+  "submitter_first_name": "Jon",
+  "submitter_last_name": "Doe",
+  "submitter_title": "Mr.",
+  "control_persons": [
+    {
+      "name": "John Smith",
       "email": "test@example.com",
       "address_one": "123 Main St.",
-      "city": "Chicago",
-      "zip": "12345",
-      "jurisdiction_code": "US-IL",
-      "phone_number": "15557778888",
-      "date_of_birth": "1985-09-02",
-      "id_number_type": "us_passport",
-      "id_number": "123456789",
-      "citizenship_code": "US",
-      "tax_id": "000-00-0000",
-      "kyc": "pass",
-      "kyc_timestamp": 1603378501286,
-      "sanction_screening": "pass",
-      "sanction_screening_timestamp": 1603378501286,
-      "idv": "pass",
-      "signed_agreements": [
-        {
-          "type": "user_agreement",
-          "region": "us",
-          "signed_timestamp": 1603378501286
-        }
-      ],
-      "b_notice_receipt": false,
-      "w_form_certification": 1667504636159,
-      "signature": "John Smith",
-      "signature_timestamp": 1667504636159,
-      "payee_exemption": "NONE",
-      "fatca_reporting_exemption": "NONE",
-      "is_not_subject_backup_withholding": true,
-      "is_w_form_certified": true
-    }
-    ```
-  </Tab>
-  <Tab title="Update Existing Individual">
-    Patch W-9 data onto an already-created individual participant via `PATCH /participants/customers/{participant_code}`:
-
-    ```json
-    {
-      "b_notice_receipt": false,
-      "is_w_form_certified": true,
-      "w_form_certification": 1667504636159,
-      "signature": "John Smith",
-      "signature_timestamp": 1667504636159,
-      "payee_exemption": "NONE",
-      "fatca_reporting_exemption": "NONE",
-      "is_not_subject_backup_withholding": true
-    }
-    ```
-  </Tab>
-  <Tab title="New Entity">
-    Submit a new entity participant with W-9 data via `POST /participants/entity/new`:
-
-    ```json
-    {
-      "platform_code": "PLAT01",
-      "entity_name": "Entity Name",
-      "legal_name": "Legal Name",
-      "dba_name": "ABC Trading Co",
-      "entity_type": "llc_s",
-      "address_one": "123 Main St.",
+      "address_two": "Suite 1000",
       "city": "Chicago",
       "postal_code": "12345",
       "jurisdiction_code": "US-IL",
+      "date_of_birth": "1985-09-02",
+      "phone_number": "15557778888",
+      "citizenship_code": "US",
       "tax_id": "000-00-0000",
+      "id_number_type": "us_passport",
+      "id_number": "123456789",
+      "id_issuing_authority": null,
       "sanction_screening": "pass",
       "sanction_screening_timestamp": 1603378501286,
-      "signed_timestamp": 1603378501286,
-      "signed_agreements": [
-        {
-          "type": "user_agreement",
-          "region": "us",
-          "signed_timestamp": 1603378501286
-        }
-      ],
-      "submitter_email": "test@example.com",
-      "control_persons": [ ... ],
-      "beneficial_owners": [ ... ],
-      "b_notice_receipt": false,
-      "is_w_form_certified": true,
-      "w_form_certification": 1667504636159,
-      "signature": "John Smith",
-      "signature_timestamp": 1667504636159,
-      "payee_exemption": "NONE",
-      "fatca_reporting_exemption": "NONE",
-      "is_not_subject_backup_withholding": true
+      "kyc": "pass",
+      "kyc_timestamp": 1603378501286,
+      "control_person": 1
     }
-    ```
-  </Tab>
-  <Tab title="Update Existing Entity">
-    Patch W-9 data onto an already-created entity participant via `PATCH /participants/entity/{participant_code}`:
-
-    ```json
+  ],
+  "beneficial_owners": [
     {
-      "b_notice_receipt": false,
-      "is_w_form_certified": true,
-      "w_form_certification": 1667504636159,
-      "signature": "John Smith",
-      "signature_timestamp": 1667504636159,
-      "payee_exemption": "NONE",
-      "fatca_reporting_exemption": "NONE",
-      "is_not_subject_backup_withholding": true,
-      "dba_name": "ABC Trading Co"
+      "name": "John Smith",
+      "email": "test@example.com",
+      "address_one": "123 Main St.",
+      "address_two": "Suite 1000",
+      "city": "Chicago",
+      "postal_code": "12345",
+      "jurisdiction_code": "US-IL",
+      "date_of_birth": "1985-09-02",
+      "phone_number": "15557778888",
+      "citizenship_code": "US",
+      "tax_id": "000-00-0000",
+      "id_number_type": "us_passport",
+      "id_number": "123456789",
+      "id_issuing_authority": null,
+      "sanction_screening": "pass",
+      "sanction_screening_timestamp": 1603378501286,
+      "kyc": "pass",
+      "kyc_timestamp": 1603378501286,
+      "beneficial_owner": 1,
+      "role": ""
     }
-    ```
-  </Tab>
-</Tabs>
+  ],
+  "incorporation_address": {
+    "address_one": "string",
+    "address_two": "string",
+    "city": "string",
+    "jurisdiction_code": "IT-25",
+    "postal_code": "string"
+  },
+  "b_notice_receipt": false,
+  "is_w_form_certified": true,
+  "w_form_certification": 1667504636159,
+  "signature": "signature_data",
+  "signature_timestamp": 1667504636159,
+  "payee_exemption": "NONE",
+  "fatca_reporting_exemption": "NONE",
+  "is_not_subject_backup_withholding": true,
+  "dba_name": "ABC Trading Co",
+  "other_entity_type": "Trust",
+  "jurisdiction_code": "US-IL"
+}
+```
 
-## W-9 Field Reference
+**If you are updating already-created entity participants**
 
-<ResponseField name="is_w_form_certified" type="boolean" required>
-  Must be `true` when the participant has completed their W-9 certification. When `false`, the participant is subject to backup withholding. Always pair with a `w_form_certification` timestamp.
-</ResponseField>
+Example[PATCH /participants/entity/\{participant\\\\\\\\\\\\\\\\_code\}](https://docs.zerohash.com/reference/patch_participants-entity-participant-code) request:
 
-<ResponseField name="w_form_certification" type="integer" required>
-  Unix millisecond timestamp recording when the participant certified their W-9. Must accompany every `is_w_form_certified` submission.
-</ResponseField>
+```json
+{
+ "b_notice_receipt": false,
+ "is_w_form_certified": true,
+ "w_form_certification": 1667504636159,
+ "signature": "signature_data",
+ "signature_timestamp": 1667504636159,
+ "payee_exemption": "NONE",
+ "fatca_reporting_exemption": "NONE",
+ "is_not_subject_backup_withholding": true,
+ "dba_name": "ABC Trading Co",
+ "other_entity_type": "Trust",
+}
+```
 
-<ResponseField name="signature" type="string" required>
-  The participant's full legal name as typed during electronic signature capture.
-</ResponseField>
+## Send account updates as you do today
 
-<ResponseField name="signature_timestamp" type="integer" required>
-  Unix millisecond timestamp of when the participant signed the W-9.
-</ResponseField>
+If a user updates their tax info later, just PATCH the same endpoint with the new values. zerohash handles re-certification on our side.
 
-<ResponseField name="is_not_subject_backup_withholding" type="boolean" required>
-  Set to `true` as a positive attestation that the participant is **not** subject to IRS backup withholding. Set to `false` if they are subject to withholding.
-</ResponseField>
+## What you need to know about W-9 Certification
 
-<ResponseField name="b_notice_receipt" type="boolean" required>
-  Set to `false` unless the participant has been flagged in an IRS B-Notice as having mismatched name/TIN information. If `true`, the participant is subject to backup withholding until they re-certify.
-</ResponseField>
+**Always pair certification with a timestamp**
 
-<ResponseField name="payee_exemption" type="string" required>
-  Exempt payee code `1`–`13`, or `NONE`. Do not leave this field empty — use `NONE` for participants with no exemption.
-</ResponseField>
+- Whenever you send `is_w_form_certified`, send `w_form_certification` (the time the user attested) alongside it. Same for `signature` and `signature_timestamp`
 
-<ResponseField name="fatca_reporting_exemption" type="string" required>
-  FATCA exemption code `A`–`M`, or `NONE`. Do not leave this field empty — use `NONE` for participants with no exemption.
-</ResponseField>
+**Exemptions and B-Notice are rare**
 
-## Handling Updates and Re-certification
+- Most retail users don't have a `payee_exemption` or `fatca_reporting_exemption`. Mark these fields as **NONE** unless the user indicates otherwise with the relevant code. Please do not leave these fields empty
+- You should ensure `b_notice_receipt` is `false` unless you've received a B-Notice directly from the IRS or have been notified via zerohash of an existing B-Notice against your customer account
+- Even if you opted to upload your own certified W-9 document, make sure that the user tax profile is always up to date with any B-Notice or backup withholding indicators needed
 
-When a participant's tax information changes — name change, address update, re-certification after a B-Notice — simply `PATCH` the participant endpoint with the updated values. Zero Hash handles re-validation on its side.
+**When anything changes, just send an update**
 
-<CardGroup cols={2}>
-  <Card title="Always pair certification with a timestamp" icon="clock">
-    Every time you send `is_w_form_certified`, include the `w_form_certification` timestamp. The same applies to `signature` and `signature_timestamp`.
-  </Card>
-  <Card title="Use NONE, not empty, for exemptions" icon="ban">
-    Always explicitly set `payee_exemption` and `fatca_reporting_exemption` to `NONE` when no exemption applies. Do not leave these fields blank.
-  </Card>
-  <Card title="B-Notices default to false" icon="envelope">
-    Only set `b_notice_receipt` to `true` if you have received a B-Notice directly from the IRS or been notified by Zero Hash of an existing B-Notice against a customer account.
-  </Card>
-  <Card title="Update when anything changes" icon="refresh">
-    Name changes, address changes, or re-certifications all require a PATCH to the participant endpoint with the new values.
-  </Card>
-</CardGroup>
+- In the event of a name change, address change, re-certification, or B-Notice resolution, PATCH the customer endpoint with the new values. zerohash handles re-validation
+
+## Tax Glossary
+
+Please reference the below descriptions on each of the new W-9 fields listed above and what they mean. For additional information on W-8 support, please see the implementation guide [here](/docs/w-8-implementation-guide-api).
+
+### Tax Identification Number
+
+- Existing `tax_id` field that is required for customers onboarded to a US platform
+
+  - Platforms should format tax identification numbers in the appropriate formatting (9 digit format)
+
+### W-Form Certification Status
+
+- `is_w_form_certified` boolean field that is required for customers onboarded to a US platform
+
+  - Must be provided with `w_form_certification` timestamp field to indicate the user's current certification status
+  - When `true`, user can be onboarded without restriction, so long as other mandatory fields are provided at time of onboarding
+  - When `false`, user is subject to backup withholding
+    - In the event the user re-certifies, the platform must update this field to `true` and provide an updated `w_form_certification`
+
+### W-Form Certification
+
+- `w_form_certification` timestamp field that is required for customers onboarded to a US platform
+
+  - Must be provided with `is_w_form_certified` boolean field to indicate the time at which the user certified their W-form
+  - In the event the user transitions from an uncertified to a certified, the platform must provide a new `w_form_certification` and update `is_w_form_certified` from `false` to `true`
+
+### B-Notice Receipt
+
+- `b_notice_receipt` boolean field that indicated whether a user has been flagged in an IRS B-Notice as not having up-to-date tax information
+
+  - Value should be set to `false` if no notice of receipt
+  - If `true`, the user is subject to backup withholding until recertified
+
+### Backup Withholding
+
+- `is_not_subject_backup_withholding` boolean field that indicated whether a user is subject to backup withholdings by the IRS
+
+  - Value should be set to `true` as a positive attestation that the user is not subject to the withholding
+  - If `false`, the user is subject to backup withholding
+
+### Signature & Timestamp
+
+- `signature` field that captures customer first and last name as used on the W-form
+- `signature_timestamp` field that captures the timestamp at which the user signed their W-form
+
+### Tax Exemptions
+
+- `payee_exemption` field that captures enum values for any applicable payee exemption codes `1` - `13` or `NONE`
+- `fatca_reporting_exemption` field that captures enum values for any applicable fatca exemption codes `A` - `M` or `NONE`

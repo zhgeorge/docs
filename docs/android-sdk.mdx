@@ -1,0 +1,171 @@
+---
+title: "Android SDK"
+---
+
+The zerohash Android SDK is a Kotlin library that presents the zerohash flows from your app. Read [Mobile SDKs](/docs/mobile-sdks) first for the shared concepts, in particular the event model.
+
+**Repository:** [github.com/zerohash-ext/zerohash-android](https://github.com/zerohash-ext/zerohash-android)
+
+## Requirements
+
+|   |   |
+| --- | --- |
+| Android | 5.0+ (API 21) |
+| Kotlin | 1.9+ |
+| Gradle | 8.2+ |
+| JDK | 17 |
+| Package | `com.zerohash.sdk` |
+| Distribution | Maven Central |
+
+## Installation
+
+The SDK is published to Maven Central as `com.zerohash:zerohash-android`. A standard Android project already resolves Maven Central, so usually there is nothing to add to `settings.gradle.kts`. If your repositories block does not list it yet:
+
+```kotlin
+dependencyResolutionManagement {
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+```
+
+Then add the dependency:
+
+```kotlin
+// app/build.gradle.kts
+dependencies {
+    implementation("com.zerohash:zerohash-android:<version>")
+}
+```
+
+Or with the Groovy DSL:
+
+```groovy
+dependencies {
+    implementation 'com.zerohash:zerohash-android:<version>'
+}
+```
+
+For `<version>`, use the current release shown on [Maven Central](https://central.sonatype.com/artifact/com.zerohash/zerohash-android). Pin an exact version and take minor and patch upgrades deliberately; the SDK follows semantic versioning, so any release within the same major is a drop-in replacement.
+
+## Integration
+
+Every flow follows the same two steps: configure a session, then present it.
+
+```kotlin
+import android.app.Activity
+import android.os.Bundle
+import androidx.appcompat.app.AppCompatActivity
+import com.zerohash.sdk.Environment
+import com.zerohash.sdk.GenericEvent
+import com.zerohash.sdk.Theme
+import com.zerohash.sdk.ZerohashError
+import com.zerohash.sdk.ZerohashSDK
+import com.zerohash.sdk.fund.FundCallbacks
+import com.zerohash.sdk.fund.FundCompletedEvent
+import com.zerohash.sdk.fund.ZerohashFundSession
+
+class MainActivity : AppCompatActivity() {
+
+    private var fundSession: ZerohashFundSession? = null
+
+    private fun openFund(jwt: String) {
+        fundSession = ZerohashSDK.configureFund(
+            jwt = jwt,
+            environment = Environment.PRODUCTION,
+            theme = Theme.SYSTEM,
+            callbacks = object : FundCallbacks {
+                override fun onClose() {
+                    fundSession = null
+                }
+
+                override fun onCompleted(event: FundCompletedEvent) {
+                    // Deposit succeeded.
+                }
+
+                override fun onFailed(event: FundCompletedEvent) {
+                    // Terminal failed deposit. Not an error — show the reason.
+                }
+
+                override fun onError(error: ZerohashError) {
+                    // SDK or request error.
+                }
+
+                override fun onEvent(event: GenericEvent) {
+                    // Optional analytics hook.
+                }
+            }
+        )
+        fundSession?.present(this)
+    }
+}
+```
+
+The other flows are identical in shape:
+
+```kotlin
+ZerohashSDK.configureCryptoWithdrawals(jwt = jwt, callbacks = /* CryptoWithdrawalsCallbacks */)
+ZerohashSDK.configureFundWithdrawals(jwt = jwt, callbacks = /* FundWithdrawalsCallbacks */)
+```
+
+`environment`, `theme` and `allowList` all have defaults, so a minimal call is `configureFund(jwt = jwt, callbacks = ...)`.
+
+### Holding the session
+
+Keep a reference to the returned session for as long as the flow is on screen, as in the example above. Clear it in `onClose` so the next flow starts fresh.
+
+### Dismissing programmatically
+
+```kotlin
+fundSession?.cancel()
+```
+
+This closes the flow the same way the user closing it would.
+
+## Configuration
+
+### Environment
+
+```kotlin
+Environment.SANDBOX     // integration and testing
+Environment.PRODUCTION  // real activity (default)
+```
+
+### Theme
+
+```kotlin
+Theme.LIGHT
+Theme.DARK
+Theme.SYSTEM  // follows the device setting (default)
+```
+
+### Host allow-list
+
+Each `configure` function takes an optional `allowList` that restricts which hosts the embedded WebView may navigate to or load resources from. The default, `ZerohashAllowList.DEFAULT`, already covers every host the flows need. Override it only if your security review requires a narrower list, and be aware that removing a host the flow depends on will break it.
+
+```kotlin
+ZerohashSDK.configureFund(
+    jwt = jwt,
+    allowList = ZerohashAllowList(listOf("your.host")),
+    callbacks = /* ... */
+)
+```
+
+## Callbacks
+
+Callback interfaces are per flow, and all extend a shared `AppCallbacks`.
+
+| Handler | Fires when | Required |
+| --- | --- | --- |
+| `onCompleted` | The transaction completed successfully | Yes |
+| `onClose` | The user closed the flow, or you called `cancel()` | Yes |
+| `onError` | An SDK or request error occurred | Yes |
+| `onEvent` | A low-level event was forwarded from the flow | Yes |
+| `onLoaded` | The flow finished loading and is showing its first screen | No |
+| `onFailed` | The transaction reached a terminal failed state | No |
+| `onDeposit` | Status update for a deposit funded from an external source. Fund only, and **not** terminal | No |
+
+See [the event model](/docs/mobile-sdks) for more details.
+
+Full event payload fields and the sealed `ZerohashError` hierarchy are documented in the [README](https://github.com/zerohash-ext/zerohash-android/blob/main/README.md), which is versioned alongside the SDK.

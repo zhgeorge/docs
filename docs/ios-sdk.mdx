@@ -1,0 +1,159 @@
+---
+title: "iOS SDK"
+---
+
+The zerohash iOS SDK is a Swift package that presents the zerohash flows from your app. Read [Mobile SDKs](/docs/mobile-sdks) first for the shared concepts, in particular the event model.
+
+**Repository:** [github.com/zerohash-ext/zerohash-ios](https://github.com/zerohash-ext/zerohash-ios)
+
+## Requirements
+
+|   |   |
+| --- | --- |
+| iOS | 17.0+ |
+| Swift | 6.0+ |
+| Xcode | 16.0+ |
+| Distribution | Swift Package Manager |
+
+### Required Info.plist keys
+
+A crypto transaction can be held for an identity check, which the user completes inside the SDK using their device camera. Your app must declare both keys below or the check cannot run.
+
+| Key | Why |
+| --- | --- |
+| `NSCameraUsageDescription` | Liveness and document capture during the identity check |
+| `NSMicrophoneUsageDescription` | Requested alongside the camera by the identity check |
+
+## Installation
+
+### Using Xcode
+
+1. Select **File > Add Package Dependencies...**
+2. Enter the repository URL:
+   `https://github.com/zerohash-ext/zerohash-ios`
+3. For the dependency rule, choose **Up to Next Major Version**. You then get
+   fixes and additions automatically, and never a breaking change without
+   opting in.
+4. Click **Add Package**, then confirm `ZerohashSDK` is listed under your app
+   target's frameworks.
+
+### Using Package.swift
+
+```swift
+dependencies: [
+    .package(
+        url: "https://github.com/zerohash-ext/zerohash-ios",
+        from: "<version>"
+    )
+]
+```
+
+Then add `ZerohashSDK` to your target's dependencies:
+
+```swift
+targets: [
+    .target(
+        name: "YourApp",
+        dependencies: ["ZerohashSDK"]
+    )
+]
+```
+
+For `<version>`, use the current release from the [releases page](https://github.com/zerohash-ext/zerohash-ios/releases).
+
+## Integration
+
+Every flow follows the same two steps: configure a session, then present it.
+
+```swift
+import ZerohashSDK
+import UIKit
+
+final class DepositViewController: UIViewController {
+
+    private var session: ZerohashFundSession?
+
+    func openFund(jwt: String) {
+        session = ZerohashSDK.configureFund(
+            jwt: jwt,
+            environment: .production,
+            theme: .system,
+            callbacks: FundCallbacks(
+                onClose: { [weak self] in
+                    self?.session = nil
+                },
+                onCompleted: { event in
+                    print("Deposit complete", event)
+                },
+                onFailed: { event in
+                    // Terminal failed deposit. Not an error — show the reason.
+                },
+                onError: { error in
+                    // SDK or request error.
+                }
+            )
+        )
+        session?.present(from: self)
+    }
+}
+```
+
+The other two flows are identical in shape:
+
+```swift
+ZerohashSDK.configureCryptoWithdrawals(jwt: jwt, callbacks: CryptoWithdrawalsCallbacks(/* ... */))
+ZerohashSDK.configureFundWithdrawals(jwt: jwt, callbacks: FundWithdrawalsCallbacks(/* ... */))
+```
+
+`environment` and `theme` are optional and default to `.production` and `.system`, so a minimal call is `configureFund(jwt: jwt, callbacks: ...)`.
+
+### Threading
+
+The `configure` functions are annotated `@MainActor`. Call them from the main actor, which is where you already are inside a view controller or a SwiftUI action.
+
+### Holding the session
+
+Keep a strong reference to the returned session for as long as the flow is on screen, as in the example above. Releasing it early tears down the flow. Clear it in `onClose` so the next flow starts fresh.
+
+### Dismissing programmatically
+
+```swift
+session?.cancel()
+```
+
+This closes the flow the same way the user closing it would.
+
+## Configuration
+
+### Environment
+
+```swift
+.sandbox     // integration and testing
+.production  // real activity (default)
+```
+
+### Theme
+
+```swift
+.light
+.dark
+.system  // follows the device setting (default)
+```
+
+## Callbacks
+
+Callback structs are per flow, and every handler is optional, so you implement only what you need.
+
+| Handler | Fires when |
+| --- | --- |
+| `onLoaded` | The flow finished loading and is showing its first screen |
+| `onClose` | The user closed the flow, or you called `cancel()` |
+| `onCompleted` | The transaction completed successfully |
+| `onFailed` | The transaction reached a terminal failed state |
+| `onDeposit` | Status update for a deposit funded from an external source. Fund only, and **not** terminal |
+| `onError` | An SDK or request error occurred |
+| `onEvent` | A low-level event was forwarded from the flow |
+
+See [the event model](/docs/mobile-sdks) for more details.
+
+Full event payload fields and the error type hierarchy are documented in the [README](https://github.com/zerohash-ext/zerohash-ios/blob/main/README.md), which is versioned alongside the SDK.

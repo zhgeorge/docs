@@ -1,0 +1,62 @@
+---
+title: "Recovery Portal"
+description: "Direct your customers to zerohash's fully-hosted recovery experience - no UI to build, no API calls to make."
+---
+
+## Overview & Concepts
+
+The Recovery Portal is a zerohash-hosted web experience your customers use to self-serve recovery of funds that failed to complete a normal deposit or withdrawal flow. Unlike Platform-hosted Recovery, your Platform doesn't build any UI or call any recovery-specific API - zerohash emails the affected customer directly, and the customer completes the entire recovery journey on a zerohash-hosted subdomain.
+
+This guide is organized per-product, since the trigger conditions and recovery mechanics differ depending on where the failure occurred. Currently covered:
+
+- [Account Funding](/docs/recovery-portal)
+- AUTH
+
+## Account Funding
+
+### Setup
+
+zerohash must create your Recovery Portal subdomain. This is a quick, one-time setup.
+
+### What triggers recovery
+
+For customers depositing via Classic Transfer (i.e., scanning a QR code and sending from their own external wallet, rather than a custodial/API-linked flow), the following scenarios cause the deposit to fail rather than complete normally:
+
+- The amount sent is below the platform's configured minimum threshold
+- The amount sent is above the platform's configured maximum threshold
+- The customer sends an asset the platform hasn't configured for the product (e.g., the customer sends ETH, but the platform only supports USDC deposits)
+
+<Info>
+When any of these scenarios occurs, the funds are not lost - they land in a dedicated `recovery_quarantine` account label under the customer's participant record, rather than being credited to their normal available balance.
+</Info>
+
+### The end-to-end recovery journey
+
+1. **Failure occurs:** One of the three scenarios above triggers.
+2. **zerohash emails the customer directly:** No action is required from your Platform - zerohash sends the recovery email straight to the end customer, containing a link to the Recovery Portal.
+3. **Customer clicks the link and identifies themselves:** The Recovery Portal prompts for three pieces of information:
+   1. Email
+   2. ID number type (e.g., SSN, Driver's License)
+   3. ID number
+
+<Note title="Critical requirement">
+These three values must **exactly match** the corresponding fields zerohash has on file for that customer - specifically, the values submitted for that customer during onboarding (`POST /participants/customers/new` or the Onboarding SDK. If your Platform's onboarding data is incomplete, inconsistent, or doesn't match what the customer enters (e.g., a different email than the one on file), the customer will not be able to complete this step. Make sure your onboarding flow captures and submits accurate, verifiable data for every customer - this is the sole basis for Recovery Portal identity matching, since there's no separate login/password for this flow.
+</Note>
+
+4. **On a match, zerohash sends a magic link:** A second email is sent to the customer containing a one-time magic link.
+5. **Customer clicks the magic link:** This authenticates the customer into the Recovery Portal - no password required.
+6. **Customer self-serves a withdrawal:** Once inside, the customer can initiate a withdrawal of the recovered funds to a destination address of their choosing.
+
+## Auth
+
+Recovery for Auth follows the same journey as Account Funding above - the customer receives an email from zerohash, identifies themselves via email + ID type + ID number, and completes the flow via magic link. The only difference is what triggers it:
+
+### What triggers recovery
+
+For customers using Auth, recovery is triggered by a single scenario: a non-Auth transfer - the customer sends funds from outside the wallet or account the Auth flow expected, rather than completing the deposit through the intended Auth-linked source.
+
+<Info title="For customers using zerohash prior to 8/12/26">
+Recoveries for funding failures will still deposit to the `fund_failure` subledger for recovery. `recovery_quarantine` is a new, consolidated subledger for customers that have onboarded to zerohash after 8/12/26.
+
+If your platform would like to move to the new consolidated ledger, please contact your zerohash representative.
+</Info>

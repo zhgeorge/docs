@@ -1,0 +1,44 @@
+---
+title: "Crypto Deposits SDK Guide"
+description: "Enable users to deposit crypto directly onto your platform for use in trading or transfer"
+---
+
+## Initialize Crypto Deposits Flow
+
+### Retrieve Account Funding JWT token
+
+In order to successfully invoke the Access Token, you'll need to supply a `participant_code` for the End Customer (see full instructions [here](https://docs.zerohash.com/reference-link/post_client-auth-token)). This customer must be in an `approved` status for this call to succeed. **Please note:** the correct permission to pass here is `crypto-deposits`.
+
+### Invoke the Crypto Deposits SDK
+
+See the Crypto Deposits SDK [implementation guide](https://docs.zerohash.com/reference-link/crypto-deposits) for technical instructions.
+
+### Crypto Deposits Webhooks
+
+See [Deposit Status Updates](https://docs.zerohash.com/reference/deposit-status-updates) for more detail on deposit webhooks schemas and sample payloads.
+
+### Query Deposits
+
+It may be helpful (or likely required) to display crypto or stablecoin deposits in the Transaction History (or like page) on your application. You can use the [GET /fund/transactions](https://docs.zerohash.com/reference/get_fund-transactions) endpoint to query all completed Account Funding events. View the [code recipe](https://docs.zerohash.com/recipes/fund-get-transactions) for additional assistance.
+
+### Customer receives email
+
+zerohash is required to ensure that each Customer receives an email receipt for all transactions. zerohash will handle this and send an email in the following scenarios (same scenarios as webhooks):
+
+- Success
+- Failure - Platform not enabled
+- Failure - Customer not approved
+- Failure - Deposit above maximum
+- Failure - Deposit below minimum
+- Failure - Asset not supported
+- Failure - Stablecoin depegged
+
+## Deposit returns
+
+<Warning title="IMPORTANT: You cannot rely on the deposit’s source address as the return destination. Blockchain transactions are not inherently bidirectional, and returning funds to the sender address may result in loss of funds or failed deliveries.">
+Some Platforms may choose to pair their zerohash integration with their own transaction monitoring tools. In situations where zerohash accepts a deposit, but the Platform’s monitoring logic flags and rejects it, the Platform may opt to return the deposit by using the POST /withdrawal/requests endpoint.
+
+The required flow is to always request and confirm a return address directly from the customer before initiating the return.
+
+Please speak to a zerohash sales engineer for guidance if interested in this flow.
+</Warning>

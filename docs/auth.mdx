@@ -1,0 +1,43 @@
+---
+title: "AUTH"
+description: "Enable account-to-account transfers through seamless integration with popular exchanges and wallets"
+---
+
+![](https://files.readme.io/d83f1f5bc4d5be4233a3a69bedd47d432a2187dedd296e35a36263f11178816b-image.png)
+
+## Overview & Concepts
+
+**AUTH enables direct account-to-account transfers between custodial accounts (i.e., exchanges and fintechs) and non-custodial accounts.**
+
+Backed by a deep network of supported venues, AUTH eliminates manual and error-prone transfer steps that lead to fragmented user experiences. Our platform handles secure authentication, initiates transfers, and ensures visibility and adherence to key compliance and AML standards. Offered through easy-to-integrate SDKs, AUTH is built for scale, security, and seamless user journeys.
+
+## Supported Custody Models & Assets
+
+AUTH supports both custodial solutions, such as brokerages like Gemini, as well as non-custodial solutions such as Metamask wallets.
+
+You can review our full list of supported AUTH Providers [here](/docs/auth-network).
+
+## Compliance & Name Matching
+
+AUTH supports two versions of our transaction flow depending on platform requirements and integration pattern: a tech-only solution and a more robust name-matching service.
+
+AUTH **Lite** - provides tech connectivity without account-matching validation between the end-user account and the external account being connected
+
+- Enables faster and more flexible integrations with minimal friction for end users
+
+- Works best for low-risk or closed-loop environments where account ownership verification is not required
+
+AUTH **Validate -** Performs account matching between the KYC’d customer record and the external account being connected
+
+- Adds a layer of identity verification to reduce the risk of misdirected transfers or fraud
+- Supports compliance with internal policies or regulatory requirements that require account ownership validation
+
+## Supported Configurations
+
+Tailor your AUTH setup using the available configuration options:
+
+- **Custodial vs. non-custodial accounts** - configure whether zerohash AUTH SDK displays Custodial accounts(e.g., Gemini or Robinhood exchanges), Non-Custodial Accounts (e.g. Metamask or Phantom wallet), or both
+- **AUTH Provider configurations** - fine-grain control for enabling specific custodial and non-custodial accounts by product
+- **Asset & blockchain network control** - specify which assets and networks you wish to support for your platform and your customers, by product-line (e.g. Fund, Withdrawals, etc.)
+- **Block non-AUTH initiated transfers** - specify whether you want to only accept deposits that have been initiated through our product, ensuring that only transfers from the correct, verified (KYC'd) customer are credited to their account
+- **Customizable name matching logic** - Tailor the strength of our name matching algorithm to find the right balance of speed and accuracy.

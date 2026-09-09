@@ -1,0 +1,97 @@
+---
+title: "Accept (payins)"
+description: "Enable agents to pay using zerohash's x402 middleware connector"
+---
+
+## Accept Agentic Payments
+
+zerohash allows agents to move money onchain. The below guide is an extension of zerohash’s [payins solution](/docs/payins) to integrate Agentic Payments.
+
+The solution encompasses the following the steps:
+
+1. Ensure all [merchants have been onboarded](/docs/know-your-agent#2---onboard-your-customers)
+2. [Configure the zerohash x402 middleware connector](/docs/payments-facilitator-configuration)for your Platform's use case
+3. [Configure merchants x402 payins parameters](/docs/x402-merchant-configuration) such as endpoints to monetize, price-per-endpoint-access, maximum requests per agent, and specific asset & network acceptance
+4. Integrate to the [Agentic Money Movement Integration Guide](/docs/accept-payins#agentic-money-movement-integration-guide)
+5. Start accepting agent money movements
+
+## Roles
+
+| Roles | Example | Description |
+| --- | --- | --- |
+| Platform | Fetch | Integrates zerohash and configures the x402 middleware; makes the API calls to zerohash on behalf of its merchants and agents. |
+| Merchant | Skyline Weather Co. | The business exposing a paid endpoint (e.g., /forecast); returns the 402 Payment Required response and fulfills the request once payment settles. This could be you, or a business customer of yours. |
+| Shopper | John Smith | The human or business accountable under KYA for the agent's actions. |
+| Shopper's Agent | John's research agent | Initiates the payment request on behalf of the Shopper |
+| zerohash | - | Acts as payment facilitator; also can act as custodian in the zerohash-controlled wallet model. |
+
+## Agentic Money Movement Integration Guide
+
+Settlement in this model happens through two facilitator endpoints, `POST /verify` and `POST /settle`. `/verify` checks a payment request against the paying agent's permissions and limits without moving any funds; `/settle` executes the actual movement once verification passes. Both are called by the Platform, not the merchant or the agent.
+
+How a payment completes:
+
+1. **Shopper's Agent initiates an x402 request.** The agent calls the x402-enabled endpoint directly: `GET /forecast?city=chicago` . The merchant can configure the x402 payins parameters such as price-per-endpoint-access, maximum spend limits, and specific asset & network acceptance either through your own [x402 middleware or zerohash's middleware solution.](/docs/payments-facilitator-configuration)
+2. **Merchant returns payment requirements in response to Shopper's Agent.** The merchant's [middleware](/docs/payments-facilitator-configuration) responds with `402 Payment Required` with the KYA requirements to onboard a Shopper's agent, price to access the endpoint requested, supported assets, amount limits, chains, and destination address for payment.
+3. **Shopper's Agent resubmits x402 request with payment & KYA requirements**  - Shopper's agent includes all requirements in `X-PAYMENT` header of request.
+4. **zerohash authorize's the payment via** `POST /verify`**.** The Platform submits the payment and KYA requirements to zerohash's `/verify` endpoint on the agent's behalf. zerohash checks the request against the merchant's configured `product_permissions` and transaction limits (see Set agent permissions and limits) and confirms whether it's authorized - no funds move at this step.
+
+`POST /verify` call:
+
+```json
+{
+     //KYA requirements
+     "account_label": "AGENT01",
+     "payment_requirements": {
+       "asset": "USDC.BASE",
+       "amount": "0.001",
+       "pay_to": "0xSkylineAddress",
+       "scheme": "exact"
+     }
+   }
+```
+
+Response:
+
+```json
+   {
+     "status": "verified",
+     "participant_code": "CUST01",
+     "account_label": "AGENT01"
+   }
+```
+
+5. **zerohash settles payment on-chain** `POST /settle` - With verification passed, the Platform calls `/settle`. zerohash will move funds to the merchant's wallet within zerohash (ie, free internal ledger transfer).
+
+`POST /settle` call:
+
+```json
+   {
+     "participant_code": "CUST01",
+     "account_label": "AGENT01",
+     "payment_requirements": {
+       "asset": "USDC.BASE",
+       "amount": "0.001",
+       "pay_to": "0xSkylineAddress",
+       "scheme": "exact"
+     }
+   }
+```
+
+Response:
+
+```json
+{
+     "status": "settled",
+     "settlement_type": "internal_ledger",
+     "amount": "0.001",
+     "asset": "USDC.BASE",
+     "settled_at": "2026-07-29T12:00:05Z"
+   }
+```
+
+<Info>
+If the requested payment would exceed the agent's configured limit, or falls outside its `product_permissions`, `/verify` returns a rejection and the Platform should not proceed to `/settle` - no funds move.
+</Info>
+
+5. **Merchant fulfills the request.** Once the Platform confirms settlement, the merchant's [middleware](/docs/payments-facilitator-configuration) returns `200 OK` with the requested resource.

@@ -1,0 +1,412 @@
+---
+title: "Native Migration Guide"
+description: "For customers looking to migrate their Web SDK implementation to one of our native SDKs"
+---
+
+## What changes
+
+If you integrated zerohash on mobile before the native SDKs existed, your app does the
+following work itself:
+
+1. Builds a `sdk-mobile` URL with `zeroHashAppsURL` and provides a per-product JWT, passed
+   via a query parameter, `setJWT`, or `openModal`.
+2. Configures a `WKWebView` or `WebView` (JavaScript, DOM storage, media playback, camera
+   permission prompts).
+3. Registers a JavaScript bridge under an exact name (`NativeIOS`, `NativeAndroid`) or wires
+   `onMessage` in React Native.
+4. Waits for `SDK_MOBILE_READY`, then injects an `OPEN_MODAL` postMessage carrying the
+   `appIdentifier` and the JWT.
+5. Parses every inbound message as JSON and switches on a string `type` to detect loaded,
+   submitted, completed, failed, and close.
+6. Hides the WebView itself when it sees a `*_CLOSE_BUTTON_CLICKED` message.
+7. Intercepts navigation for links marked `openInExternalBrowser=true` and for third party
+   provider redirects, and opens them outside the WebView.
+
+The native SDK owns all seven. You configure a session with a JWT, present it, and implement
+callbacks.
+
+> This guide covers what changes when you move off the WebView. For the native setup itself,
+> installing, configuring a session, presenting it, and wiring callbacks,
+> follow the [Mobile SDKs guide](/docs/mobile-sdks).
+
+## What does not change
+
+- **Your backend -** Keep minting tokens with `POST /client_auth_token` and revoking with
+  `POST /revoke_auth_token`. Same permissions per flow (Fund tokens are minted with the
+  `fwc` permission). No server side change is required to migrate.
+- **The flows themselves -** The screens your users see, the compliance steps, and the
+  resulting transactions are the same.
+
+## Before you start
+
+|   | iOS | Android |
+| --- | --- | --- |
+| Minimum OS | iOS 17 | Android 5.0, API 21 |
+| Language | Swift 6.0+ | Kotlin 1.9+ |
+| Toolchain | Xcode 16.0+ | Gradle 8.2+, JDK 17 |
+| Distribution | Swift Package Manager | Maven Central |
+
+If your app supports an iOS version below 17, you cannot adopt the iOS SDK yet. Keep the
+WebView integration for now and talk to your zerohash contact.
+
+## Step 1: add the dependency
+
+**iOS**, Swift Package Manager. In Xcode, File > Add Package Dependencies, then enter
+`https://github.com/zerohash-ext/zerohash-ios`. Use the "up to next minor" version rule, not
+"up to next major". Or in `Package.swift`:
+
+```swift
+dependencies: [
+    .package(url: "https://github.com/zerohash-ext/zerohash-ios", .upToNextMinor(from: "1.1.0"))
+]
+```
+
+We recommend pinning to a minor rather than a major because 1.1.0 renames callbacks. A range
+that spans minors will pick that up as a silent upgrade. Read the release notes before you
+widen the range or bump it yourself.
+
+**Android**, Gradle. Published to Maven Central as `com.zerohash:zerohash-android`; no extra
+repository declaration is needed beyond `mavenCentral()`.
+
+```kotlin
+// settings.gradle.kts
+dependencyResolutionManagement {
+    repositories { mavenCentral() }
+}
+
+// app/build.gradle.kts
+dependencies {
+    implementation("com.zerohash:zerohash-android:1.1.0")
+}
+```
+
+**Capacitor**, if your app is Capacitor rather than native:
+
+```bash
+npm install @zerohash-sdk/capacitor
+npx cap sync
+```
+
+The plugin wraps both native SDKs and exposes the same events as web-style listeners. See
+"Capacitor" below for the naming difference.
+
+## Step 2: configure and present a session
+
+Replace URL construction, WebView setup, bridge registration and the `OPEN_MODAL` handshake
+with a single `configure*` call.
+
+**iOS**
+
+```swift
+let session = ZerohashSDK.configureFund(
+    jwt: jwt,
+    environment: .sandbox,
+    theme: .system,
+    callbacks: FundCallbacks(
+        onClose:     { /* ... */ },
+        onCompleted: { event in /* ... */ },
+        onFailed:    { event in /* ... */ },
+        onDeposit:   { event in /* ... */ },
+        onError:     { error in /* ... */ },
+        onLoaded:    { /* ... */ },
+        onEvent:     { event in /* ... */ }
+    )
+)
+session.present(from: self)
+```
+
+`configureFund` and `configureCryptoWithdrawals` are `@MainActor`. Every callback in
+`FundCallbacks` is optional, so pass only the ones you need.
+
+**Android**
+
+```kotlin
+val session = ZerohashSDK.configureFund(
+    jwt = jwt,
+    environment = Environment.SANDBOX,
+    theme = Theme.SYSTEM,
+    callbacks = object : FundCallbacks {
+        override fun onClose() { /* ... */ }
+        override fun onError(error: ZerohashError) { /* ... */ }
+        override fun onEvent(event: GenericEvent) { /* ... */ }
+        override fun onCompleted(event: FundCompletedEvent) { /* ... */ }
+        // onFailed, onDeposit and onLoaded have default no-op implementations.
+    }
+)
+session.present(activity)
+```
+
+On Android `onClose`, `onError`, `onEvent` and `onCompleted` are required; `onFailed`,
+`onDeposit` and `onLoaded` default to no-ops so an existing host compiles without them.
+
+`configureFund` and `configureCryptoWithdrawals` on Android also take an optional
+`allowList: ZerohashAllowList`, the set of hosts the embedded WebView may navigate to or load
+from. The default covers the zerohash hosts plus the third-party providers needed.
+
+## Step 3: replace postMessage listeners with callbacks
+
+Callback names are identical on iOS and Android. The flow is identified by the session
+type you configured, not by the callback name, hence `onCompleted`, not `onFundCompleted`.
+
+**Fund**
+
+| Legacy postMessage `type` | Native callback |
+| --- | --- |
+| `SDK_MOBILE_READY` | not exposed, handled internally |
+| `FUND_APP_LOADED` | `onLoaded` (also still on `onEvent`) |
+| `FUND_DEPOSIT_SUBMITTED` | `onEvent` |
+| `FUND_COMPLETED` | `onCompleted` |
+| `FUND_FAILED` | `onFailed` |
+| `FUND_CONNECT_DEPOSIT` | `onDeposit` |
+| `FUND_CONNECT_EVENT` | `onEvent` |
+| `FUND_ERROR` | `onError` |
+| `FUND_CLOSE_BUTTON_CLICKED` | `onClose` |
+
+**Crypto Withdrawals**
+
+| Legacy postMessage `type` | Native callback |
+| --- | --- |
+| `SDK_MOBILE_READY` | not exposed, handled internally |
+| `CRYPTO_WITHDRAWALS_APP_LOADED` | `onLoaded` |
+| `CRYPTO_WITHDRAWALS_COMPLETED` | `onCompleted` |
+| `CRYPTO_WITHDRAWALS_FAILED` | `onFailed` |
+| `CRYPTO_WITHDRAWALS_CLOSE_BUTTON_CLICKED` | `onClose` |
+
+### Fund has two deposit paths, and they report on different callbacks
+
+This is the one behavioral difference that will break a naive port, so handle it before
+anything else.
+
+| How the user funded | Which callback fires |
+| --- | --- |
+| Manual deposit, or Pay to settle | `onCompleted` or `onFailed`, terminal |
+| From a connected external source | `onDeposit` **only** |
+
+The native SDKs do not translate and do not duplicate. An external-source deposit is delivered
+once, verbatim, to `onDeposit` with its status attached, and you decide what it means.
+
+Four consequences:
+
+- `onCompleted` **and** `onFailed` **never fire for an external-source deposit.** If you only
+  implement those, that path reports nothing. This is the most likely way a port breaks.
+- `onDeposit` **is not terminal.** It also fires while account matching is verifying, and it
+  can fire more than once for the same deposit. Read the outcome off `status` (or the derived
+  `success` boolean), not off the fact that the callback ran.
+- **"Success" is narrower than it was.** The legacy translation treated `completed`, `success`,
+  `confirmed`, `settled` and `processed` as success. Native `success` is true only for
+  `PROCESSED`. If you relied on the broader set, check against `status` yourself.
+- `transactionId` **and** `fundId` **are not on this event.** Legacy set both to the deposit's
+  identifier so the translated `FUND_COMPLETED` payload would look like a real completion.
+  `onDeposit` carries the actual field, `depositId`. If your records key off `transactionId`
+  for external-source deposits, they were keying off `depositId` all along.
+
+`status` values are `PROCESSED`, `FAILED`, `PENDING` and the account-matching intermediates.
+`success` is a convenience for `status == PROCESSED` and is false while pending, verifying, or
+failed — it is not a failure flag.
+
+If you offer both paths, implement all three callbacks: your "deposit finished" handling needs
+to be reachable from `onCompleted` and from `onDeposit` with a processed status.
+
+### Failure
+
+A **terminal flow failure** is not an error. It arrives on `onFailed` with the transaction's
+own details, in the same event type `onCompleted` receives; which callback fired tells you the
+outcome. **SDK and request errors** — network, auth, validation, configuration — arrive on
+`onError` as a typed `ZerohashError` / `ErrorEvent`.
+
+Two exceptions to know about:
+
+- **Crypto Withdrawals fires** `onError` **as well as** `onFailed` on a failed withdrawal. Before
+  `onFailed` existed, `onError` was that flow's only failure signal, so it is kept for hosts
+  written against it. Build against `onFailed`, and if you handle both, guard against counting
+  one failure twice. Fund does not do this — a failed deposit fires `onFailed` alone.
+- **External-source deposits do not use** `onFailed` **at all.** A failure on that path is
+  `onDeposit` with `status == FAILED`. See above.
+
+### Everything else
+
+`onEvent` is the catch-all. Anything you were reading off the raw message stream for
+analytics arrives there, with the original event identifier on `event.type` and the payload
+on `event.data`. On both platforms use the typed accessors (`getString`, `getInt`, `getBool`,
+`getDouble`, `getObject`) rather than casting the payload yourself.
+
+`onLoaded` fires once the flow has finished loading and is ready — the point at which the
+loading indicator gives way to the first screen. If you were watching `FUND_APP_LOADED` to
+dismiss your own spinner, use this instead. The underlying event still reaches `onEvent`, so
+existing analytics keep working.
+
+There is no native equivalent of the web SDK's `onProvideInfo`. That callback is web-only by
+design.
+
+### Payload fields
+
+Your old handler parsed JSON and read fields off `payload`. The native events expose those
+fields as properties. Field names now match across iOS and Android.
+
+`onCompleted` **/** `onFailed` — iOS `FundEvent`, Android `FundCompletedEvent`:
+
+| Legacy Fund payload field | Native property |
+| --- | --- |
+| `transactionId` | `transactionId` |
+| `fundId` | `fundId` |
+| `amount` | `amount` |
+| `assetId` | `assetSymbol` (renamed, same value) |
+| `networkId` | `network` (renamed, same value) |
+| not in legacy payload | `depositAddress`, `notionalAmount` |
+
+`assetSymbol` and `network` are the legacy `assetId` and `networkId` under new
+names. Same value space, so records keyed off the legacy fields keep matching.
+
+There is no `success` or `status` property on this event. Which callback fired is the outcome.
+
+`onDeposit` — `FundDepositEvent` on both platforms. Different shape, because this path
+reports a status rather than a completion:
+
+| Property | Meaning |
+| --- | --- |
+| `depositId` | the deposit's identifier |
+| `status` | `PROCESSED`, `FAILED`, `PENDING` |
+| `statusDetails` | human-readable detail for the status |
+| `statusOccurredAt` | ISO 8601 timestamp |
+| `success` | derived, true only when `status == PROCESSED` |
+| `assetId`, `networkId` | same values as `assetSymbol`/`network` above, different names |
+| `amount` | amount deposited |
+| `accountMatchingStatus` | `PENDING`, `VALID`, `INVALID`, `ERROR` |
+| `accountMatchingReason` | why account matching failed |
+
+On a name mismatch, `accountMatchingReason` is the only explanation available anywhere in the
+stack. Surface it rather than reporting a bare identifier.
+
+**Crypto Withdrawals** — iOS `CryptoWithdrawalsEvent`, Android
+`CryptoWithdrawalsCompletedEvent`:
+
+| Property | Meaning |
+| --- | --- |
+| `withdrawalRequestId` | replaces reading the request id out of the legacy payload |
+| `status` | terminal status, e.g. `CONFIRMED` or `FAILED` |
+| `statusDetails` | human-readable reason; on a failure, the only explanation there is |
+| `assetId`, `networkId` | asset and network identifiers |
+| `amount` | amount withdrawn |
+
+Every event also exposes the untouched bridge payload if you need something not surfaced as a
+property: `data` and `jsonString` on iOS, `rawData` on Android.
+
+## Step 4: environments
+
+You no longer construct URLs, so there is no `zeroHashAppsURL` to keep in sync with the
+`sdk-mobile` host. Environment misalignment is not possible.
+
+| What you used before | iOS | Android |
+| --- | --- | --- |
+| `sdk-mobile.cert.zerohash.com/v1` plus `web-sdk.cert.zerohash.com` | `.sandbox` | `Environment.SANDBOX` |
+| `sdk-mobile.zerohash.com/v1` plus `web-sdk.zerohash.com` | `.production` (default) | `Environment.PRODUCTION` (default) |
+
+## Step 5: theming
+
+| iOS | Android | Behavior |
+| --- | --- | --- |
+| `.light` | `Theme.LIGHT` | forces light regardless of device setting |
+| `.dark` | `Theme.DARK` | forces dark regardless of device setting |
+| `.system` (default) | `Theme.SYSTEM` (default) | follows the device appearance setting |
+
+`SYSTEM` maps to the web app's `auto` mode. The theme applies to the flow content and the
+loading indicator.
+
+## Step 6: lifecycle and teardown
+
+Both session types expose the same lifecycle:
+
+| Member | iOS | Android |
+| --- | --- | --- |
+| present | `present(from: UIViewController)` | `present(activity: Activity)` |
+| dismiss programmatically | `cancel()` | `cancel()` |
+| check state | `isActive` | `isActive()` |
+
+Two things to get right:
+
+- Cancel the session when the host is destroyed. On Android call `cancel()` in `onDestroy()`.
+- Clear your session reference in `onClose` so a dismissed session is not presented again.
+
+On Android, `present()` returns `null` if the JWT fails validation. Treat a null return as a
+token problem (wrong permissions, malformed, or expired) rather than a presentation failure.
+
+## Capacitor
+
+If your app is Capacitor, use `@zerohash-sdk/capacitor` instead of talking to the native SDKs
+directly. `presentFund(options)` and `presentCryptoWithdrawals(options)` take the JWT,
+environment and theme; `cancel()` and `isActive()` mirror the native lifecycle.
+
+Plugin events are global rather than scoped to a session object, so the ones whose payload
+differs per flow are qualified by flow name:
+
+| Native callback | Capacitor event |
+| --- | --- |
+| `onClose` | `close` |
+| `onError` | `error` |
+| `onEvent` | `event` |
+| `onLoaded` | `loaded` |
+| Fund `onCompleted` | `fundCompleted` |
+| Fund `onFailed` | `fundFailed` |
+| Fund `onDeposit` | `fundDeposit` |
+| Crypto Withdrawals `onCompleted` | `withdrawalCompleted` |
+| Crypto Withdrawals `onFailed` | `withdrawalFailed` |
+
+Everything in Step 3 applies unchanged, including the two-deposit-paths rule and the
+compatibility `error` on a failed withdrawal.
+
+## Step 7: verify the migration
+
+Run this against sandbox before you ship:
+
+- Fund happy path, manual deposit: present, complete a deposit, confirm `onCompleted`
+  fires with the transaction identifier you previously read off `FUND_COMPLETED`.
+- Fund happy path, external source: complete a deposit from a connected account, confirm
+  `onDeposit` fires and that you correctly treat only `status == PROCESSED` as done.
+- Fund external source, non-terminal: confirm your handler tolerates `onDeposit` firing
+  more than once, and while account matching is still `PENDING`.
+- Fund failure: confirm `onFailed` for a manual deposit, and `onDeposit` with
+  `status == FAILED` for an external-source one.
+- Withdrawal failure: confirm `onFailed` fires, and that your `onError` handler does not
+  double-count the same failure.
+- Error path: present with a deliberately invalid or wrong permission JWT, confirm
+  `onError` (and on Android, the null return from `present()`).
+- Loaded: confirm `onLoaded` fires and that you dismiss your own spinner on it.
+- Close: dismiss with the in-flow close control, confirm `onClose` and that your UI
+  returns to the right screen without you hiding anything yourself.
+- Programmatic dismiss: call `cancel()` mid flow, confirm `onClose`.
+- Backgrounding and rotation during the flow.
+- Any flow requiring document capture or third party provider authentication, confirm it
+  completes in the new integration method.
+- Analytics: confirm every event you previously tracked off the raw message stream still
+  arrives via `onEvent`.
+
+## Rolling it out
+
+Ship it behind a flag, keep the WebView integration in the binary for one release, route a
+small share of traffic to the native SDK, compare completion rates and error rates against
+the WebView cohort, then remove the old path. Pin the SDK version, and read the release notes
+before bumping.
+
+## FAQ
+
+**Do I need to change my backend?** No. Token minting, permissions, and revocation are
+unchanged.
+
+**Can I use AUTH with the legacy WebView integration?** No, you cannot use AUTH without
+integrating to our native SDK.
+
+**Can I run the native SDK and my WebView at the same time?** Yes, and you will need to if
+you use a flow the native SDK does not cover yet.
+
+**Which flows are covered?** Fund and Crypto Withdrawals. Everything else stays on the
+WebView path.
+
+**Why didn't** `onCompleted` **fire for my deposit?** Almost certainly because it came from a
+connected external source, which reports on `onDeposit` only. See Step 3.
+
+**I am on Capacitor.** Use `@zerohash-sdk/capacitor`. See the Capacitor section.
+
+**I am on React Native or Flutter.** There is no wrapper for your stack yet. Either roll out
+a bridge against the native SDKs, or stay on the WebView guides and talk to your zerohash contact.
+
+**My app supports iOS 16.** The iOS SDK requires iOS 17. Stay on the WebView integration.
