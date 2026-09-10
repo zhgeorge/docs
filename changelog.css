@@ -23,12 +23,14 @@
     margin-right: auto;
   }
 
-  /* the page header is a sibling of the content, so both need centring or the title
-     drifts to the far left of the entries */
+  /* Left-align the page header and the entries with the "Documentation" tab above them.
+     The tab row sits 48px inside the same 1472px container that the content wrapper
+     uses with 32px of padding, so a 16px offset lines the two edges up. The header is a
+     sibling of the content, so both need the same treatment. */
   #content-area:has(.zh-cl-page) #header,
   #content-area:has(.zh-cl-page) #content {
     max-width: 900px;
-    margin-left: auto;
+    margin-left: 16px;
     margin-right: auto;
   }
 }
