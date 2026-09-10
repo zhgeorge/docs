@@ -133,6 +133,7 @@
   const el = (h) => { const t = document.createElement("template"); t.innerHTML = h.trim(); return t.content.firstElementChild; };
   const esc = (s) => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
   const srcLink = (slug, label) => `<p class="src">From the docs: <a href="${DOCS}${slug}">${esc(label || PAGE_TITLES[slug] || slug)}</a></p>`;
+  const sentence = (items) => list(items, "and");
   const list = (arr, word = "and") => arr.length <= 1 ? arr.join("") : arr.slice(0, -1).join(", ") + ` ${word} ` + arr[arr.length - 1];
   let ROOT = null;
   const $ = (sel) => ROOT.querySelector(sel);
@@ -174,7 +175,7 @@
   function singleCards(opts, current, onPick) {
     const box = el(`<div class="cards"></div>`);
     for (const [val, t, d] of opts) {
-      const c = el(`<button type="button" class="card ${current === val ? "on" : ""}" role="radio" aria-checked="${current === val}"><span class="check"></span><div class="t">${esc(t)}</div>${d ? `<div class="d">${esc(d)}</div>` : ""}</button>`);
+      const c = el(`<button type="button" class="card single ${current === val ? "on" : ""}" role="radio" aria-checked="${current === val}"><div class="t">${esc(t)}</div>${d ? `<div class="d">${esc(d)}</div>` : ""}</button>`);
       c.onclick = () => onPick(val); box.append(c);
     }
     return box;
@@ -216,7 +217,7 @@
     const box = v.querySelector(".cards");
     for (const p of PRODUCTS) {
       const on = S.products.includes(p.id);
-      const c = el(`<button type="button" class="card multi ${on ? "on" : ""}" role="checkbox" aria-checked="${on}"><span class="check"></span><div class="t">${esc(p.name)}<span class="tag">${esc(p.tag)}</span></div><div class="d">${esc(p.short)}</div></button>`);
+      const c = el(`<button type="button" class="card multi ${on ? "on" : ""}" role="checkbox" aria-checked="${on}"><span class="check"></span><div class="t">${esc(p.name)}</div><div class="d">${esc(p.short)}</div></button>`);
       c.onclick = () => { S.products = on ? S.products.filter(x => x !== p.id) : [...S.products, p.id]; render(); };
       box.append(c);
     }
@@ -228,9 +229,9 @@
       <p class="eyebrow">Step 2 · About you</p>
       <p class="h1">Three quick questions about your platform</p>
       <p class="lede">These decide which zerohash entity you work with and how your customers get verified. Everything else has sensible defaults.</p>
-      <div class="q"><p class="h2">Where are you based?</p><div class="body"></div>${srcLink("fund-overview", "Regional availability: US vs. EU")}</div>
-      <div class="q"><p class="h2">Who are your customers?</p><p class="q-help">Pick both if you serve both.</p><div class="body"></div>${srcLink("fund-integration-guide-api", "Onboarding individuals and businesses")}</div>
-      <div class="q"><p class="h2">Who verifies your customers' identity (KYC)?</p><p class="q-help">Every customer must be identity-checked before they can transact. Most platforms let zerohash do it.</p><div class="body"></div>${srcLink("onboarding-experience-sample", "Onboarding SDK")}</div>
+      <div class="q"><p class="h2">Where are you based?</p><div class="body"></div></div>
+      <div class="q"><p class="h2">Who are your customers?</p><p class="q-help">Pick both if you serve both.</p><div class="body"></div></div>
+      <div class="q"><p class="h2">Who verifies your customers' identity (KYC)?</p><p class="q-help">Every customer must be identity-checked before they can transact. Most platforms let zerohash do it.</p><div class="body"></div></div>
     </section>`);
     const bodies = v.querySelectorAll(".body");
     bodies[0].replaceWith(singleCards([["us","United States","zerohash LLC"],["eu","European Union","zerohash europe B.V., licensed by the Dutch AFM"]], S.region, (val) => { S.region = val; render(); }));
@@ -241,10 +242,10 @@
 
   function viewProduct(pid) {
     const p = PRODUCTS.find(x => x.id === pid), a = ans(pid);
-    const v = el(`<section><p class="eyebrow">${esc(p.tag)}</p><p class="h1">${esc(p.name)}</p><p class="lede">${esc(p.plain)}</p><div class="qs"></div></section>`);
+    const v = el(`<section><p class="eyebrow">Step ${S.step + 1}</p><p class="h1">${esc(p.name)}</p><p class="lede">${esc(p.plain)}</p><div class="qs"></div></section>`);
     const qs = v.querySelector(".qs");
     for (const q of visibleQuestions(pid)) {
-      const w = el(`<div class="q"><p class="h2">${esc(q.title)}</p>${q.help ? `<p class="q-help">${esc(q.help)}</p>` : ""}${q.plain ? `<div class="plain">${q.plain}</div>` : ""}<div class="body"></div>${q.src ? srcLink(q.src) : ""}</div>`);
+      const w = el(`<div class="q"><p class="h2">${esc(q.title)}</p>${q.plain ? `<p class="q-help">${q.plain}</p>` : ""}${q.help ? `<p class="q-help">${esc(q.help)}</p>` : ""}<div class="body"></div></div>`);
       const body = w.querySelector(".body");
       const set = (val) => { a[q.id] = val; render(); };
       if (q.type === "single") body.replaceWith(singleCards(q.opts, a[q.id], set));
@@ -288,7 +289,7 @@
         { title: "Make your first call", html: `<p><span class="ep">GET /time</span> needs no login and proves your connection works. Every other call is signed: you send four headers computed from your key, a timestamp and the request. The helper below does it for you.</p>`,
           code: [{ lang: "bash", label: "Try it: GET /time", text: `curl --request GET \\\n  --url ${h}/time \\\n  --header 'accept: application/json'` }, { lang: "javascript", label: "Node.js: sign a request", text: `const crypto = require("crypto");\n\nfunction zhHeaders(method, path, body = null) {\n  const timestamp = Math.floor(Date.now() / 1000).toString();\n  const bodyStr = body ? JSON.stringify(body) : "{}";\n  const message = timestamp + method.toUpperCase() + path + bodyStr;\n  const signature = crypto\n    .createHmac("sha256", process.env.ZH_PRIVATE_KEY)\n    .update(message)\n    .digest("base64");\n  return {\n    "X-SCX-API-KEY": process.env.ZH_PUBLIC_KEY,\n    "X-SCX-SIGNED": signature,\n    "X-SCX-TIMESTAMP": timestamp,\n    "X-SCX-PASSPHRASE": process.env.ZH_PASSPHRASE,\n    "Content-Type": "application/json",\n  };\n}` }], links: [link("submit-first-api-call"), link("authentication", "API Authentication")] },
       ],
-      config: ["A Cert platform for your team", "The IP addresses you'll call from", "A webhook URL — zerohash sends you status updates for everything below"] });
+      config: ["a Cert platform for your team", "the IP addresses you'll call from", "a webhook URL where zerohash can send status updates for everything below"] });
 
     const onb = { eyebrow: "Phase 2", title: "Verify your customers", intro: "Before a customer can do anything, they're verified once and get a <b>participant code</b> (like <code>CUST01</code>) — the ID you'll use for them in every later call.", steps: [], config: [] };
     const agreements = signedAgreements().map(a => a.type);
@@ -300,7 +301,7 @@
     } else {
       if (S.customers.includes("individuals")) onb.steps.push({ title: "Send zerohash each verified person", html: `<p>You've already checked their identity, so you send the results (KYC, sanctions, ID, liveness: pass or fail) plus the agreements they accepted. You get their participant code back.</p>`, code: [{ lang: "bash", label: "POST /participants/customers/new", text: curl("POST", "/participants/customers/new", customerPayload()) }], links: [ref("post_participants-customers-new", "POST /participants/customers/new"), link("permitted-and-restricted-jurisdictions", "Where you can operate")] });
       if (S.customers.includes("businesses")) onb.steps.push({ title: "Send zerohash each verified business", html: `<p>Businesses use a separate call with company details. Licensed institutions can send a shorter packet; the full version adds owners and control persons.</p>`, code: [{ lang: "bash", label: "POST /participants/entity/new", text: curl("POST", "/participants/entity/new", entityPayload()) }], links: [ref("post_participants-entity-new", "POST /participants/entity/new")] });
-      onb.config.push("Approval to use your own KYC (the \"Reliance\" model)");
+      onb.config.push("approval to use your own KYC (the \"Reliance\" model)");
     }
     phases.push(onb);
 
@@ -319,7 +320,7 @@
           : { title: "Get a deposit address for the customer", html: `<p><span class="ep">POST /fund/rfq</span> returns an address for one asset. Anything sent there converts to dollars automatically. Ask for one address per asset you support.</p>`, code: [{ lang: "bash", label: "POST /fund/rfq", text: curl("POST", "/fund/rfq", { participant_code: "CUST01", fund_asset: first, client_fund_id: "abc123" }) }, { lang: "json", label: "What comes back", text: J({ message: { participant_code: "CUST01", fund_asset: first, rate: "1", quoted_currency: "USD", deposit_address: first.includes("SOL") ? "7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU" : "0x5f59B625036ccB4f7aD27Ca4Cb896e4452AfFDAF", minimum_deposit: "1", maximum_deposit: "250000" } }) }], links: [ref("post_fund-rfq", "POST /fund/rfq"), link("fund-integration-guide-api", "Fund API guide")] });
         ph.steps.push({ title: "Get told when money lands", html: `<p>When the deposit confirms on-chain, zerohash converts it to USD, credits the customer, and sends a webhook. Update your customer's balance from it. Failures (too large, customer not approved) arrive the same way with <code>success: false</code>.</p>`, code: [{ lang: "json", label: "Webhook: deposit complete", text: J({ participant_code: "CUST01", fund_asset: first, quantity: "500", notional: "495.00", quoted_currency: "USD", deposit_address: "0x5f59B625036ccB4f7aD27Ca4Cb896e4452AfFDAF", fund_id: "a1b2c3d4-5678-9012-abcd-ef1234567890", success: true, reason: "Deposit processed" }) }], links: [ref("fund-transaction-update", "Account Funding webhooks")] });
         ph.steps.push({ title: "Show history", html: `<p><span class="ep">GET /fund/transactions</span> lists a customer's past deposits for your transaction history page.</p>`, code: [{ lang: "bash", label: "GET /fund/transactions", text: curl("GET", "/fund/transactions?participant_code=CUST01&page=1") }], links: [ref("get_fund-transactions", "GET /fund/transactions")] });
-        ph.config.push("Turn on Account Funding", "Whether converted dollars sweep to your account (usual) or stay with the customer", "Whether you or the customer pays the small conversion fee", "Deposit limits, if you want something other than $1 – $250,000");
+        ph.config.push("turning on Account Funding", "choosing whether converted dollars go to your account (the usual setup) or stay with the customer", "who pays the small conversion fee", "any deposit limits beyond the default $1 to $250,000");
       }
       if (dep && !usd) {
         ph.steps.push(sdk
@@ -327,8 +328,8 @@
           : { title: "Get a deposit address for the customer", html: `<p><span class="ep">POST /deposits/digital_asset_addresses</span> returns an address; deposits stay as the asset and you get a balance webhook when they land.</p>`, code: [{ lang: "bash", label: "POST /deposits/digital_asset_addresses", text: curl("POST", "/deposits/digital_asset_addresses", { participant_code: "CUST01", asset: first }) }], links: [ref("post_deposits-digital-asset-addresses", "POST /deposits/digital_asset_addresses")] });
       }
       if (wd) ph.steps.push({ title: "Let customers withdraw", html: `<p>Ask for a token with the <code>crypto-withdrawals</code> permission and open the withdrawal screen. The customer picks asset, network, destination${auth ? " (or a connected exchange)" : ""} and amount; you learn the outcome by webhook (submitted → posted → settled).</p>`, code: [{ lang: "bash", label: "POST /client_auth_token", text: curl("POST", "/client_auth_token", { participant_code: "CUST01", permissions: ["crypto-withdrawals"] }) }, { lang: "javascript", label: "Open the withdrawal screen", text: sdkSnippet(R, "CRYPTO_WITHDRAWALS") }], links: [link("crypto-withdrawals-guide", "Crypto Withdrawals SDK guide"), link("wallet-link-sdk-integration-guide", "Withdrawals that convert dollars to crypto")] });
-      if (auth) { ph.steps.push({ title: "AUTH: connect exchanges and wallets", html: `<p>Nothing extra to code — once zerohash enables AUTH, the screens above gain a "connect your exchange or wallet" step. You choose which exchanges and wallets appear, and optionally add name matching between the customer and the connected account (AUTH Validate).</p>`, links: [link("auth", "AUTH"), link("auth-network", "Supported exchanges and wallets"), link("auth-validate", "AUTH controls")] }); ph.config.push("Turn on AUTH and choose which exchanges and wallets to offer"); }
-      if (syms.length > 1) ph.config.push(`Enable your assets: ${syms.join(", ")}`);
+      if (auth) { ph.steps.push({ title: "AUTH: connect exchanges and wallets", html: `<p>Nothing extra to code — once zerohash enables AUTH, the screens above gain a "connect your exchange or wallet" step. You choose which exchanges and wallets appear, and optionally add name matching between the customer and the connected account (AUTH Validate).</p>`, links: [link("auth", "AUTH"), link("auth-network", "Supported exchanges and wallets"), link("auth-validate", "AUTH controls")] }); ph.config.push("turning on AUTH and choosing which exchanges and wallets to offer"); }
+      if (syms.length > 1) ph.config.push(`enabling your assets (${syms.join(", ")})`);
       return ph;
     },
     trade(a, { link, ref }) {
@@ -338,8 +339,8 @@
         ph.steps.push({ title: "Ask for a price", html: `<p><span class="ep">POST /liquidity/rfq</span> with the asset, buy or sell, and how much. You get an all-in price (your markup included) that's good for about 30 seconds.</p>`, code: [{ lang: "bash", label: "POST /liquidity/rfq", text: curl("POST", "/liquidity/rfq", { side: "buy", participant_code: "CUST01", account_label: "general", underlying: syms[0], quoted_currency: "USD", quantity: 0.01 }) }], links: [link("submit-and-execute-quotes")] });
         ph.steps.push({ title: "Confirm the trade", html: `<p>Send the <code>quote_id</code> to <span class="ep">POST /liquidity/execute</span> before it expires. zerohash checks the balance and returns a completed trade. <span class="ep">GET /trades</span> lists history.</p>`, code: [{ lang: "bash", label: "POST /liquidity/execute", text: curl("POST", "/liquidity/execute", { quote_id: "1f998343-d9f1-4b1d-bed7-df3aa8265bdb" }) }], links: [ref("post_liquidity-execute", "POST /liquidity/execute"), link("spreads-and-fees", "Setting your markup")] });
       }
-      if (models.includes("clob")) { ph.steps.push({ title: "Connect to the order book", html: `<p>The order book runs over a FIX connection zerohash sets up with you. Email <a href="mailto:support@zerohash.com">support@zerohash.com</a> to become a member; then place limit, market and stop orders.</p>`, links: [link("central-limit-order-book-3"), link("supported-orders", "Order types")] }); ph.config.push("CLOB membership and a FIX session"); }
-      ph.config.push("Whose dollars fund a buy: your float account (you settle daily) or each customer's own balance", "Your default markup and quote length");
+      if (models.includes("clob")) { ph.steps.push({ title: "Connect to the order book", html: `<p>The order book runs over a FIX connection zerohash sets up with you. Email <a href="mailto:support@zerohash.com">support@zerohash.com</a> to become a member; then place limit, market and stop orders.</p>`, links: [link("central-limit-order-book-3"), link("supported-orders", "Order types")] }); ph.config.push("CLOB membership and a FIX connection"); }
+      ph.config.push("whose dollars fund a buy — your float account (you settle daily) or each customer's own balance", "your default markup and how long quotes stay valid");
       return ph;
     },
     payouts(a, { link, ref }) {
@@ -348,7 +349,7 @@
       ph.steps.push({ title: "Register who's paying and fund the float", html: `<p>The payer (usually you) is registered once as a business. Payouts come out of a dollar float you keep with zerohash — it's pre-funded for you in Cert.</p>`, links: [link("new-payouts-api-integration-guide")] });
       if (a.type === "single") ph.steps.push({ title: "Send a payout", html: `<p>One call: who's paying, who's receiving (created on the fly if new), their wallet, and the amount in dollars. zerohash converts and sends. Track with <span class="ep">GET /payouts</span> and webhooks.</p>`, code: [{ lang: "bash", label: "POST /payouts", text: curl("POST", "/payouts", { account_model: "fully_disclosed", payor: { participant_code: "PAYOR1" }, beneficiary: { info: { individual: { onboarding_profile: "payouts_beneficiary", first_name: "Jane", last_name: "Smith", date_of_birth: "1990-01-01", address_one: "123 Main St", city: "New York", zip: "10001", jurisdiction_code: "US-NY", tax_id: "123456789", id_issuing_authority: "US" } }, external_account: { info: { network: net, crypto_address: "ab123...", supported_symbols: [sym] } } }, payment: { asset: first, quoted_asset: "USD", total: "100.00", description: "Contractor payout" } }) }], links: [link("new-payouts-api-integration-guide"), link("supported-regions", "Where you can pay")] });
       else ph.steps.push({ title: "Four steps per recipient", html: `<ul><li>Register the recipient — <span class="ep">POST /participants/beneficiaries/new</span></li><li>Link their wallet — <span class="ep">POST /payments/external_accounts</span></li><li>Send the payout — <span class="ep">POST /payments</span></li><li>Track it — <span class="ep">GET /payments/{id}</span> and webhooks</li></ul>`, code: [{ lang: "bash", label: "POST /payments/external_accounts", text: curl("POST", "/payments/external_accounts", { participant_code: "BENE01", type: "crypto", details: { network: net, supported_assets: [sym], address: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v" } }) }], links: [link("payouts-integration-guide", "Modular Payouts guide"), link("payouts-sdk-integration-guide", "Or use the ready-made screens")] });
-      ph.config.push("Turn on Payouts");
+      ph.config.push("turning on Payouts");
       return ph;
     },
     payins(a, { link, ref }) {
@@ -357,7 +358,7 @@
       if (a.role === "psp") ph.steps.push({ title: "Register each merchant", html: `<p>Merchants are businesses: <span class="ep">POST /participants/entity/new</span>, then their documents.</p>`, links: [link("merchant-onboarding-guide", "Merchant onboarding")] });
       ph.steps.push({ title: "Register the shopper", html: `<p>Shoppers are verified like any customer (Phase 2). How much detail you need depends on what they buy and for how much; if a payment needs more, the error tells you exactly which fields to add.</p>`, links: [link("onboard-shoppers", "Shopper onboarding")] });
       ph.steps.push({ title: "Take a payment", html: `<p><span class="ep">POST /pay/rfq</span> locks the dollar amount and gives you an address to show. The shopper pays from their wallet; a webhook confirms it landed.${a.role === "psp" ? " Include the merchant's code on each quote." : ""} Ready-made checkout screens are available too.</p>`, code: [{ lang: "bash", label: "POST /pay/rfq", text: curl("POST", "/pay/rfq", Object.assign({ participant_code: "SHOPP1", pay_asset: first, quoted_total: "100.00", quoted_currency: "USD", account_label: "pay", client_reference_id: "order-12345" }, a.role === "psp" ? { merchant_participant_code: "MERCH01" } : {})) }], links: [link("payins-api-integration-guide"), link("payins-integration-guide", "Payins with ready-made screens")] });
-      ph.config.push("Turn on Payins and fund a refund account");
+      ph.config.push("turning on Payins and funding a refund account");
       return ph;
     },
     bank(a, { link, ref }) {
@@ -368,7 +369,7 @@
         ? { title: "Pull dollars in, then trade", html: `<p>Request the deposit with <span class="ep">POST /fund/deposit</span>; when it settles the customer has a dollar balance to buy with. Selling credits dollars they can withdraw to the same bank.</p>`, links: [link("funding-models", "Funding models")] }
         : { title: "Quote and confirm a bank-funded trade", html: `<p><span class="ep">POST /payments/rfq</span> prices the trade (a buy debits the bank, a sell credits it), then <span class="ep">POST /payments/execute</span> confirms it.</p>`, code: [{ lang: "bash", label: "POST /payments/rfq", text: curl("POST", "/payments/rfq", { side: "buy", underlying_currency: "BTC", quoted_currency: "USD", total: "100", participant_code: "CUST01", quote_expiry: "1m" }) }], links: [link("funding-models", "Funding models")] });
       if (rails.includes("rtp")) ph.steps.push({ title: "Pay out in seconds", html: `<p>RTP and FedNow credits arrive in seconds, 24/7, using the <code>rtp</code> network type.</p>`, links: [link("fiat")] });
-      ph.config.push("A loss reserve (needed whenever ACH is on)", a.model === "prefunded" ? "No float needed" : "A float balance — it caps what customers can trade before ACH settles", "Plaid set-up through zerohash");
+      ph.config.push("a loss reserve (needed whenever ACH is on)", a.model === "prefunded" ? "no float, since you wait for settlement" : "a float balance, which caps what customers can trade before ACH settles", "Plaid set-up through zerohash");
       return ph;
     },
     va(a, { link, ref }) {
@@ -376,7 +377,7 @@
       const ph = { title: "Virtual Accounts", intro: a.policy === "convert" ? `Each customer gets an account number; dollars that arrive become ${tok} on ${net} and go to their approved wallet.` : "Each customer gets an account number; dollars that arrive are held as their balance.", steps: [], config: [] };
       if (a.policy === "convert") ph.steps.push({ title: "Approve the customer's wallet", html: `<p>Register the destination wallet with <span class="ep">POST /payments/external_accounts</span>; zerohash screens it.</p>`, code: [{ lang: "bash", label: "POST /payments/external_accounts", text: curl("POST", "/payments/external_accounts", { participant_code: "CUST01", type: "crypto", details: { network: net, supported_assets: [tok], address: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v" } }) }], links: [link("create-a-virtual-account")] });
       ph.steps.push({ title: "Open the account", html: `<p><span class="ep">POST /virtual_accounts</span> creates it; a webhook delivers the account and routing number when it's active. Share those with the customer — money can be pushed in by ACH, wire, RTP or FedNow from any bank.</p>`, code: [{ lang: "bash", label: "POST /virtual_accounts", text: curl("POST", "/virtual_accounts", a.policy === "convert" ? { participant_code: "CUST01", settlement_policy: { type: "AUTO_CONVERT_AND_WITHDRAW", asset: tok, external_account_id: "7c1e2c3a-4b5d-4e6f-8a9b-0c1d2e3f4a5b" } } : { participant_code: "CUST01", settlement_policy: { type: "HOLD" } }) }], links: [link("create-a-virtual-account"), ref("virtual-account-updates", "Virtual account webhooks")] });
-      ph.config.push("Confirm Virtual Accounts is available for your customers' locations");
+      ph.config.push("confirming Virtual Accounts is available where your customers live");
       return ph;
     },
     ramps(a, { link, ref }) {
@@ -384,7 +385,7 @@
       const ph = { title: "On & Off Ramps", intro: `Convert ${dirs.includes("on") ? "dollars into " + list(syms, "or") + " sent to the customer's wallet" : ""}${dirs.length === 2 ? ", and " : ""}${dirs.includes("off") ? list(syms, "or") + " into dollars" : ""}.`, steps: [], config: [] };
       if (dirs.includes("on")) ph.steps.push({ title: "Dollars to crypto", html: `<p><span class="ep">POST /convert_withdraw/rfq</span> with the dollar amount and the customer's wallet address gives a price including the network fee; <span class="ep">POST /convert_withdraw/execute</span> confirms and sends.</p>`, code: [{ lang: "bash", label: "POST /convert_withdraw/rfq", text: curl("POST", "/convert_withdraw/rfq", { participant_code: "CUST01", side: "buy", underlying: first, quoted_currency: "USD", total: 20, withdrawal_address: "2N8PYGKSQRpHa5VDNZ4iLwxi5crpRWb3TR1" }) }], links: [link("on-ramp-integration-guide")] });
       if (dirs.includes("off")) ph.steps.push({ title: "Crypto to dollars", html: `<p>Give the customer a deposit address (<span class="ep">POST /deposits/digital_asset_addresses</span>). When it lands, price the sale with <span class="ep">POST /liquidity/rfq</span> and confirm with <span class="ep">POST /liquidity/execute</span>.</p>`, code: [{ lang: "bash", label: "POST /liquidity/rfq (sell)", text: curl("POST", "/liquidity/rfq", { participant_code: "CUST01", side: "sell", underlying: first, quoted_currency: "USD", quantity: "1" }) }], links: [link("off-ramp-integration-guide")] });
-      ph.config.push("Your markup (a spread) or a flat fee per conversion", "How long quotes stay valid (30 seconds is typical)");
+      ph.config.push("your markup (a spread) or a flat fee per conversion", "how long quotes stay valid (30 seconds is typical)");
       return ph;
     },
     staking(a, { link, ref }) {
@@ -392,7 +393,7 @@
       const ph = { title: "Staking", intro: `Customers stake ${asset} through zerohash-run validators and earn rewards, less the fee you set.`, steps: [], config: [] };
       ph.steps.push({ title: "Show the rate", html: `<p><span class="ep">GET /assets/${asset}/staking_info</span> gives the current yield (after your fee), how long activation takes, and the unstaking wait. Customers must be approved, hold enough ${asset}, have accepted the staking agreement, and not live in CA, MD, NJ or WA.</p>`, code: [{ lang: "bash", label: `GET /assets/${asset}/staking_info`, text: curl("GET", `/assets/${asset}/staking_info`) }], links: [link("staking")] });
       ph.steps.push({ title: "Stake and follow along", html: `<p><span class="ep">POST /stakes</span> with the amount. Stakes are broadcast once a day and can be cancelled until then; after that, unstaking has a network-defined waiting period. Webhooks report each stage.</p>`, code: [{ lang: "bash", label: "POST /stakes", text: curl("POST", "/stakes", { participant_code: "CUST01", asset, amount: "0.5" }) + "\n# see the reference for the full request schema" }], links: [ref("post_stakes", "POST /stakes"), link("staking-faqs", "Staking FAQs")] });
-      ph.config.push("Your fee on rewards (zerohash suggests 25–35%)");
+      ph.config.push("your fee on rewards (zerohash suggests 25–35%)");
       return ph;
     },
     saas(a, { link, ref }) {
@@ -400,7 +401,7 @@
       const ph = { title: "Settlements as a Service", intro: `You ${a.model === "principal" ? "trade as the counterparty" : "match buyers and sellers"}; zerohash settles ${list(syms, "and")} trades so both sides deliver at once.`, steps: [], config: [] };
       ph.steps.push({ title: "Give the receiver a deposit address", html: `<p><span class="ep">POST /deposits/digital_asset_addresses</span> for whoever receives the asset. The deposit must match the trade amount exactly.</p>`, code: [{ lang: "bash", label: "POST /deposits/digital_asset_addresses", text: curl("POST", "/deposits/digital_asset_addresses", { participant_code: "CUST01", platform_code: "PLAT01", asset: first, account_label: "general" }) }], links: [link("settlements-as-a-service-integration-guide")] });
       ph.steps.push({ title: "Submit the trade", html: `<p><span class="ep">POST /trades</span> with both sides. Check <span class="ep">GET /trades/{id}</span> shows <code>settled</code> before anyone withdraws.</p>`, code: [{ lang: "bash", label: "POST /trades", text: curl("POST", "/trades", { symbol: `${sym}/USD`, trade_price: "7000.00000", product_type: "spot", trade_type: "regular", trade_reporter: "reporter@platform.com", platform_code: "PLAT01", client_trade_id: "test1", physical_delivery: true, parties_anonymous: false, transaction_timestamp: 1569014063570, parties: [{ participant_code: "ABCDEF", asset: sym, amount: "0.5", side: "buy", settling: true }, { participant_code: "PLAT01", asset: "USD", amount: "3500.0000", side: "sell", settling: false }] }) }], links: [ref("post_trades", "POST /trades")] });
-      ph.config.push("Onboarding your trading counterparties");
+      ph.config.push("onboarding your trading counterparties");
       return ph;
     },
     token(a, { link, ref }) {
@@ -409,7 +410,7 @@
       ph.steps.push(a.kind === "nft"
         ? { title: "Mint, move and redeem", html: `<p>Each token is minted once (<span class="ep">POST /token/mint</span>) and linked to your asset ID; transfer with <span class="ep">POST /v1/token/transfer</span>, redeem with <span class="ep">POST /token/burn</span>.</p>`, links: [link("non-fungible-token-nft-integration", "NFT guide")] }
         : { title: "Mint tokens", html: `<p><span class="ep">POST /v1/token/mint</span> with the amount, your token symbol and the receiving wallet. Burn, transfer, pause and freeze have their own endpoints.</p>`, code: [{ lang: "bash", label: "POST /v1/token/mint", text: curl("POST", "/v1/token/mint", { amount: "1.56", token_symbol: `USDFI.${chains[0]}`, client_request_id: "22b6cbea-1c77-415f-b866-2987b0b869ab", participant_code: "SB5LRL", receiver: "0x45D9A0Ee3a917Eccd6182C030dC9f18897eCf79E" }) }], links: [link("fungible-token-11-stablecoin-integration", "Fungible token guide")] });
-      ph.config.push("Contract deployment and who pays network fees");
+      ph.config.push("contract deployment and who pays network fees");
       return ph;
     },
   };
@@ -435,7 +436,7 @@
     const phases = buildGuide(), R = REGIONS[S.region];
     const v = el(`<section>
       <div class="guide-head"><div><p class="eyebrow">Your guide</p><p class="h1">Here's what to build</p></div><button type="button" class="btn small copymd">Copy as Markdown</button></div>
-      <p class="lede">${phases.length} phases, in the order you'll do them. Read the steps first; the code is there when you're ready — tap <b>Show code</b>. Grey items are things to ask your zerohash contact for.</p>
+      <p class="lede">${phases.length} phases, in the order you'll do them. Read the steps first; the code is there when you're ready — tap <b>Show code</b>. Where zerohash needs to set something up for you, the step says so.</p>
       <div class="summary"></div><div class="phases"></div></section>`);
     const sum = v.querySelector(".summary");
     [["Region", R.name], ["Sandbox", host().replace("https://", "")], ["Verification", S.kyc === "sdk" ? "by zerohash" : "your own"], ...S.products.map(p => ["Product", PRODUCTS.find(x => x.id === p).name])].forEach(([k, val]) => sum.append(el(`<span class="pill">${esc(k)} <b>${esc(val)}</b></span>`)));
@@ -449,7 +450,7 @@
         if (st.links && st.links.length) body.append(el(`<p class="links">${st.links.map(([l, u]) => `<a href="${u}"${u.startsWith("http") ? ' target="_blank" rel="noopener"' : ""}>${esc(l)} ↗</a>`).join("")}</p>`));
         sec.append(g);
       });
-      if (ph.config && ph.config.length) sec.append(el(`<div class="note"><span class="i">Ask zerohash for</span><ul class="checklist">${ph.config.map(c => `<li>${esc(c)}</li>`).join("")}</ul></div>`));
+      if (ph.config && ph.config.length) sec.append(el(`<p class="setup-note">Your zerohash contact sets this up with you: ${esc(sentence(ph.config))}.</p>`));
       box.append(sec);
     });
     v.querySelector(".copymd").onclick = () => copy(toMarkdown(phases), "Guide copied as Markdown");
@@ -461,7 +462,7 @@
     for (const ph of phases) {
       md += `## ${ph.eyebrow} — ${ph.title}\n\n${ph.intro ? strip(ph.intro) + "\n\n" : ""}`;
       ph.steps.forEach((st, i) => { md += `### ${i + 1}. ${st.title}\n\n${strip(st.html || "")}\n\n`; (st.code || []).forEach(c => { md += `**${c.label}**\n\n\`\`\`${c.lang}\n${c.text}\n\`\`\`\n\n`; }); if (st.links && st.links.length) md += st.links.map(([l, u]) => `- [${l}](${u.startsWith("http") ? u : location.origin + u})`).join("\n") + "\n\n"; });
-      if (ph.config && ph.config.length) md += `**Ask zerohash for**\n\n${ph.config.map(c => `- [ ] ${c}`).join("\n")}\n\n`;
+      if (ph.config && ph.config.length) md += `Your zerohash contact sets this up with you: ${sentence(ph.config)}.\n\n`;
     }
     return md;
   }
@@ -472,7 +473,7 @@
     if (!root || root.dataset.mounted) return;
     root.dataset.mounted = "1"; ROOT = root;
     const pre = new URLSearchParams(location.search).get("products");
-    if (pre) { const ids = pre.split(",").map(s => s.trim()).filter(id => PRODUCT_IDS.includes(id)); if (ids.length) { S.products = ids; S.step = 0; } }
+    if (pre) { const ids = pre.split(",").map(s => s.trim()).filter(id => PRODUCT_IDS.includes(id)); if (ids.length) { S.products = ids; S.step = 1; } }  // products already chosen on the landing page: start at "About you"
     root.innerHTML = `<nav class="rail" aria-label="Wizard steps"><p class="rail-title">Your setup</p><ol class="steps"></ol><p class="rail-note">Everything here comes from these docs — each section links to its source page. Your choices are saved in this browser.</p></nav><main class="main"></main><div class="toast" role="status" aria-live="polite"></div>`;
     render();
   }

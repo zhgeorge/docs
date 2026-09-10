@@ -51,14 +51,16 @@
 .zh-wiz .h3 { font-size: 16px; font-weight: 600; margin: 0 0 6px; color: var(--w-ink); }
 .zh-wiz .q { margin: 0 0 34px; }
 .zh-wiz .q-help { color: var(--w-muted); font-size: 14.5px; max-width: 66ch; margin: 0 0 14px; }
-.zh-wiz .plain { background: var(--w-surface-2); border-left: 3px solid var(--w-green); padding: 10px 14px; border-radius: 0 8px 8px 0; font-size: 14.5px; color: var(--w-ink); max-width: 70ch; margin: 0 0 14px; }
-.zh-wiz .plain b { font-weight: 600; }
+.zh-wiz .q-help b { font-weight: 600; color: var(--w-ink); }
+.zh-wiz .setup-note { color: var(--w-muted); font-size: 14.5px; max-width: 70ch; margin: 4px 0 0 48px; }
 
 .zh-wiz .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; }
 .zh-wiz .card { position: relative; display: block; text-align: left; background: var(--w-surface); border: 1.5px solid var(--w-hair); border-radius: 12px; padding: 16px; color: var(--w-ink); transition: border-color .12s, box-shadow .12s, transform .12s; }
 .zh-wiz .card:hover { border-color: var(--w-hair-strong); transform: translateY(-1px); box-shadow: var(--w-shadow); }
 .zh-wiz .card.on { border-color: var(--w-green); box-shadow: 0 0 0 3px var(--w-tint); }
-.zh-wiz .card .t { font-weight: 600; font-size: 15px; display: flex; align-items: center; gap: 8px; margin-bottom: 4px; padding-right: 24px; }
+.zh-wiz .card .t { font-weight: 600; font-size: 15px; display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+.zh-wiz .card.multi .t { padding-right: 24px; }
+.zh-wiz .card.single.on { background: var(--w-tint); }
 .zh-wiz .card .d { font-size: 13.5px; color: var(--w-muted); line-height: 1.45; }
 .zh-wiz .card .tag { font-family: ui-monospace, Menlo, monospace; font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--w-muted); border: 1px solid var(--w-hair); border-radius: 999px; padding: 1px 8px; margin-left: auto; }
 .zh-wiz .card .check { position: absolute; top: 12px; right: 12px; width: 18px; height: 18px; border-radius: 50%; border: 1.5px solid var(--w-hair-strong); background: var(--w-surface); }
