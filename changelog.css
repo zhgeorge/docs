@@ -1,36 +1,62 @@
-/* Changelog page. The whole page is the changelog, so it carries no left column: the
-   sidebar's only entry was a link to this page. Every rule is gated on the page
-   containing .zh-cl-page, so no other page in the site is affected. */
+/* Changelog page. changelog.js replaces the sidebar's single "Changelog" entry with a list of
+   months, so the sidebar column (aligned with the Documentation tab) doubles as a table of
+   contents. Every rule is gated on the page's .zh-cl-page marker, so no other page is affected. */
 
-/* Only on desktop, where the sidebar occupies its own column. Below Mintlify's lg
-   breakpoint that same element is the slide-out nav drawer behind the hamburger — the
-   only way to reach the other tabs on a phone — so leave it alone. */
-@media (min-width: 1024px) {
-  body:has(.zh-cl-page) #sidebar {
-    display: none;
-  }
+/* hide Mintlify's own group/page list in the sidebar on this page; the month list takes its place */
+body:has(.zh-cl-page) #sidebar-content > div > div > *:not(.zh-cl-toc) {
+  display: none;
+}
 
-  /* The main container is capped at the width of a page that has a sidebar, and is laid
-     out in a reversed flex row, so with the sidebar gone the entries would sit off to
-     one side. Let it fill the row and centre the content instead. */
-  body:has(.zh-cl-page) #content-container {
-    max-width: none;
-  }
+.zh-cl-toc {
+  --cl-ink: #191918;
+  --cl-muted: #6f6f68;
+  --cl-green: #0b7a54;
+  --cl-tint: rgba(14, 159, 110, 0.09);
+  font-size: 14px;
+  line-height: 1.5;
+  padding-top: 18px;   /* breathing room under the tab bar, like Mintlify's own sidebar */
+}
 
-  #content-area:has(.zh-cl-page) {
-    padding-left: 0;
-    margin-left: auto;
-    margin-right: auto;
-  }
+.dark .zh-cl-toc {
+  --cl-ink: #ededea;
+  --cl-muted: #9c9c94;
+  --cl-green: #3ecf8e;
+  --cl-tint: rgba(62, 207, 142, 0.12);
+}
 
-  /* Left-align the page header and the entries with the "Documentation" tab above them.
-     The tab row sits 48px inside the same 1472px container that the content wrapper
-     uses with 32px of padding, so a 16px offset lines the two edges up. The header is a
-     sibling of the content, so both need the same treatment. */
-  #content-area:has(.zh-cl-page) #header,
-  #content-area:has(.zh-cl-page) #content {
-    max-width: 900px;
-    margin-left: 16px;
-    margin-right: auto;
-  }
+.zh-cl-toc-title {
+  margin: 0 0 8px;
+  padding: 0 12px 0 16px;   /* text lines up with the Documentation tab */
+  font-weight: 600;
+  color: var(--cl-ink);
+}
+
+.zh-cl-toc ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.zh-cl-toc a {
+  display: block;
+  padding: 6px 12px 6px 16px;
+  border-radius: 8px;
+  color: var(--cl-muted);
+  text-decoration: none;
+  border: 0;               /* Mintlify's prose styles underline links with a border */
+  transition: color 0.12s ease, background 0.12s ease;
+}
+
+.zh-cl-toc a:hover {
+  color: var(--cl-ink);
+  background: var(--cl-tint);
+}
+
+.zh-cl-toc a.active {
+  color: var(--cl-green);
+  background: var(--cl-tint);
+  font-weight: 500;
 }

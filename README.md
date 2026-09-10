@@ -14,6 +14,9 @@ Mintlify site for the zerohash developer documentation, deployed automatically f
   were transcribed from the guides in `docs/`; each generated section links to its source page. The sync
   script keeps the page registered in `docs.json` under a hidden **Tools** group. To rebuild the
   standalone, shareable copy of the wizard: `python3 scripts/build_wizard_artifact.py`.
+- The **changelog's month navigation** is `changelog.js` + `changelog.css`: on `/changelog` it replaces the
+  sidebar's single "Changelog" entry with one link per month (built from the rendered `<Update>` entries, so
+  it tracks the synced changelog automatically) and highlights the month you're reading.
 
 ## Syncing content from ReadMe
 
