@@ -60,6 +60,9 @@
 .zh-wiz .card.on { border-color: var(--w-green); box-shadow: 0 0 0 3px var(--w-tint); }
 .zh-wiz .card .t { font-weight: 600; font-size: 15px; display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
 .zh-wiz .card.multi .t { padding-right: 24px; }
+.zh-wiz .card.product { display: grid; grid-template-columns: 30px 1fr; column-gap: 12px; align-items: start; }
+.zh-wiz .card.product .ico { width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; background: rgba(11, 122, 84, 0.08); color: var(--w-green); }
+.zh-wiz .card.product .body { min-width: 0; }
 .zh-wiz .card.single.on { background: var(--w-tint); }
 .zh-wiz .card .d { font-size: 13.5px; color: var(--w-muted); line-height: 1.45; }
 .zh-wiz .card .tag { font-family: ui-monospace, Menlo, monospace; font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--w-muted); border: 1px solid var(--w-hair); border-radius: 999px; padding: 1px 8px; margin-left: auto; }

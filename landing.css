@@ -251,10 +251,15 @@
 .zh-landing .zh-pick-hint { margin: 3px 0 12px; font-size: 12.5px; color: var(--zh-muted); }
 .zh-landing .zh-pick-list { flex: 1 1 auto; min-height: 0; overflow-y: auto; scrollbar-width: thin; display: flex; flex-direction: column; gap: 5px; padding-bottom: 4px; }
 .zh-landing .zh-pcard {
-  position: relative; display: block; text-align: left; cursor: pointer;
-  padding: 8px 30px 9px 11px; border: 1px solid var(--zh-hairline); border-radius: 10px;
+  position: relative; display: grid; grid-template-columns: 26px 1fr; column-gap: 10px; align-items: start;
+  text-align: left; cursor: pointer;
+  padding: 9px 30px 10px 10px; border: 1px solid var(--zh-hairline); border-radius: 10px;
   background: var(--zh-card-bg); transition: border-color 0.12s ease, background 0.12s ease;
 }
+.zh-landing .zh-pcard-ico { width: 26px; height: 26px; border-radius: 8px; display: grid; place-items: center; background: var(--zh-surface-2, #f0f1ec); color: var(--zh-muted); }
+.dark .zh-landing .zh-pcard-ico { background: #1b1d1b; }
+.zh-landing .zh-pcard.on .zh-pcard-ico { background: var(--zh-green-tint); color: var(--zh-green); }
+.zh-landing .zh-pcard-txt { display: block; min-width: 0; }
 .zh-landing .zh-pcard:hover { border-color: var(--zh-green); }
 .zh-landing .zh-pcard.on { border-color: var(--zh-green); background: var(--zh-green-tint); }
 .zh-landing .zh-pcard-t { display: block; font-size: 13.5px; font-weight: 600; line-height: 1.3; color: var(--zh-ink); }

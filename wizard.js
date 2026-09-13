@@ -55,6 +55,21 @@
   ];
   const PRODUCT_IDS = PRODUCTS.map(p => p.id);
 
+  /* one line icon per product */
+  const ICON_PATHS = {
+    fund: '<path d="M12 4v10"/><path d="M8 10l4 4 4-4"/><path d="M5 19h14"/>',
+    trade: '<path d="M7 4v14"/><path d="M4 7l3-3 3 3"/><path d="M17 20V6"/><path d="M14 17l3 3 3-3"/>',
+    payouts: '<path d="M14 4h6v6"/><path d="M20 4l-8 8"/><path d="M18 14v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4"/>',
+    payins: '<path d="M10 20H4v-6"/><path d="M4 20l8-8"/><path d="M6 10V6a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-4"/>',
+    bank: '<path d="M3 9l9-5 9 5"/><path d="M4 20h16"/><path d="M6.5 20v-7M10.2 20v-7M13.8 20v-7M17.5 20v-7"/>',
+    va: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18"/><path d="M7 14.5h4"/>',
+    ramps: '<path d="M4 9h16"/><path d="M17 6l3 3-3 3"/><path d="M20 15H4"/><path d="M7 12l-3 3 3 3"/>',
+    staking: '<path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 13l9 5 9-5"/>',
+    saas: '<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6l8-3z"/><path d="M9 12l2 2 4-4"/>',
+    token: '<path d="M12 3l7.5 4.3v9.4L12 21l-7.5-4.3V7.3L12 3z"/><circle cx="12" cy="12" r="3"/>',
+  };
+  const productIcon = (id, cls) => `<span class="${cls}" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${ICON_PATHS[id] || ""}</svg></span>`;
+
   /* ---- the essential questions only ---- */
   const QUESTIONS = {
     fund: [
@@ -220,7 +235,7 @@
     const box = v.querySelector(".cards");
     for (const p of PRODUCTS) {
       const on = S.products.includes(p.id);
-      const c = el(`<button type="button" class="card multi ${on ? "on" : ""}" role="checkbox" aria-checked="${on}"><span class="check"></span><div class="t">${esc(p.name)}</div><div class="d">${esc(p.short)}</div></button>`);
+      const c = el(`<button type="button" class="card multi product ${on ? "on" : ""}" role="checkbox" aria-checked="${on}"><span class="check" aria-hidden="true"></span>${productIcon(p.id, "ico")}<div class="body"><div class="t">${esc(p.name)}</div><div class="d">${esc(p.short)}</div></div></button>`);
       c.onclick = () => { S.products = on ? S.products.filter(x => x !== p.id) : [...S.products, p.id]; render(); };
       box.append(c);
     }
@@ -579,6 +594,7 @@
       <div class="zh-chat-progress"><span style="width:${pct}%"></span></div>`;
 
     // The products question is a plain question with a card per product, not a chat exchange.
+    let pickSel = null;        // products chosen in this visit; never prefilled from a past one
     function renderPicker(q, total, k) {
       back.innerHTML = HEAD(`Question ${k + 1} of ${total}`, Math.round((k / total) * 100)) + `
         <div class="zh-pick">
@@ -588,16 +604,16 @@
         </div>
         <div class="zh-chat-composer"></div>`;
       const listEl = back.querySelector(".zh-pick-list"), composer = back.querySelector(".zh-chat-composer");
-      let sel = Array.isArray(q.get()) ? q.get().slice() : [];
+      let sel = pickSel ? pickSel.slice() : [];
       const actions = el(`<div class="zh-chat-actions"><span></span><button type="button" class="zh-btn zh-btn-primary">Continue →</button></div>`);
       const go = actions.querySelector(".zh-btn");
       const paint = () => { listEl.querySelectorAll(".zh-pcard").forEach(c => { const on = sel.includes(c.dataset.v); c.classList.toggle("on", on); c.setAttribute("aria-checked", on); }); go.disabled = sel.length === 0; };
       for (const prod of PRODUCTS) {
-        const c = el(`<button type="button" class="zh-pcard" role="checkbox" aria-checked="false" data-v="${esc(prod.id)}"><span class="zh-pcard-check" aria-hidden="true"></span><span class="zh-pcard-t">${esc(prod.name)}</span><span class="zh-pcard-d">${esc(prod.short)}</span></button>`);
-        c.onclick = () => { sel = sel.includes(prod.id) ? sel.filter(x => x !== prod.id) : [...sel, prod.id]; paint(); };
+        const c = el(`<button type="button" class="zh-pcard" role="checkbox" aria-checked="false" data-v="${esc(prod.id)}"><span class="zh-pcard-check" aria-hidden="true"></span>${productIcon(prod.id, "zh-pcard-ico")}<span class="zh-pcard-txt"><span class="zh-pcard-t">${esc(prod.name)}</span><span class="zh-pcard-d">${esc(prod.short)}</span></span></button>`);
+        c.onclick = () => { sel = sel.includes(prod.id) ? sel.filter(x => x !== prod.id) : [...sel, prod.id]; pickSel = sel.slice(); paint(); };
         listEl.append(c);
       }
-      go.onclick = () => { q.set(sel); advance(q.key); };
+      go.onclick = () => { pickSel = sel.slice(); q.set(sel); advance(q.key); };
       composer.append(actions); paint();
     }
 
@@ -623,7 +639,7 @@
         bot(`That's everything — your guide is ready.`, `Directions and code for ${list(S.products.map(id => PRODUCTS.find(p => p.id === id).name), "and")}, in the order you'll do them.`);
         const actions = el(`<div class="zh-chat-actions"><button type="button" class="zh-chat-back">Start over</button><a class="zh-btn zh-btn-primary" href="/setup-wizard">See my guide →</a></div>`);
         actions.querySelector("a").onclick = () => { S.step = stepList().length - 1; save(); };
-        actions.querySelector(".zh-chat-back").onclick = () => { done.length = 0; S = JSON.parse(JSON.stringify(DEFAULT)); save(); box.classList.remove("is-open", "is-active"); render(); };
+        actions.querySelector(".zh-chat-back").onclick = () => { done.length = 0; pickSel = null; S = JSON.parse(JSON.stringify(DEFAULT)); save(); box.classList.remove("is-open", "is-active"); render(); };
         composer.append(actions);
       } else if (typing) {
         log.append(el(`<div class="zh-msg bot typing" aria-label="Typing"><i></i><i></i><i></i></div>`));
