@@ -110,12 +110,15 @@
 
   /* ---------------- state ---------------- */
   const KEY = "zh-wizard-v3";
-  const DEFAULT = { region: "us", customers: ["individuals"], kyc: "sdk", products: [], answers: {}, step: 0 };
+  const DEFAULT = { region: "", customers: [], kyc: "", products: [], answers: {}, step: 0 };
   let S = load();
   function load() { try { const raw = localStorage.getItem(KEY); if (raw) return Object.assign({}, DEFAULT, JSON.parse(raw)); } catch (e) {} return JSON.parse(JSON.stringify(DEFAULT)); }
   function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }
   const ans = (pid) => S.answers[pid] || (S.answers[pid] = {});
-  const host = () => REGIONS[S.region].cert;
+  // Nothing is preselected, so fall back to US only when generating the guide.
+  const regionId = () => S.region || "us";
+  const REG = () => REGIONS[regionId()];
+  const host = () => REG().cert;
   const optItems = (q) => q.groups ? q.groups.flatMap(g => g.items.map(([v]) => v)) : q.opts.map(([v]) => v);
 
   function stepList() {
@@ -126,7 +129,7 @@
   }
   const visibleQuestions = (pid) => { const a = ans(pid); return QUESTIONS[pid].filter(q => !q.when || q.when(a)); };
   const productComplete = (pid) => { const a = ans(pid); return visibleQuestions(pid).every(q => q.type === "multi" ? (a[q.id] && a[q.id].length) : a[q.id] !== undefined); };
-  function stepComplete(i) { const st = stepList()[i]; if (!st) return false; if (st.id === "basics") return S.customers.length > 0; if (st.id === "products") return S.products.length > 0; if (st.id.startsWith("p:")) return productComplete(st.id.slice(2)); return false; }
+  function stepComplete(i) { const st = stepList()[i]; if (!st) return false; if (st.id === "basics") return !!S.region && !!S.kyc && S.customers.length > 0; if (st.id === "products") return S.products.length > 0; if (st.id.startsWith("p:")) return productComplete(st.id.slice(2)); return false; }
   function canGo(i) { for (let k = 0; k < i; k++) if (!stepComplete(k)) return false; return true; }
 
   /* ---------------- helpers ---------------- */
@@ -184,7 +187,7 @@
     const box = el(`<div class="cards"></div>`);
     for (const [val, t, d] of opts) {
       const on = selected.includes(val);
-      const c = el(`<button type="button" class="card multi ${on ? "on" : ""}" role="checkbox" aria-checked="${on}"><span class="check"></span><div class="t">${esc(t)}</div>${d ? `<div class="d">${esc(d)}</div>` : ""}</button>`);
+      const c = el(`<button type="button" class="card multi ${on ? "on" : ""}" role="checkbox" aria-checked="${on}"><span class="check" aria-hidden="true"></span><div class="t">${esc(t)}</div>${d ? `<div class="d">${esc(d)}</div>` : ""}</button>`);
       c.onclick = () => onChange(on ? selected.filter(x => x !== val) : [...selected, val]); box.append(c);
     }
     return box;
@@ -228,9 +231,9 @@
     const v = el(`<section>
       <p class="eyebrow">Step 2 · About you</p>
       <p class="h1">Three quick questions about your platform</p>
-      <p class="lede">These decide which zerohash entity you work with and how your customers get verified. Everything else has sensible defaults.</p>
+      <p class="lede">These decide which zerohash entity you work with and how your customers get verified.</p>
       <div class="q"><p class="h2">Where are you based?</p><div class="body"></div></div>
-      <div class="q"><p class="h2">Who are your customers?</p><p class="q-help">Pick both if you serve both.</p><div class="body"></div></div>
+      <div class="q"><p class="h2">Who are your customers?</p><p class="q-help">Pick as many as you like.</p><div class="body"></div></div>
       <div class="q"><p class="h2">Who verifies your customers' identity (KYC)?</p><p class="q-help">Every customer must be identity-checked before they can transact. Most platforms let zerohash do it.</p><div class="body"></div></div>
     </section>`);
     const bodies = v.querySelectorAll(".body");
@@ -245,7 +248,7 @@
     const v = el(`<section><p class="eyebrow">Step ${S.step + 1}</p><p class="h1">${esc(p.name)}</p><p class="lede">${esc(p.plain)}</p><div class="qs"></div></section>`);
     const qs = v.querySelector(".qs");
     for (const q of visibleQuestions(pid)) {
-      const w = el(`<div class="q"><p class="h2">${esc(q.title)}</p>${q.plain ? `<p class="q-help">${q.plain}</p>` : ""}${q.help ? `<p class="q-help">${esc(q.help)}</p>` : ""}<div class="body"></div></div>`);
+      const w = el(`<div class="q"><p class="h2">${esc(q.title)}</p>${q.plain ? `<p class="q-help">${q.plain}</p>` : ""}${q.help ? `<p class="q-help">${esc(q.help)}</p>` : ""}${q.type === "multi" ? `<p class="q-help">Pick as many as you like.</p>` : ""}<div class="body"></div></div>`);
       const body = w.querySelector(".body");
       const set = (val) => { a[q.id] = val; render(); };
       if (q.type === "single") body.replaceWith(singleCards(q.opts, a[q.id], set));
@@ -267,10 +270,10 @@
   const J = (o) => JSON.stringify(o, null, 2);
   function signedAgreements() {
     const l = [];
-    if (S.products.includes("fund") && (ans("fund").dir || []).includes("deposits") && ans("fund").convert === "usd") l.push({ type: "fund_auto_convert", region: S.region, signed_timestamp: 1712008721000 });
-    if (S.products.includes("staking")) l.push({ type: "staking", region: S.region, signed_timestamp: 1712008721000 });
-    if (S.products.includes("payins")) l.push({ type: "ACCOUNT_FUNDING_PAY", region: S.region, signed_timestamp: 1712008721000 });
-    if (!l.length) l.push({ type: "user_agreement", region: S.region, signed_timestamp: 1712008721000 });
+    if (S.products.includes("fund") && (ans("fund").dir || []).includes("deposits") && ans("fund").convert === "usd") l.push({ type: "fund_auto_convert", region: regionId(), signed_timestamp: 1712008721000 });
+    if (S.products.includes("staking")) l.push({ type: "staking", region: regionId(), signed_timestamp: 1712008721000 });
+    if (S.products.includes("payins")) l.push({ type: "ACCOUNT_FUNDING_PAY", region: regionId(), signed_timestamp: 1712008721000 });
+    if (!l.length) l.push({ type: "user_agreement", region: regionId(), signed_timestamp: 1712008721000 });
     return l;
   }
   const customerPayload = () => ({ first_name: "John", last_name: "Smith", email: "jsmith@example.com", phone_number: "9545551234", address_one: "1 Main St.", address_two: "Suite 1000", city: "Chicago", state: "IL", zip: "12345", country: "United States", date_of_birth: "1985-09-02", citizenship: "United States", tax_id: "123456789", risk_rating: "low", kyc: "pass", kyc_timestamp: 1630623005000, sanction_screening: "pass", sanction_screening_timestamp: 1630623005000, idv: "pass", liveness_check: "pass", signed_timestamp: 1630623005000, metadata: {}, signed_agreements: signedAgreements() });
@@ -278,7 +281,7 @@
   const sdkSnippet = (R, module, comment) => `import ZeroHashSDK, { AppIdentifier } from 'zh-web-sdk';\n\nconst sdk = new ZeroHashSDK({\n  zeroHashAppsURL: '${R.sdk}',\n  env: 'cert',        // 'cert' | 'prod'\n  theme: 'auto',      // 'light' | 'dark' | 'auto'\n});\n\n// jwt = the access token your server minted with POST /client_auth_token\nsdk.openModal({ appIdentifier: AppIdentifier.${module}, jwt });${comment ? `\n// ${comment}` : ""}`;
 
   function buildGuide() {
-    const R = REGIONS[S.region], h = host(), phases = [];
+    const R = REG(), h = host(), phases = [];
     const link = (slug, label) => [label || PAGE_TITLES[slug] || slug, DOCS + slug];
     const ref = (slug, label) => [label, REF + slug];
 
@@ -433,7 +436,7 @@
   let toastT; function toast(m) { const t = $(".toast"); t.textContent = m; t.classList.add("show"); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove("show"), 1600); }
 
   function viewGuide() {
-    const phases = buildGuide(), R = REGIONS[S.region];
+    const phases = buildGuide(), R = REG();
     const v = el(`<section>
       <div class="guide-head"><div><p class="eyebrow">Your guide</p><p class="h1">Here's what to build</p></div><button type="button" class="btn small copymd">Copy as Markdown</button></div>
       <p class="lede">${phases.length} phases, in the order you'll do them. Read the steps first; the code is there when you're ready — tap <b>Show code</b>. Where zerohash needs to set something up for you, the step says so.</p>
@@ -458,7 +461,7 @@
   }
   function toMarkdown(phases) {
     const strip = (h) => h.replace(/<br\s*\/?>/g, "\n").replace(/<li>/g, "\n- ").replace(/<[^>]+>/g, "").replace(/&quot;/g, '"').replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/\n{3,}/g, "\n\n").trim();
-    let md = `# zerohash setup guide\n\nRegion: ${REGIONS[S.region].name} · Sandbox: ${host()}\nProducts: ${S.products.map(p => PRODUCTS.find(x => x.id === p).name).join(", ")}\n\n`;
+    let md = `# zerohash setup guide\n\nRegion: ${REG().name} · Sandbox: ${host()}\nProducts: ${S.products.map(p => PRODUCTS.find(x => x.id === p).name).join(", ")}\n\n`;
     for (const ph of phases) {
       md += `## ${ph.eyebrow} — ${ph.title}\n\n${ph.intro ? strip(ph.intro) + "\n\n" : ""}`;
       ph.steps.forEach((st, i) => { md += `### ${i + 1}. ${st.title}\n\n${strip(st.html || "")}\n\n`; (st.code || []).forEach(c => { md += `**${c.label}**\n\n\`\`\`${c.lang}\n${c.text}\n\`\`\`\n\n`; }); if (st.links && st.links.length) md += st.links.map(([l, u]) => `- [${l}](${u.startsWith("http") ? u : location.origin + u})`).join("\n") + "\n\n"; });
@@ -544,16 +547,10 @@
       <div class="zh-face zh-back"></div>
     </div>`;
     const back = box.querySelector(".zh-back");
-    // tooltip lives beside the card (outside its 3D context) so it always paints on top
-    const host = box.parentElement, tip = el(`<div class="zh-tip" role="tooltip" hidden></div>`);
-    host.append(tip);
     box.querySelector(".zh-front").addEventListener("click", () => box.classList.add("is-open"));
     box.addEventListener("focusin", () => box.classList.add("is-open"));
     paintCover(box.querySelector(".zh-cover"), reduced);
 
-    // tooltip for the product chips: one plain sentence per product
-    const showTip = (chip) => { tip.textContent = chip.dataset.tip; tip.hidden = false; const c = chip.getBoundingClientRect(), h = host.getBoundingClientRect(), b = box.getBoundingClientRect(); const minL = b.left - h.left + 10, maxL = b.right - h.left - tip.offsetWidth - 10; tip.style.left = Math.max(minL, Math.min(c.left - h.left + c.width / 2 - tip.offsetWidth / 2, maxL)) + "px"; tip.style.top = (c.top - h.top - tip.offsetHeight - 8) + "px"; };
-    const hideTip = () => { tip.hidden = true; };
     const done = [];            // question keys answered in this visit, in order
     let typing = false, timer = null;
     const labelOf = (opts, vals) => { const arr = Array.isArray(vals) ? vals : [vals]; const names = arr.map(v => (opts.find(o => o[0] === v) || [v, v])[1]); return names.length > 3 ? `${names.slice(0, 3).join(", ")} +${names.length - 3} more` : names.join(", "); };
@@ -561,7 +558,7 @@
     // The ordered questions, recomputed each render because later ones depend on earlier answers.
     function queue() {
       const qs = [
-        { key: "products", kind: "multi", title: "Hi — I'll put together a build guide for you. Which products are you interested in?", hint: "Pick as many as you like.", opts: PRODUCTS.map(p => [p.id, p.name]), get: () => S.products, set: v => { S.products = v; } },
+        { key: "products", kind: "multi", title: "Which products are you interested in?", opts: PRODUCTS.map(p => [p.id, p.name]), get: () => S.products, set: v => { S.products = v; } },
         { key: "region", kind: "single", title: "Where is your platform based?", opts: [["us", "United States"], ["eu", "European Union"]], get: () => S.region, set: v => { S.region = v; } },
         { key: "customers", kind: "multi", title: "Who are your customers?", opts: [["individuals", "People"], ["businesses", "Businesses"]], get: () => S.customers, set: v => { S.customers = v; } },
         { key: "kyc", kind: "single", title: "Who verifies your customers' identity (KYC)?", hint: "Most platforms let zerohash do it with a ready-made screen.", opts: [["sdk", "zerohash does it"], ["api", "We already verify customers"]], get: () => S.kyc, set: v => { S.kyc = v; } },
@@ -577,18 +574,43 @@
     }
     const answered = (q) => done.includes(q.key);
 
+    const HEAD = (label, pct) => `
+      <div class="zh-chat-head"><span class="zh-chat-avatar"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/></svg></span><span class="zh-chat-title">Setup wizard</span><span class="zh-chat-step" aria-label="${label}"></span></div>
+      <div class="zh-chat-progress"><span style="width:${pct}%"></span></div>`;
+
+    // The products question is a plain question with a card per product, not a chat exchange.
+    function renderPicker(q, total, k) {
+      back.innerHTML = HEAD(`Question ${k + 1} of ${total}`, Math.round((k / total) * 100)) + `
+        <div class="zh-pick">
+          <p class="zh-pick-q">Which products are you interested in?</p>
+          <p class="zh-pick-hint">Pick as many as you like.</p>
+          <div class="zh-pick-list" role="group" aria-label="Products"></div>
+        </div>
+        <div class="zh-chat-composer"></div>`;
+      const listEl = back.querySelector(".zh-pick-list"), composer = back.querySelector(".zh-chat-composer");
+      let sel = Array.isArray(q.get()) ? q.get().slice() : [];
+      const actions = el(`<div class="zh-chat-actions"><span></span><button type="button" class="zh-btn zh-btn-primary">Continue →</button></div>`);
+      const go = actions.querySelector(".zh-btn");
+      const paint = () => { listEl.querySelectorAll(".zh-pcard").forEach(c => { const on = sel.includes(c.dataset.v); c.classList.toggle("on", on); c.setAttribute("aria-checked", on); }); go.disabled = sel.length === 0; };
+      for (const prod of PRODUCTS) {
+        const c = el(`<button type="button" class="zh-pcard" role="checkbox" aria-checked="false" data-v="${esc(prod.id)}"><span class="zh-pcard-check" aria-hidden="true"></span><span class="zh-pcard-t">${esc(prod.name)}</span><span class="zh-pcard-d">${esc(prod.short)}</span></button>`);
+        c.onclick = () => { sel = sel.includes(prod.id) ? sel.filter(x => x !== prod.id) : [...sel, prod.id]; paint(); };
+        listEl.append(c);
+      }
+      go.onclick = () => { q.set(sel); advance(q.key); };
+      composer.append(actions); paint();
+    }
+
     function render() {
       const qs = queue(), current = qs.find(q => !answered(q)), total = qs.length, k = Math.min(done.length, total);
       box.classList.toggle("is-active", done.length > 0);
       if (done.length) box.classList.add("is-open");
-      hideTip();
-      back.innerHTML = `
-        <div class="zh-chat-head"><span class="zh-chat-avatar"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/></svg></span><span class="zh-chat-title">Setup wizard</span><span class="zh-chat-step" aria-label="${current ? `Question ${k + 1} of ${total}` : "Done"}"></span></div>
-        <div class="zh-chat-progress"><span style="width:${current ? Math.round((k / total) * 100) : 100}%"></span></div>
+      if (current && current.key === "products" && !typing) { renderPicker(current, total, k); return; }
+      back.innerHTML = HEAD(current ? `Question ${k + 1} of ${total}` : "Done", current ? Math.round((k / total) * 100) : 100) + `
         <div class="zh-chat-log" role="log" aria-live="polite"></div>
         <div class="zh-chat-composer"></div>`;
       const log = back.querySelector(".zh-chat-log"), composer = back.querySelector(".zh-chat-composer");
-      const bot = (html, hint) => log.append(el(`<div class="zh-msg bot">${html}${hint ? `<span class="hint">${hint}</span>` : ""}</div>`));
+      const bot = (html, hint) => { const hints = (Array.isArray(hint) ? hint : [hint]).filter(Boolean); log.append(el(`<div class="zh-msg bot">${html}${hints.map(h => `<span class="hint">${h}</span>`).join("")}</div>`)); };
       const user = (text) => log.append(el(`<div class="zh-msg user">${esc(text)}</div>`));
 
       // transcript of what's been answered so far
@@ -606,7 +628,7 @@
       } else if (typing) {
         log.append(el(`<div class="zh-msg bot typing" aria-label="Typing"><i></i><i></i><i></i></div>`));
       } else {
-        bot(esc(current.title), current.hint);
+        bot(esc(current.title), [current.hint, current.kind === "multi" ? "Pick as many as you like." : ""]);
         const opts = el(`<div class="zh-chat-options"></div>`);
         if (current.kind === "single") {
           for (const [val, label] of current.opts) {
@@ -623,7 +645,6 @@
           for (const [val, label] of current.opts) {
             const b = el(`<button type="button" class="zh-opt" data-v="${esc(val)}">${esc(label)}</button>`);
             b.onclick = () => { sel = sel.includes(val) ? sel.filter(x => x !== val) : [...sel, val]; paint(); };
-            if (current.key === "products") { const prod = PRODUCTS.find(x => x.id === val); if (prod) { b.dataset.tip = prod.short; b.addEventListener("mouseenter", () => showTip(b)); b.addEventListener("mouseleave", hideTip); b.addEventListener("focus", () => showTip(b)); b.addEventListener("blur", hideTip); } }
             opts.append(b);
           }
           const actions = el(`<div class="zh-chat-actions">${done.length ? '<button type="button" class="zh-chat-back">← Back</button>' : "<span></span>"}<button type="button" class="zh-btn zh-btn-primary">Continue →</button></div>`);
