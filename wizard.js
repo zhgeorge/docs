@@ -496,7 +496,104 @@
     sync();
   }
 
-  const boot = () => { mountWizard(); mountLanding(); };
+  /* ---------------- landing page: hero chat card (the whole wizard, one question at a time) ---------------- */
+  function mountHeroChat() {
+    const box = document.getElementById("zh-hero-chat");
+    if (!box || box.dataset.mounted) return;
+    box.dataset.mounted = "1";
+    const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const done = [];            // question keys answered in this visit, in order
+    let typing = false, timer = null;
+    const labelOf = (opts, vals) => { const arr = Array.isArray(vals) ? vals : [vals]; const names = arr.map(v => (opts.find(o => o[0] === v) || [v, v])[1]); return names.length > 3 ? `${names.slice(0, 3).join(", ")} +${names.length - 3} more` : names.join(", "); };
+
+    // The ordered questions, recomputed each render because later ones depend on earlier answers.
+    function queue() {
+      const qs = [
+        { key: "products", kind: "multi", title: "Hi — I'll put together a build guide for you. Which products are you interested in?", hint: "Pick as many as you like.", opts: PRODUCTS.map(p => [p.id, p.name]), get: () => S.products, set: v => { S.products = v; } },
+        { key: "region", kind: "single", title: "Where is your platform based?", opts: [["us", "United States"], ["eu", "European Union"]], get: () => S.region, set: v => { S.region = v; } },
+        { key: "customers", kind: "multi", title: "Who are your customers?", opts: [["individuals", "People"], ["businesses", "Businesses"]], get: () => S.customers, set: v => { S.customers = v; } },
+        { key: "kyc", kind: "single", title: "Who verifies your customers' identity (KYC)?", hint: "Most platforms let zerohash do it with a ready-made screen.", opts: [["sdk", "zerohash does it"], ["api", "We already verify customers"]], get: () => S.kyc, set: v => { S.kyc = v; } },
+      ];
+      for (const pid of PRODUCT_IDS.filter(id => S.products.includes(id))) {
+        const p = PRODUCTS.find(x => x.id === pid), a = ans(pid);
+        for (const q of visibleQuestions(pid)) {
+          const opts = q.groups ? q.groups.flatMap(g => g.items.map(([v, l]) => [v, l])) : q.opts.map(([v, l]) => [v, l]);
+          qs.push({ key: `${pid}.${q.id}`, product: p.name, kind: q.type === "single" ? "single" : "multi", title: q.title, hint: q.plain || q.help || "", opts, selectAll: !!q.selectAll, get: () => a[q.id], set: v => { a[q.id] = v; } });
+        }
+      }
+      return qs;
+    }
+    const answered = (q) => done.includes(q.key);
+
+    function render() {
+      const qs = queue(), current = qs.find(q => !answered(q)), total = qs.length, k = Math.min(done.length, total);
+      box.classList.toggle("is-active", done.length > 0);
+      box.innerHTML = `
+        <div class="zh-chat-head"><span class="zh-chat-avatar"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/></svg></span><span class="zh-chat-title">Setup wizard</span><span class="zh-chat-step">${current ? `Question ${k + 1} of ${total}` : "Done"}</span></div>
+        <div class="zh-chat-progress"><span style="width:${current ? Math.round((k / total) * 100) : 100}%"></span></div>
+        <div class="zh-chat-log" role="log" aria-live="polite"></div>
+        <div class="zh-chat-composer"></div>`;
+      const log = box.querySelector(".zh-chat-log"), composer = box.querySelector(".zh-chat-composer");
+      const bot = (html, hint) => log.append(el(`<div class="zh-msg bot">${html}${hint ? `<span class="hint">${hint}</span>` : ""}</div>`));
+      const user = (text) => log.append(el(`<div class="zh-msg user">${esc(text)}</div>`));
+
+      // transcript of what's been answered so far
+      for (const key of done) {
+        const q = qs.find(x => x.key === key); if (!q) continue;
+        bot(esc(q.title)); user(labelOf(q.opts, q.get()));
+      }
+
+      if (!current) {
+        bot(`That's everything — your guide is ready.`, `Directions and code for ${list(S.products.map(id => PRODUCTS.find(p => p.id === id).name), "and")}, in the order you'll do them.`);
+        const actions = el(`<div class="zh-chat-actions"><button type="button" class="zh-chat-back">Start over</button><a class="zh-btn zh-btn-primary" href="/setup-wizard">See my guide →</a></div>`);
+        actions.querySelector("a").onclick = () => { S.step = stepList().length - 1; save(); };
+        actions.querySelector(".zh-chat-back").onclick = () => { done.length = 0; S = JSON.parse(JSON.stringify(DEFAULT)); save(); render(); };
+        composer.append(actions);
+      } else if (typing) {
+        log.append(el(`<div class="zh-msg bot typing" aria-label="Typing"><i></i><i></i><i></i></div>`));
+      } else {
+        bot(esc(current.title), current.hint);
+        const opts = el(`<div class="zh-chat-options"></div>`);
+        if (current.kind === "single") {
+          for (const [val, label] of current.opts) {
+            const b = el(`<button type="button" class="zh-opt ${current.get() === val ? "on" : ""}">${esc(label)}</button>`);
+            b.onclick = () => { current.set(val); advance(current.key); };
+            opts.append(b);
+          }
+          composer.append(opts, el(`<div class="zh-chat-actions">${done.length ? '<button type="button" class="zh-chat-back">← Back</button>' : "<span></span>"}<span></span></div>`));
+        } else {
+          let sel = Array.isArray(current.get()) ? current.get().slice() : [];
+          const all = current.opts.map(o => o[0]);
+          const paint = () => { opts.querySelectorAll(".zh-opt[data-v]").forEach(b => b.classList.toggle("on", sel.includes(b.dataset.v))); const sa = opts.querySelector(".zh-opt.all"); if (sa) { const on = all.every(v => sel.includes(v)); sa.classList.toggle("on", on); sa.textContent = on ? "Clear all" : "Select all"; } go.disabled = sel.length === 0; };
+          if (current.selectAll) { const sa = el(`<button type="button" class="zh-opt all">Select all</button>`); sa.onclick = () => { sel = all.every(v => sel.includes(v)) ? [] : all.slice(); paint(); }; opts.append(sa); }
+          for (const [val, label] of current.opts) {
+            const b = el(`<button type="button" class="zh-opt" data-v="${esc(val)}">${esc(label)}</button>`);
+            b.onclick = () => { sel = sel.includes(val) ? sel.filter(x => x !== val) : [...sel, val]; paint(); };
+            opts.append(b);
+          }
+          const actions = el(`<div class="zh-chat-actions">${done.length ? '<button type="button" class="zh-chat-back">← Back</button>' : "<span></span>"}<button type="button" class="zh-btn zh-btn-primary">Continue →</button></div>`);
+          const go = actions.querySelector(".zh-btn");
+          go.onclick = () => { current.set(sel); advance(current.key); };
+          composer.append(opts, actions); paint();
+        }
+        const back = composer.querySelector(".zh-chat-back");
+        if (back) back.onclick = () => { done.pop(); render(); };
+      }
+      log.scrollTo({ top: log.scrollHeight, behavior: "instant" });
+    }
+
+    function advance(key) {
+      if (!done.includes(key)) done.push(key);
+      save();
+      if (reduced) { render(); return; }
+      typing = true; render();
+      clearTimeout(timer); timer = setTimeout(() => { typing = false; render(); }, 420);
+    }
+
+    render();
+  }
+
+  const boot = () => { mountWizard(); mountLanding(); mountHeroChat(); };
   boot();
   new MutationObserver(boot).observe(document.documentElement, { childList: true, subtree: true });
 })();
