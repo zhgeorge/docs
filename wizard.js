@@ -566,6 +566,11 @@
     box.addEventListener("focusin", () => box.classList.add("is-open"));
     paintCover(box.querySelector(".zh-cover"), reduced);
 
+    // The card keeps its own answers, so nothing a past visit saved is ever preselected here.
+    // They are copied into the shared wizard state only on the hand-off to /setup-wizard.
+    let H = JSON.parse(JSON.stringify(DEFAULT));
+    const hAns = (pid) => H.answers[pid] || (H.answers[pid] = {});
+    const hVisible = (pid) => { const a = hAns(pid); return QUESTIONS[pid].filter(q => !q.when || q.when(a)); };
     const done = [];            // question keys answered in this visit, in order
     let typing = false, timer = null;
     const labelOf = (opts, vals) => { const arr = Array.isArray(vals) ? vals : [vals]; const names = arr.map(v => (opts.find(o => o[0] === v) || [v, v])[1]); return names.length > 3 ? `${names.slice(0, 3).join(", ")} +${names.length - 3} more` : names.join(", "); };
@@ -573,14 +578,14 @@
     // The ordered questions, recomputed each render because later ones depend on earlier answers.
     function queue() {
       const qs = [
-        { key: "products", kind: "multi", title: "Which products are you interested in?", opts: PRODUCTS.map(p => [p.id, p.name]), get: () => S.products, set: v => { S.products = v; } },
-        { key: "region", kind: "single", title: "Where is your platform based?", opts: [["us", "United States"], ["eu", "European Union"]], get: () => S.region, set: v => { S.region = v; } },
-        { key: "customers", kind: "multi", title: "Who are your customers?", opts: [["individuals", "People"], ["businesses", "Businesses"]], get: () => S.customers, set: v => { S.customers = v; } },
-        { key: "kyc", kind: "single", title: "Who verifies your customers' identity (KYC)?", hint: "Most platforms let zerohash do it with a ready-made screen.", opts: [["sdk", "zerohash does it"], ["api", "We already verify customers"]], get: () => S.kyc, set: v => { S.kyc = v; } },
+        { key: "products", kind: "multi", title: "Which products are you interested in?", opts: PRODUCTS.map(p => [p.id, p.name]), get: () => H.products, set: v => { H.products = v; } },
+        { key: "region", kind: "single", title: "Where is your platform based?", opts: [["us", "United States"], ["eu", "European Union"]], get: () => H.region, set: v => { H.region = v; } },
+        { key: "customers", kind: "multi", title: "Who are your customers?", opts: [["individuals", "People"], ["businesses", "Businesses"]], get: () => H.customers, set: v => { H.customers = v; } },
+        { key: "kyc", kind: "single", title: "Who verifies your customers' identity (KYC)?", hint: "Most platforms let zerohash do it with a ready-made screen.", opts: [["sdk", "zerohash does it"], ["api", "We already verify customers"]], get: () => H.kyc, set: v => { H.kyc = v; } },
       ];
-      for (const pid of PRODUCT_IDS.filter(id => S.products.includes(id))) {
-        const p = PRODUCTS.find(x => x.id === pid), a = ans(pid);
-        for (const q of visibleQuestions(pid)) {
+      for (const pid of PRODUCT_IDS.filter(id => H.products.includes(id))) {
+        const p = PRODUCTS.find(x => x.id === pid), a = hAns(pid);
+        for (const q of hVisible(pid)) {
           const opts = q.groups ? q.groups.flatMap(g => g.items.map(([v, l]) => [v, l])) : q.opts.map(([v, l]) => [v, l]);
           qs.push({ key: `${pid}.${q.id}`, product: p.name, kind: q.type === "single" ? "single" : "multi", title: q.title, hint: q.plain || q.help || "", opts, selectAll: !!q.selectAll, get: () => a[q.id], set: v => { a[q.id] = v; } });
         }
@@ -594,7 +599,6 @@
       <div class="zh-chat-progress"><span style="width:${pct}%"></span></div>`;
 
     // The products question is a plain question with a card per product, not a chat exchange.
-    let pickSel = null;        // products chosen in this visit; never prefilled from a past one
     function renderPicker(q, total, k) {
       back.innerHTML = HEAD(`Question ${k + 1} of ${total}`, Math.round((k / total) * 100)) + `
         <div class="zh-pick">
@@ -604,16 +608,16 @@
         </div>
         <div class="zh-chat-composer"></div>`;
       const listEl = back.querySelector(".zh-pick-list"), composer = back.querySelector(".zh-chat-composer");
-      let sel = pickSel ? pickSel.slice() : [];
+      let sel = Array.isArray(q.get()) ? q.get().slice() : [];
       const actions = el(`<div class="zh-chat-actions"><span></span><button type="button" class="zh-btn zh-btn-primary">Continue →</button></div>`);
       const go = actions.querySelector(".zh-btn");
       const paint = () => { listEl.querySelectorAll(".zh-pcard").forEach(c => { const on = sel.includes(c.dataset.v); c.classList.toggle("on", on); c.setAttribute("aria-checked", on); }); go.disabled = sel.length === 0; };
       for (const prod of PRODUCTS) {
         const c = el(`<button type="button" class="zh-pcard" role="checkbox" aria-checked="false" data-v="${esc(prod.id)}"><span class="zh-pcard-check" aria-hidden="true"></span>${productIcon(prod.id, "zh-pcard-ico")}<span class="zh-pcard-txt"><span class="zh-pcard-t">${esc(prod.name)}</span><span class="zh-pcard-d">${esc(prod.short)}</span></span></button>`);
-        c.onclick = () => { sel = sel.includes(prod.id) ? sel.filter(x => x !== prod.id) : [...sel, prod.id]; pickSel = sel.slice(); paint(); };
+        c.onclick = () => { sel = sel.includes(prod.id) ? sel.filter(x => x !== prod.id) : [...sel, prod.id]; paint(); };
         listEl.append(c);
       }
-      go.onclick = () => { pickSel = sel.slice(); q.set(sel); advance(q.key); };
+      go.onclick = () => { q.set(sel); advance(q.key); };
       composer.append(actions); paint();
     }
 
@@ -636,10 +640,10 @@
       }
 
       if (!current) {
-        bot(`That's everything — your guide is ready.`, `Directions and code for ${list(S.products.map(id => PRODUCTS.find(p => p.id === id).name), "and")}, in the order you'll do them.`);
+        bot(`That's everything — your guide is ready.`, `Directions and code for ${list(H.products.map(id => PRODUCTS.find(p => p.id === id).name), "and")}, in the order you'll do them.`);
         const actions = el(`<div class="zh-chat-actions"><button type="button" class="zh-chat-back">Start over</button><a class="zh-btn zh-btn-primary" href="/setup-wizard">See my guide →</a></div>`);
-        actions.querySelector("a").onclick = () => { S.step = stepList().length - 1; save(); };
-        actions.querySelector(".zh-chat-back").onclick = () => { done.length = 0; pickSel = null; S = JSON.parse(JSON.stringify(DEFAULT)); save(); box.classList.remove("is-open", "is-active"); render(); };
+        actions.querySelector("a").onclick = () => { S = JSON.parse(JSON.stringify(H)); S.step = stepList().length - 1; save(); };
+        actions.querySelector(".zh-chat-back").onclick = () => { done.length = 0; H = JSON.parse(JSON.stringify(DEFAULT)); box.classList.remove("is-open", "is-active"); render(); };
         composer.append(actions);
       } else if (typing) {
         log.append(el(`<div class="zh-msg bot typing" aria-label="Typing"><i></i><i></i><i></i></div>`));
@@ -676,7 +680,6 @@
 
     function advance(key) {
       if (!done.includes(key)) done.push(key);
-      save();
       if (reduced) { render(); return; }
       typing = true; render();
       clearTimeout(timer); timer = setTimeout(() => { typing = false; render(); }, 420);

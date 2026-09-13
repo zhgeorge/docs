@@ -269,6 +269,38 @@
 .zh-landing .zh-pcard.on .zh-pcard-check { display: block; }
 .zh-landing .zh-pcard.on .zh-pcard-check::after { content: ""; position: absolute; left: 1px; top: 0; width: 5px; height: 9px; border: solid var(--zh-green); border-width: 0 2px 2px 0; transform: rotate(45deg); }
 
+/* ---- customer logos: one row, scrolling ---- */
+.zh-landing .zh-logos { padding: 26px 0 4px; }
+.zh-landing .zh-logos-label {
+  margin: 0 0 14px; text-align: center;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--zh-muted);
+}
+.zh-landing .zh-logo-marquee {
+  display: flex; width: 100%; overflow: hidden; gap: 0;
+  mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+}
+.zh-landing .zh-logo-track {
+  display: flex; align-items: center; flex: 0 0 auto; gap: 56px;
+  margin: 0; padding: 0 56px 0 0; list-style: none;
+  animation: zh-marquee 46s linear infinite;
+}
+.zh-landing .zh-logo-marquee:hover .zh-logo-track { animation-play-state: paused; }
+.zh-landing .zh-logo { flex: 0 0 auto; display: flex; align-items: center; height: 40px; }
+.zh-landing .zh-logo img {
+  height: 38px; width: auto; max-width: 150px; display: block;
+  filter: grayscale(1) opacity(0.62); transition: filter 0.2s ease;
+}
+.zh-landing .zh-logo img:hover { filter: grayscale(0) opacity(1); }
+.dark .zh-landing .zh-logo img { filter: grayscale(1) brightness(0) invert(1) opacity(0.62); }
+.dark .zh-landing .zh-logo img:hover { filter: grayscale(0) opacity(1); }
+@keyframes zh-marquee { from { transform: translateX(0); } to { transform: translateX(-100%); } }
+@media (max-width: 700px) {
+  .zh-landing .zh-logo-track { gap: 40px; padding-right: 40px; animation-duration: 34s; }
+  .zh-landing .zh-logo img { height: 30px; max-width: 124px; }
+}
+
 .zh-landing .zh-chat-head {
   display: flex;
   align-items: center;
@@ -363,7 +395,7 @@
 .zh-landing .zh-chat-back:hover { color: var(--zh-ink); }
 
 @media (prefers-reduced-motion: reduce) {
-  .zh-landing .zh-hero-chat, .zh-landing .zh-msg, .zh-landing .zh-opt, .zh-landing .zh-chat-progress > span, .zh-landing .zh-flip, .zh-landing .zh-pcard { transition: none; animation: none; }
+  .zh-landing .zh-hero-chat, .zh-landing .zh-msg, .zh-landing .zh-opt, .zh-landing .zh-chat-progress > span, .zh-landing .zh-flip, .zh-landing .zh-pcard, .zh-landing .zh-logo-track { transition: none; animation: none; }
 }
 
 @media (max-width: 1000px) {
