@@ -496,12 +496,64 @@
     sync();
   }
 
+
+  /* Animated cover for the hero card: soft orbs drifting over a breathing dot lattice. */
+  function paintCover(canvas, reduced) {
+    const ctx = canvas.getContext("2d");
+    const orbs = [
+      { x: 0.22, y: 0.30, r: 0.55, c: "rgba(62, 207, 142, 0.75)", dx: 0.00016, dy: 0.00011, ph: 0 },
+      { x: 0.80, y: 0.70, r: 0.60, c: "rgba(11, 122, 84, 0.85)", dx: -0.00013, dy: 0.00009, ph: 2 },
+      { x: 0.65, y: 0.15, r: 0.40, c: "rgba(204, 255, 208, 0.55)", dx: 0.0001, dy: -0.00014, ph: 4 },
+    ];
+    let raf = null, t0 = performance.now();
+    const size = () => { const r = canvas.getBoundingClientRect(); const dpr = Math.min(devicePixelRatio || 1, 2); canvas.width = Math.max(1, r.width * dpr); canvas.height = Math.max(1, r.height * dpr); ctx.setTransform(dpr, 0, 0, dpr, 0, 0); return r; };
+    const frame = (now) => {
+      const r = size(), w = r.width, h = r.height, t = now - t0;
+      ctx.fillStyle = "#0b3d2b"; ctx.fillRect(0, 0, w, h);
+      for (const o of orbs) {
+        const x = (0.5 + (o.x - 0.5) * Math.cos(t * o.dx + o.ph)) * w, y = (0.5 + (o.y - 0.5) * Math.sin(t * o.dy + o.ph)) * h, rad = o.r * Math.max(w, h);
+        const g = ctx.createRadialGradient(x, y, 0, x, y, rad); g.addColorStop(0, o.c); g.addColorStop(1, "rgba(11, 61, 43, 0)");
+        ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
+      }
+      // dot lattice that breathes with a travelling wave
+      const step = 22; ctx.fillStyle = "rgba(255, 255, 255, 0.32)";
+      for (let y = 14; y < h; y += step) for (let x = 14; x < w; x += step) {
+        const s = 0.9 + 0.9 * Math.sin(t * 0.0012 + x * 0.045 + y * 0.03);
+        ctx.beginPath(); ctx.arc(x, y, Math.max(0.3, s), 0, Math.PI * 2); ctx.fill();
+      }
+      if (!reduced) raf = requestAnimationFrame(frame);
+    };
+    frame(t0);
+    // pause when the card is off-screen
+    if (!reduced && "IntersectionObserver" in window) new IntersectionObserver((es) => es.forEach(e => { if (e.isIntersecting) { if (!raf) raf = requestAnimationFrame(frame); } else if (raf) { cancelAnimationFrame(raf); raf = null; } })).observe(canvas);
+  }
+
   /* ---------------- landing page: hero chat card (the whole wizard, one question at a time) ---------------- */
   function mountHeroChat() {
     const box = document.getElementById("zh-hero-chat");
     if (!box || box.dataset.mounted) return;
     box.dataset.mounted = "1";
     const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    // Two faces: a painted cover on the front, the chat on the back. Hovering flips the card;
+    // once the reader starts answering it stays open. Tapping the cover flips it on touch screens.
+    box.innerHTML = `<div class="zh-flip">
+      <div class="zh-face zh-front"><canvas class="zh-cover"></canvas>
+        <div class="zh-cover-copy"><p class="zh-cover-kicker">Setup wizard</p><p class="zh-cover-title">Tell us what you're building. We'll write the guide.</p><p class="zh-cover-hint">Hover to start <span aria-hidden="true">→</span></p></div>
+      </div>
+      <div class="zh-face zh-back"></div>
+    </div>`;
+    const back = box.querySelector(".zh-back");
+    // tooltip lives beside the card (outside its 3D context) so it always paints on top
+    const host = box.parentElement, tip = el(`<div class="zh-tip" role="tooltip" hidden></div>`);
+    host.append(tip);
+    box.querySelector(".zh-front").addEventListener("click", () => box.classList.add("is-open"));
+    box.addEventListener("focusin", () => box.classList.add("is-open"));
+    paintCover(box.querySelector(".zh-cover"), reduced);
+
+    // tooltip for the product chips: one plain sentence per product
+    const showTip = (chip) => { tip.textContent = chip.dataset.tip; tip.hidden = false; const c = chip.getBoundingClientRect(), h = host.getBoundingClientRect(), b = box.getBoundingClientRect(); const minL = b.left - h.left + 10, maxL = b.right - h.left - tip.offsetWidth - 10; tip.style.left = Math.max(minL, Math.min(c.left - h.left + c.width / 2 - tip.offsetWidth / 2, maxL)) + "px"; tip.style.top = (c.top - h.top - tip.offsetHeight - 8) + "px"; };
+    const hideTip = () => { tip.hidden = true; };
     const done = [];            // question keys answered in this visit, in order
     let typing = false, timer = null;
     const labelOf = (opts, vals) => { const arr = Array.isArray(vals) ? vals : [vals]; const names = arr.map(v => (opts.find(o => o[0] === v) || [v, v])[1]); return names.length > 3 ? `${names.slice(0, 3).join(", ")} +${names.length - 3} more` : names.join(", "); };
@@ -528,12 +580,14 @@
     function render() {
       const qs = queue(), current = qs.find(q => !answered(q)), total = qs.length, k = Math.min(done.length, total);
       box.classList.toggle("is-active", done.length > 0);
-      box.innerHTML = `
-        <div class="zh-chat-head"><span class="zh-chat-avatar"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/></svg></span><span class="zh-chat-title">Setup wizard</span><span class="zh-chat-step">${current ? `Question ${k + 1} of ${total}` : "Done"}</span></div>
+      if (done.length) box.classList.add("is-open");
+      hideTip();
+      back.innerHTML = `
+        <div class="zh-chat-head"><span class="zh-chat-avatar"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/></svg></span><span class="zh-chat-title">Setup wizard</span><span class="zh-chat-step" aria-label="${current ? `Question ${k + 1} of ${total}` : "Done"}"></span></div>
         <div class="zh-chat-progress"><span style="width:${current ? Math.round((k / total) * 100) : 100}%"></span></div>
         <div class="zh-chat-log" role="log" aria-live="polite"></div>
         <div class="zh-chat-composer"></div>`;
-      const log = box.querySelector(".zh-chat-log"), composer = box.querySelector(".zh-chat-composer");
+      const log = back.querySelector(".zh-chat-log"), composer = back.querySelector(".zh-chat-composer");
       const bot = (html, hint) => log.append(el(`<div class="zh-msg bot">${html}${hint ? `<span class="hint">${hint}</span>` : ""}</div>`));
       const user = (text) => log.append(el(`<div class="zh-msg user">${esc(text)}</div>`));
 
@@ -547,7 +601,7 @@
         bot(`That's everything — your guide is ready.`, `Directions and code for ${list(S.products.map(id => PRODUCTS.find(p => p.id === id).name), "and")}, in the order you'll do them.`);
         const actions = el(`<div class="zh-chat-actions"><button type="button" class="zh-chat-back">Start over</button><a class="zh-btn zh-btn-primary" href="/setup-wizard">See my guide →</a></div>`);
         actions.querySelector("a").onclick = () => { S.step = stepList().length - 1; save(); };
-        actions.querySelector(".zh-chat-back").onclick = () => { done.length = 0; S = JSON.parse(JSON.stringify(DEFAULT)); save(); render(); };
+        actions.querySelector(".zh-chat-back").onclick = () => { done.length = 0; S = JSON.parse(JSON.stringify(DEFAULT)); save(); box.classList.remove("is-open", "is-active"); render(); };
         composer.append(actions);
       } else if (typing) {
         log.append(el(`<div class="zh-msg bot typing" aria-label="Typing"><i></i><i></i><i></i></div>`));
@@ -569,6 +623,7 @@
           for (const [val, label] of current.opts) {
             const b = el(`<button type="button" class="zh-opt" data-v="${esc(val)}">${esc(label)}</button>`);
             b.onclick = () => { sel = sel.includes(val) ? sel.filter(x => x !== val) : [...sel, val]; paint(); };
+            if (current.key === "products") { const prod = PRODUCTS.find(x => x.id === val); if (prod) { b.dataset.tip = prod.short; b.addEventListener("mouseenter", () => showTip(b)); b.addEventListener("mouseleave", hideTip); b.addEventListener("focus", () => showTip(b)); b.addEventListener("blur", hideTip); } }
             opts.append(b);
           }
           const actions = el(`<div class="zh-chat-actions">${done.length ? '<button type="button" class="zh-chat-back">← Back</button>' : "<span></span>"}<button type="button" class="zh-btn zh-btn-primary">Continue →</button></div>`);
@@ -576,8 +631,8 @@
           go.onclick = () => { current.set(sel); advance(current.key); };
           composer.append(opts, actions); paint();
         }
-        const back = composer.querySelector(".zh-chat-back");
-        if (back) back.onclick = () => { done.pop(); render(); };
+        const backBtn = composer.querySelector(".zh-chat-back");
+        if (backBtn) backBtn.onclick = () => { done.pop(); render(); };
       }
       log.scrollTo({ top: log.scrollHeight, behavior: "instant" });
     }
