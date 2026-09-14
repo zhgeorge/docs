@@ -608,3 +608,74 @@
   .zh-landing .zh-ql-grid { grid-template-columns: 1fr; }
   .zh-landing .zh-trust-sep::before { margin: 0 8px; }
 }
+
+/* ---------- footer (mirrors the one on docs.zerohash.com) ---------- */
+
+.zh-landing .zh-footer {
+  --foot-fg: #ebedea;
+  --foot-label: #d1e8c9;
+  --foot-hair: rgba(235, 237, 234, 0.14);
+  margin-top: 8px;
+  padding: 56px 0 30px;
+  background: #1c1c1c;
+  color: var(--foot-fg);
+}
+
+.zh-landing .zh-foot-inner {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) minmax(0, 2.1fr);
+  gap: 40px;
+  padding-bottom: 44px;
+}
+
+.zh-landing .zh-foot-logo { width: 178px; height: auto; display: block; }
+.zh-landing .zh-foot-brand a { display: inline-block; }
+.zh-landing .zh-foot-socials { display: flex; flex-wrap: wrap; gap: 22px; margin-top: 26px; }
+
+.zh-landing .zh-foot-social,
+.zh-landing .zh-foot-link {
+  font-size: 13px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--foot-fg);
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+.zh-landing .zh-foot-social:hover,
+.zh-landing .zh-foot-link:hover { color: var(--foot-label); }
+
+.zh-landing .zh-foot-cols { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.zh-landing .zh-foot-col { padding: 0 22px; border-left: 1px solid var(--foot-hair); }
+.zh-landing .zh-foot-col:first-child { padding-left: 26px; }
+
+.zh-landing .zh-foot-label {
+  margin: 0 0 22px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--foot-label);
+}
+
+.zh-landing .zh-foot-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 15px; }
+
+.zh-landing .zh-foot-rule { height: 1px; background: var(--foot-hair); }
+.zh-landing .zh-foot-legal {
+  margin: 22px 0 0;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--foot-fg);
+}
+
+@media (max-width: 1000px) {
+  .zh-landing .zh-foot-inner { grid-template-columns: 1fr; gap: 40px; }
+  .zh-landing .zh-foot-col:first-child { padding-left: 0; border-left: 0; }
+}
+@media (max-width: 700px) {
+  .zh-landing .zh-footer { padding: 44px 0 26px; }
+  .zh-landing .zh-foot-cols { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: 34px; }
+  .zh-landing .zh-foot-col:nth-child(odd) { padding-left: 0; border-left: 0; }
+}
