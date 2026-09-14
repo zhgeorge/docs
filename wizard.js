@@ -548,7 +548,7 @@
 
   /* ---------------- landing page: backgrounds that follow the cursor ----------------
      Each .zh-spot eases two CSS variables (--mx/--my, the light's position) toward the pointer,
-     and drifts its grid lines the other way (--px/--py). Pointer gone → it eases back to rest. */
+     and drifts its grid lines the other way (--px/--py). When the pointer leaves, the light stays put. */
   function mountSpotlights() {
     if (matchMedia("(prefers-reduced-motion: reduce)").matches || matchMedia("(hover: none)").matches) return;
     document.querySelectorAll(".zh-spot:not([data-spot])").forEach((box) => {
@@ -570,8 +570,8 @@
       };
       const go = () => { if (!raf) raf = requestAnimationFrame(tick); };
       box.addEventListener("pointermove", (e) => { const r = measure(); tx = e.clientX - r.left; ty = e.clientY - r.top; box.classList.add("is-hot"); go(); });
-      box.addEventListener("pointerleave", () => { box.classList.remove("is-hot"); [tx, ty] = restPoint(); go(); });
-      addEventListener("resize", () => { if (!box.classList.contains("is-hot")) { [tx, ty] = restPoint(); go(); } });
+      // leaving keeps the light where the cursor last was; only the brighter hover state fades
+      box.addEventListener("pointerleave", () => { box.classList.remove("is-hot"); });
       [cx, cy] = restPoint(); [tx, ty] = [cx, cy]; paint();
     });
   }
