@@ -529,6 +529,32 @@
     if (!reduced && "IntersectionObserver" in window) new IntersectionObserver((es) => es.forEach(e => { if (e.isIntersecting) { if (!raf) raf = requestAnimationFrame(frame); } else if (raf) { cancelAnimationFrame(raf); raf = null; } })).observe(canvas);
   }
 
+  /* ---------------- landing page: "Build with agent" ----------------
+     One prompt, three ways to use it: copy it, or open it straight in Claude Code, Codex or Cursor
+     through their deep links. The prompt points the agent at this site's /agents.md. */
+  function mountAgentButton() {
+    const box = document.getElementById("zh-agent");
+    if (!box || box.dataset.mounted) return;
+    box.dataset.mounted = "1";
+    const prompt = `Use curl to read ${location.host}/agents.md and perform the setup to get started with zerohash`;
+    const enc = encodeURIComponent(prompt);
+    const links = { claude: `claude-cli://open?q=${enc}`, codex: `codex://new?prompt=${enc}`, cursor: `cursor://anysphere.cursor-deeplink/prompt?text=${enc}` };
+    box.querySelectorAll("[data-agent]").forEach(a => { a.href = links[a.dataset.agent]; });
+    const main = box.querySelector(".zh-agent-main"), more = box.querySelector(".zh-agent-more"), menu = box.querySelector(".zh-agent-menu"), label = box.querySelector(".zh-agent-label");
+    let t = null;
+    const open = (on) => { menu.hidden = !on; more.setAttribute("aria-expanded", String(on)); };
+    main.addEventListener("click", () => {
+      navigator.clipboard.writeText(prompt).then(() => {
+        box.classList.add("is-copied"); label.textContent = "Prompt copied";
+        clearTimeout(t); t = setTimeout(() => { box.classList.remove("is-copied"); label.textContent = "Build with agent"; }, 1800);
+      }).catch(() => open(true));
+    });
+    more.addEventListener("click", (e) => { e.stopPropagation(); open(menu.hidden); });
+    document.addEventListener("click", (e) => { if (!box.contains(e.target)) open(false); });
+    document.addEventListener("keydown", (e) => { if (e.key === "Escape") open(false); });
+    menu.addEventListener("click", () => open(false));
+  }
+
   /* ---------------- landing page: backgrounds that follow the cursor ----------------
      Each .zh-spot eases two CSS variables (--mx/--my, the light's position) toward the pointer,
      and drifts its grid lines the other way (--px/--py). When the pointer leaves, the light stays put. */
@@ -701,7 +727,7 @@
     render();
   }
 
-  const boot = () => { mountWizard(); mountHeroChat(); mountSpotlights(); };
+  const boot = () => { mountWizard(); mountHeroChat(); mountSpotlights(); mountAgentButton(); };
   boot();
   new MutationObserver(boot).observe(document.documentElement, { childList: true, subtree: true });
 })();

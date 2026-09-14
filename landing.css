@@ -173,6 +173,35 @@
 
 .zh-landing .zh-btn-secondary:hover { border-color: var(--zh-muted); }
 
+/* ---- "Build with agent": copy the onboarding prompt, or open it in an agent ---- */
+.zh-landing .zh-agent { position: relative; display: inline-flex; align-items: stretch; }
+.zh-landing .zh-agent .zh-btn { display: inline-flex; align-items: center; gap: 9px; }
+.zh-landing .zh-agent .zh-btn:hover { transform: none; }
+.zh-landing .zh-agent-main { border-radius: 10px 0 0 10px; padding-right: 14px; }
+.zh-landing .zh-agent-more { border-radius: 0 10px 10px 0; padding: 11px 11px; margin-left: -1.5px; }
+.zh-landing .zh-agent-more[aria-expanded="true"], .zh-landing .zh-agent.is-copied .zh-agent-main { border-color: var(--zh-green); }
+.zh-landing .zh-agent-copy { color: var(--zh-muted); flex: 0 0 auto; }
+.zh-landing .zh-agent-icons { display: inline-flex; align-items: center; gap: 6px; padding-left: 3px; border-left: 1px solid var(--zh-hairline); margin-left: 1px; }
+.zh-landing .zh-agent-icons img { width: 17px; height: 17px; display: block; }
+.zh-landing .zh-agent.is-copied .zh-agent-label { color: var(--zh-green); }
+.zh-landing .zh-agent-menu {
+  position: absolute; top: calc(100% + 8px); right: 0; z-index: 30; min-width: 232px;
+  padding: 6px; border-radius: 12px;
+  background: var(--zh-card-bg); border: 1px solid var(--zh-hairline);
+  box-shadow: 0 2px 4px rgba(20, 35, 25, 0.05), 0 24px 48px -20px rgba(20, 35, 25, 0.3);
+  animation: zh-msg-in 0.16s ease both;
+}
+.zh-landing .zh-agent-item {
+  display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 8px;
+  font-size: 14px; font-weight: 500; color: var(--zh-ink); text-decoration: none;
+}
+.zh-landing .zh-agent-item:hover { background: var(--zh-surface-2, #f0f1ec); }
+.dark .zh-landing .zh-agent-item:hover { background: #1b1d1b; }
+.zh-landing .zh-agent-item img { width: 18px; height: 18px; }
+.zh-landing .zh-agent-item i { margin-left: auto; font-style: normal; color: var(--zh-muted); font-size: 13px; }
+.zh-landing .zh-agent-view { padding-left: 38px; color: var(--zh-muted); }
+.zh-landing .zh-agent-sep { height: 1px; margin: 5px 4px; background: var(--zh-hairline); }
+
 .zh-landing .zh-trust {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 11.5px;

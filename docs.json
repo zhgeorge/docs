@@ -604,7 +604,8 @@
             "group": "Tools",
             "hidden": true,
             "pages": [
-              "setup-wizard"
+              "setup-wizard",
+              "agents"
             ]
           }
         ]

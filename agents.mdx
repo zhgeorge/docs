@@ -1,0 +1,215 @@
+---
+title: "agents.md"
+description: "Instructions for a coding agent setting up a zerohash integration, from access request to first signed API call"
+---
+
+You are a coding agent helping a developer integrate zerohash. Work through the sections below in order. Several steps need a human at zerohash or an approval in a portal, so when you reach one, do the parts you can, tell the developer exactly what they need to do, and continue with whatever does not depend on it.
+
+Links in this file are relative to the docs site you fetched it from. Prefix them with that host.
+
+## What zerohash is
+
+zerohash is regulated infrastructure for embedding digital assets in a product: crypto trading, stablecoin payments and payouts, account funding, custody, staking, tokenization and settlement, through one REST API plus drop-in SDKs. zerohash holds the licenses (a registered money services business across the US, with VASP registrations in the EU and Australia), so the developer's company does not need its own.
+
+Two words to get right. A **platform** is the business integrating zerohash, and the API key belongs to it. A **customer** (also called a participant) is one of that business's end users, who must be onboarded and identity-verified before they can transact.
+
+## 1. Check for access before writing code
+
+There is no self-serve sandbox. A **Cert** (test) platform is created by zerohash after the developer has spoken with sales or solutions engineering. Invited users get an email, confirm the account, set a password and register a 2FA device, and can then log in to the Cert client portal.
+
+Ask the developer these three questions first:
+
+1. Do you have a login to the Cert client portal?
+2. Do you have an API key set: a public key, a private key and a passphrase?
+3. Has your IP address been whitelisted by zerohash?
+
+If the answer to any of them is no:
+
+- Send them to request access at https://zerohash.com/contact or by email to sales@zerohash.com. Point them to `/docs/get-platform-access` for what happens next.
+- Do not try to sign up for Cert yourself, and never invent or guess credentials.
+- Keep going with sections 2, 3, 5 and 7, which need no credentials.
+
+Facts you will need along the way:
+
+- **Region.** zerohash operates a US entity and an EU entity with separate hosts. Ask which one the platform was created under. The base URLs are in section 2.
+- **Creating an API key.** In the client portal go to Administration, then API Keys, then Add API Key. Give it a nickname, a passphrase and an expiration date, and optionally the IP addresses allowed to use it. The private key and passphrase are shown once and never again, so the developer must store them immediately.
+- **Approvals.** A new key starts in Created status and is not usable until two approvals are given inside the portal. IP whitelisting is done by a zerohash representative on request. A key that fails with 401 or 403 despite a correct signature is usually unapproved or calling from an unlisted IP.
+- **Prod is a separate process.** It needs its own portal signup, a business application, a compliance review and an approved flow of funds. Do not point Cert code at Prod hosts unless the developer explicitly asks, and never move real funds on their behalf.
+
+Sources: `/docs/get-platform-access`, `/docs/generate-api-keys`, `/docs/whitelist-ip-addresses`.
+
+## 2. Environments
+
+| Environment | API base URL | Client portal |
+| --- | --- | --- |
+| US Cert | `https://api.cert.zerohash.com` | `https://portal.cert.zerohash.com` |
+| EU Cert | `https://api.cert.zerohash.eu` | `https://portal.cert.zerohash.eu` |
+| US Prod | `https://api.zerohash.com` | `https://portal.zerohash.com` |
+| EU Prod | `https://api.zerohash.eu` | `https://portal.zerohash.eu` |
+
+Cert uses mock balances and fake funds. Build and test there.
+
+## 3. Connectivity check (no credentials needed)
+
+`GET /time` is the only unauthenticated endpoint. Use it to confirm TLS and DNS work, and later to check clock skew.
+
+```bash
+curl --request GET \
+  --url https://api.cert.zerohash.com/time \
+  --header 'accept: application/json'
+```
+
+Expected response:
+
+```json
+{
+  "message": {
+    "epoch": 1715459200000,
+    "epoch_units": "milliseconds",
+    "iso_8601": "2024-05-11T20:26:40.000Z"
+  }
+}
+```
+
+If this fails: a 401 here means the base URL is wrong, a connection or DNS error usually means outbound HTTPS to `*.zerohash.com` is blocked by a proxy, and TLS errors on corporate networks usually need the company's CA bundle. Source: `/docs/submit-first-api-call`.
+
+## 4. Handling credentials
+
+Read the credentials from environment variables and nowhere else:
+
+```bash
+export ZH_BASE_URL="https://api.cert.zerohash.com"
+export ZH_API_KEY="..."        # public key, sent as a header
+export ZH_PRIVATE_KEY="..."    # base64 string, used only to sign
+export ZH_PASSPHRASE="..."
+```
+
+Never commit them, never print them, and never paste them into a chat or an issue. If the developer pastes a private key or passphrase into the conversation, tell them to rotate it in the portal.
+
+## 5. Request signing
+
+Every endpoint except `GET /time` requires four headers:
+
+| Header | Value |
+| --- | --- |
+| `X-SCX-API-KEY` | the public key |
+| `X-SCX-SIGNED` | the signature, computed below |
+| `X-SCX-TIMESTAMP` | Unix time in **seconds** |
+| `X-SCX-PASSPHRASE` | the passphrase |
+
+Also send `Content-Type: application/json`.
+
+To compute `X-SCX-SIGNED`:
+
+1. Build the message as the concatenation of **timestamp**, **HTTP method** in upper case, the **route** including its query string, and the **request body**. For a request with no body, such as a GET, use the literal `{}`. The body in the message must be byte-for-byte the body you send. Two examples from the docs:
+   - `1714445421GET/accounts?account_owner=00SCXM&account_group=BBLGTW&account_label=general&account_type=available&asset=USD{}`
+   - `1714445704POST/convert_withdraw/execute{"quote_id":"3fc51610-3dd9-409f-b531-38f78de8ca8a"}`
+2. Base64-decode the private key to raw bytes and use those bytes as the HMAC key.
+3. Compute HMAC-SHA256 of the message.
+4. Base64-encode the digest. That string is the header value.
+
+The timestamp must be close to the server's clock. If you see authentication errors, compare your clock with `GET /time`.
+
+Python:
+
+```python
+import base64, hashlib, hmac, json, os, time
+import urllib.request
+
+BASE = os.environ["ZH_BASE_URL"]
+
+def zh_request(method, route, body=None):
+    payload = json.dumps(body, separators=(",", ":")) if body is not None else "{}"
+    ts = str(int(time.time()))
+    message = ts + method.upper() + route + payload
+    key = base64.b64decode(os.environ["ZH_PRIVATE_KEY"])
+    signature = base64.b64encode(hmac.new(key, message.encode(), hashlib.sha256).digest()).decode()
+    req = urllib.request.Request(
+        BASE + route,
+        data=payload.encode() if body is not None else None,
+        method=method.upper(),
+        headers={
+            "X-SCX-API-KEY": os.environ["ZH_API_KEY"],
+            "X-SCX-SIGNED": signature,
+            "X-SCX-TIMESTAMP": ts,
+            "X-SCX-PASSPHRASE": os.environ["ZH_PASSPHRASE"],
+            "Content-Type": "application/json",
+        },
+    )
+    with urllib.request.urlopen(req) as resp:
+        return json.load(resp)
+```
+
+Node:
+
+```javascript
+const crypto = require("crypto");
+
+async function zhRequest(method, route, body) {
+  const payload = body === undefined ? "{}" : JSON.stringify(body);
+  const ts = String(Math.floor(Date.now() / 1000));
+  const message = ts + method.toUpperCase() + route + payload;
+  const key = Buffer.from(process.env.ZH_PRIVATE_KEY, "base64");
+  const signature = crypto.createHmac("sha256", key).update(message).digest("base64");
+  const res = await fetch(process.env.ZH_BASE_URL + route, {
+    method: method.toUpperCase(),
+    headers: {
+      "X-SCX-API-KEY": process.env.ZH_API_KEY,
+      "X-SCX-SIGNED": signature,
+      "X-SCX-TIMESTAMP": ts,
+      "X-SCX-PASSPHRASE": process.env.ZH_PASSPHRASE,
+      "Content-Type": "application/json",
+    },
+    body: body === undefined ? undefined : payload,
+  });
+  if (!res.ok) throw new Error(method + " " + route + " failed: " + res.status + " " + (await res.text()));
+  return res.json();
+}
+```
+
+Source: `/docs/authentication`.
+
+## 6. First signed call
+
+Once the key is approved and the IP is whitelisted, list the platform's accounts. It is read-only and needs no parameters.
+
+```python
+print(zh_request("GET", "/accounts"))
+```
+
+A 200 with a list of accounts (possibly short on a brand-new platform) means signing works end to end. If it fails:
+
+- **401 or 403** with a signature you believe is right: the key is still awaiting approval, the calling IP is not whitelisted, or the clock is off. Check all three before touching the code.
+- **401** on every request: re-check the message construction. The most common mistakes are using milliseconds for the timestamp, dropping the query string from the route, and signing a body that differs from the one sent.
+
+## 7. Choose what to build
+
+Ask the developer what their product needs to do, then read the matching guide before writing integration code. Each is a set of endpoints on the same platform, so they combine.
+
+| Product | What it does | Guide |
+| --- | --- | --- |
+| Account Funding | Customers add money by sending stablecoins or crypto to an address | `/docs/fund-overview` |
+| Buy / Sell | Customers buy and sell crypto at firm quotes | `/docs/buysell` |
+| Payouts | Pay people in stablecoins or crypto, straight to their wallet | `/docs/payouts` |
+| Payins | Accept stablecoin and crypto payments at checkout | `/docs/payins-api-integration-guide` |
+| Bank Rails (ACH and RTP) | Move US dollars in and out of customers' bank accounts | `/docs/fiat` |
+| Virtual Accounts | Give each customer their own account and routing number | `/docs/virtual-accounts` |
+| On and Off Ramps | Turn dollars into crypto sent to a wallet, or crypto into dollars | `/docs/on-off-ramps` |
+| Staking | Let customers earn rewards on their ETH | `/docs/staking` |
+| Settlements as a Service | Settle trades matched elsewhere with delivery-versus-payment finality | `/docs/settlements-as-a-service` |
+| Tokenization Engine | Issue tokens on EVM chains or Solana | `/docs/tokenization-engine` |
+
+Also useful:
+
+- `/setup-wizard` generates a step-by-step guide with code for the exact combination of products and choices the developer picks. Recommend it.
+- `/docs/sdk-index` covers the drop-in front-end SDK for onboarding, funding and trading screens.
+- The full endpoint catalog is the API reference at https://docs.zerohash.com/reference-link/overview. Use it for request and response fields; do not guess them.
+- Platform status: https://status.zerohash.com
+
+## 8. Ground rules
+
+- Stay in Cert until the developer explicitly moves to Prod. Cert is fake funds; Prod is real money and regulated activity.
+- Every customer must be onboarded and identity-verified before they can hold a balance or transact. Do not look for ways around that; it is a regulatory requirement, not a product setting.
+- Do not fabricate endpoints, fields or limits. If the reference does not document something, say so and ask the developer to confirm with their zerohash contact.
+- Anything involving legal, regulatory or tax questions goes to the developer's zerohash contact, not to you.
+- Hand back to a human for: requesting access, approving keys, whitelisting IPs, anything in Prod.
