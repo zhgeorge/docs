@@ -270,12 +270,7 @@
 .zh-landing .zh-pcard.on .zh-pcard-check::after { content: ""; position: absolute; left: 1px; top: 0; width: 5px; height: 9px; border: solid var(--zh-green); border-width: 0 2px 2px 0; transform: rotate(45deg); }
 
 /* ---- customer logos: one row, scrolling ---- */
-.zh-landing .zh-logos { padding: 26px 0 4px; }
-.zh-landing .zh-logos-label {
-  margin: 0 0 14px; text-align: center;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--zh-muted);
-}
+.zh-landing .zh-logos { padding: 34px 0 6px; }
 .zh-landing .zh-logo-marquee {
   display: flex; width: 100%; overflow: hidden; gap: 0;
   mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
@@ -405,7 +400,7 @@
 
 /* ---------- quick links ---------- */
 
-.zh-landing .zh-quicklinks { padding: 8px 0 8px; }
+.zh-landing .zh-quicklinks { padding: 64px 0 8px; }
 
 .zh-landing .zh-ql-grid {
   display: grid;
@@ -643,6 +638,7 @@
 @media (max-width: 640px) {
   .zh-landing .zh-hero { padding: 60px 0 48px; }
   .zh-landing .zh-section { padding: 60px 0 16px; }
+  .zh-landing .zh-quicklinks { padding: 44px 0 4px; }
   .zh-landing .zh-ql-grid { grid-template-columns: 1fr; }
   .zh-landing .zh-trust-sep::before { margin: 0 8px; }
 }
