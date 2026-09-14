@@ -46,33 +46,35 @@
   overflow: hidden;
 }
 
-.zh-landing .zh-hero-grid-bg {
-  position: absolute;
-  inset: 0;
+/* ---- pointer-tracking background: a grid revealed around the cursor and a glow that follows it.
+   --mx/--my are the light's position; --px/--py drift the grid lines the opposite way (parallax).
+   wizard.js eases them toward the pointer; without it (or with reduced motion) they hold the rest values. ---- */
+.zh-landing .zh-spot { --mx: 28%; --my: 5%; --px: 0px; --py: 0px; }
+.zh-landing .zh-spot-grid,
+.zh-landing .zh-spot-glow { position: absolute; inset: 0; pointer-events: none; }
+.zh-landing .zh-spot-grid {
   background-image:
-    linear-gradient(to right, rgba(25, 25, 24, 0.05) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(25, 25, 24, 0.05) 1px, transparent 1px);
+    linear-gradient(to right, rgba(25, 25, 24, 0.07) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(25, 25, 24, 0.07) 1px, transparent 1px);
   background-size: 38px 38px;
-  -webkit-mask-image: radial-gradient(ellipse 70% 70% at 25% 0%, black 25%, transparent 75%);
-  mask-image: radial-gradient(ellipse 70% 70% at 25% 0%, black 25%, transparent 75%);
-  pointer-events: none;
+  background-position: var(--px) var(--py);
+  -webkit-mask-image: radial-gradient(ellipse 62% 78% at var(--mx) var(--my), #000 12%, transparent 74%);
+  mask-image: radial-gradient(ellipse 62% 78% at var(--mx) var(--my), #000 12%, transparent 74%);
 }
-
-.dark .zh-landing .zh-hero-grid-bg {
+.dark .zh-landing .zh-spot-grid {
   background-image:
-    linear-gradient(to right, rgba(237, 237, 234, 0.05) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(237, 237, 234, 0.05) 1px, transparent 1px);
+    linear-gradient(to right, rgba(237, 237, 234, 0.07) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(237, 237, 234, 0.07) 1px, transparent 1px);
 }
-
-.zh-landing .zh-hero-glow {
-  position: absolute;
-  top: -160px;
-  left: calc(50% - 620px);
-  width: 720px;
-  height: 420px;
-  background: radial-gradient(ellipse at center, var(--zh-glow), transparent 65%);
-  pointer-events: none;
+.zh-landing .zh-spot-glow {
+  background:
+    radial-gradient(220px 220px at var(--mx) var(--my), var(--zh-green-tint), transparent 70%),
+    radial-gradient(640px 460px at var(--mx) var(--my), var(--zh-glow), transparent 68%);
+  opacity: 0.85;
+  transition: opacity 0.5s ease;
 }
+.zh-landing .zh-spot.is-hot .zh-spot-glow { opacity: 1; }
+.zh-landing .zh-spot > :not(.zh-spot-grid):not(.zh-spot-glow) { position: relative; }
 
 .zh-landing .zh-hero-inner {
   position: relative;
@@ -606,18 +608,8 @@
   padding: 68px 32px 64px;
 }
 
-.zh-landing .zh-cta-glow {
-  position: absolute;
-  top: -180px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 640px;
-  height: 360px;
-  background: radial-gradient(ellipse at center, var(--zh-glow), transparent 65%);
-  pointer-events: none;
-}
+.zh-landing .zh-cta-panel.zh-spot { --mx: 50%; --my: -8%; }
 
-.zh-landing .zh-cta-panel .zh-h2 { position: relative; }
 
 .zh-landing .zh-cta-sub {
   position: relative;

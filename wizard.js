@@ -546,6 +546,36 @@
     if (!reduced && "IntersectionObserver" in window) new IntersectionObserver((es) => es.forEach(e => { if (e.isIntersecting) { if (!raf) raf = requestAnimationFrame(frame); } else if (raf) { cancelAnimationFrame(raf); raf = null; } })).observe(canvas);
   }
 
+  /* ---------------- landing page: backgrounds that follow the cursor ----------------
+     Each .zh-spot eases two CSS variables (--mx/--my, the light's position) toward the pointer,
+     and drifts its grid lines the other way (--px/--py). Pointer gone → it eases back to rest. */
+  function mountSpotlights() {
+    if (matchMedia("(prefers-reduced-motion: reduce)").matches || matchMedia("(hover: none)").matches) return;
+    document.querySelectorAll(".zh-spot:not([data-spot])").forEach((box) => {
+      box.dataset.spot = "1";
+      const rest = (box.dataset.rest || "0.5,0.5").split(",").map(Number);
+      let w = 1, h = 1, cx = 0, cy = 0, tx = 0, ty = 0, raf = null;
+      const measure = () => { const r = box.getBoundingClientRect(); w = r.width; h = r.height; return r; };
+      const restPoint = () => { measure(); return [rest[0] * w, rest[1] * h]; };
+      const paint = () => {
+        box.style.setProperty("--mx", cx.toFixed(1) + "px");
+        box.style.setProperty("--my", cy.toFixed(1) + "px");
+        box.style.setProperty("--px", ((w / 2 - cx) * 0.06).toFixed(1) + "px");
+        box.style.setProperty("--py", ((h / 2 - cy) * 0.06).toFixed(1) + "px");
+      };
+      const tick = () => {
+        cx += (tx - cx) * 0.11; cy += (ty - cy) * 0.11;
+        if (Math.abs(tx - cx) < 0.25 && Math.abs(ty - cy) < 0.25) { cx = tx; cy = ty; paint(); raf = null; return; }
+        paint(); raf = requestAnimationFrame(tick);
+      };
+      const go = () => { if (!raf) raf = requestAnimationFrame(tick); };
+      box.addEventListener("pointermove", (e) => { const r = measure(); tx = e.clientX - r.left; ty = e.clientY - r.top; box.classList.add("is-hot"); go(); });
+      box.addEventListener("pointerleave", () => { box.classList.remove("is-hot"); [tx, ty] = restPoint(); go(); });
+      addEventListener("resize", () => { if (!box.classList.contains("is-hot")) { [tx, ty] = restPoint(); go(); } });
+      [cx, cy] = restPoint(); [tx, ty] = [cx, cy]; paint();
+    });
+  }
+
   /* ---------------- landing page: hero chat card (the whole wizard, one question at a time) ---------------- */
   function mountHeroChat() {
     const box = document.getElementById("zh-hero-chat");
@@ -688,7 +718,7 @@
     render();
   }
 
-  const boot = () => { mountWizard(); mountLanding(); mountHeroChat(); };
+  const boot = () => { mountWizard(); mountLanding(); mountHeroChat(); mountSpotlights(); };
   boot();
   new MutationObserver(boot).observe(document.documentElement, { childList: true, subtree: true });
 })();
