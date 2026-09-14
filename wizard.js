@@ -1,4 +1,4 @@
-/* zerohash docs — setup wizard (/setup-wizard) and the landing page's "Generate custom guide" mode.
+/* zerohash docs: the setup wizard (/setup-wizard) and the landing page's hero card and backgrounds.
    Mintlify injects this file on every page; it only acts when its elements are present.
    Facts, endpoints and payloads come from the guides in docs/ — each guide section links to its source. */
 (function () {
@@ -78,16 +78,16 @@
         opts: [["usd","Dollars","zerohash converts the deposit to USD the moment it lands (1 USDC → $1, minus a small fee)."],["crypto","The asset itself","The deposit stays as the stablecoin or crypto they sent."]], src: "sdk-index" },
       { id: "style", type: "single", title: "How do you want to build the screens?", opts: [["sdk","Use zerohash's ready-made screens","Fastest. A drop-in flow that shows the address, QR code and receipts, in your colors."],["api","Build my own screens","You call the API and design every step yourself."]], src: "fund-overview" },
       { id: "auth", type: "single", title: "Should customers be able to connect their exchange or wallet?", plain: "This is called <b>AUTH</b>. Instead of copying an address into Coinbase or MetaMask, the customer connects their account and the transfer starts from inside your app. It also adds checks on where the money came from.",
-        opts: [["off","No — keep it simple","Customers send from any wallet to the address you show."],["on","Yes, add AUTH","Connect exchanges and wallets in-app."]], src: "auth" },
+        opts: [["off","No, keep it simple","Customers send from any wallet to the address you show."],["on","Yes, add AUTH","Connect exchanges and wallets in-app."]], src: "auth" },
       TOKENS_Q, NETWORKS_Q,
     ],
     trade: [
-      { id: "model", type: "multi", title: "How should trades be priced?", plain: "Start with a quote if you're unsure — it's the simpler integration and the right fit for most consumer apps.",
+      { id: "model", type: "multi", title: "How should trades be priced?", plain: "Start with a quote if you're unsure. It's the simpler integration and the right fit for most consumer apps.",
         opts: [["rfq","Firm quote (RFQ)","Ask for a price, show it, confirm within 30 seconds. Two API calls."],["clob","Order book (CLOB)","Place limit and market orders into a live order book. For trading platforms and high volume."]], src: "buysell" },
       { id: "tokens", type: "multi", title: "Which assets can customers trade?", selectAll: true, groups: [{ g: "Crypto", items: CRYPTO }, { g: "Stablecoins", items: [["USDC","USDC"]] }], src: "supported-instruments-1" },
     ],
     payouts: [
-      { id: "type", type: "single", title: "How much do you want to manage yourself?", opts: [["single","Keep it simple","One API call per payout; zerohash handles verification and wallet linking."],["modular","Control each step","Register the recipient, link their wallet and send as separate steps — for custom screens."]], src: "payouts" },
+      { id: "type", type: "single", title: "How much do you want to manage yourself?", opts: [["single","Keep it simple","One API call per payout; zerohash handles verification and wallet linking."],["modular","Control each step","Register the recipient, link their wallet and send as separate steps, for custom screens."]], src: "payouts" },
       { id: "bene", type: "multi", title: "Who will you pay?", opts: [["individual","People","Contractors, creators, sellers."],["entity","Businesses","Companies and LLCs."]], src: "new-payouts-api-integration-guide" },
       TOKENS_Q, NETWORKS_Q,
     ],
@@ -496,24 +496,7 @@
     render();
   }
 
-  /* ---------------- landing page: "Generate custom guide" mode ---------------- */
-  function mountLanding() {
-    const sec = document.querySelector(".zh-products");
-    if (!sec || sec.dataset.mounted) return;
-    sec.dataset.mounted = "1";
-    const toggle = sec.querySelector(".zh-guide-toggle"), cancel = sec.querySelector(".zh-guide-cancel"), cards = [...sec.querySelectorAll(".zh-card[data-product]")];
-    const selected = new Set();
-    const sync = () => {
-      cards.forEach(c => c.classList.toggle("on", selected.has(c.dataset.product)));
-      if (sec.classList.contains("is-select")) { toggle.textContent = selected.size ? `Continue with ${selected.size} product${selected.size > 1 ? "s" : ""} →` : "Select products to continue"; toggle.disabled = selected.size === 0; }
-      else { toggle.textContent = "Generate custom guide"; toggle.disabled = false; }
-    };
-    toggle.addEventListener("click", () => { if (!sec.classList.contains("is-select")) { sec.classList.add("is-select"); sync(); return; } if (selected.size) location.href = `/setup-wizard?products=${[...selected].join(",")}`; });
-    cancel && cancel.addEventListener("click", () => { sec.classList.remove("is-select"); selected.clear(); sync(); });
-    cards.forEach(c => c.addEventListener("click", (e) => { if (!sec.classList.contains("is-select")) return; e.preventDefault(); selected.has(c.dataset.product) ? selected.delete(c.dataset.product) : selected.add(c.dataset.product); c.setAttribute("aria-pressed", selected.has(c.dataset.product)); sync(); }));
-    sync();
-  }
-
+  
 
   /* Animated cover for the hero card: soft orbs drifting over a breathing dot lattice. */
   function paintCover(canvas, reduced) {
@@ -670,7 +653,7 @@
       }
 
       if (!current) {
-        bot(`That's everything — your guide is ready.`, `Directions and code for ${list(H.products.map(id => PRODUCTS.find(p => p.id === id).name), "and")}, in the order you'll do them.`);
+        bot(`That's everything. Your guide is ready.`, `Directions and code for ${list(H.products.map(id => PRODUCTS.find(p => p.id === id).name), "and")}, in the order you'll do them.`);
         const actions = el(`<div class="zh-chat-actions"><button type="button" class="zh-chat-back">Start over</button><a class="zh-btn zh-btn-primary" href="/setup-wizard">See my guide →</a></div>`);
         actions.querySelector("a").onclick = () => { S = JSON.parse(JSON.stringify(H)); S.step = stepList().length - 1; save(); };
         actions.querySelector(".zh-chat-back").onclick = () => { done.length = 0; H = JSON.parse(JSON.stringify(DEFAULT)); box.classList.remove("is-open", "is-active"); render(); };
@@ -718,7 +701,7 @@
     render();
   }
 
-  const boot = () => { mountWizard(); mountLanding(); mountHeroChat(); mountSpotlights(); };
+  const boot = () => { mountWizard(); mountHeroChat(); mountSpotlights(); };
   boot();
   new MutationObserver(boot).observe(document.documentElement, { childList: true, subtree: true });
 })();
