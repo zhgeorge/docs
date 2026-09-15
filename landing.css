@@ -198,6 +198,8 @@
 .zh-landing .zh-agent-item:hover { background: var(--zh-surface-2, #f0f1ec); }
 .dark .zh-landing .zh-agent-item:hover { background: #1b1d1b; }
 .zh-landing .zh-agent-item img { width: 18px; height: 18px; }
+/* the Codex and Cursor marks are solid black: flip them for the dark theme */
+.dark .zh-landing .zh-agent img[src*="codex"], .dark .zh-landing .zh-agent img[src*="cursor"] { filter: invert(1); }
 .zh-landing .zh-agent-item i { margin-left: auto; font-style: normal; color: var(--zh-muted); font-size: 13px; }
 .zh-landing .zh-agent-view { padding-left: 38px; color: var(--zh-muted); }
 .zh-landing .zh-agent-sep { height: 1px; margin: 5px 4px; background: var(--zh-hairline); }
