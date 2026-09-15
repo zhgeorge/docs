@@ -19,8 +19,53 @@
   const PAIRS = { USDC: ["ETH","BASE","SOL","POLYGON","ARBITRUM","OPTIMISM","AVAX","BSC","XLM"], USDT: ["TRX","ARBITRUM","OPTIMISM","BSC"], PYUSD: ["ETH","SOL"], EURC: ["ETH"] };
   const isStable = (t) => PAIRS[t] !== undefined;
   const hasStable = (a) => (a.tokens || []).some(isStable);
-  const TOKENS_Q = { id: "tokens", type: "multi", title: "Which tokens?", help: "Stablecoins are digital dollars (or euros) that hold a fixed value. Crypto assets move with the market.", selectAll: true, groups: [{ g: "Stablecoins", items: STABLE }, { g: "Crypto", items: CRYPTO }] };
-  const NETWORKS_Q = { id: "networks", type: "multi", title: "On which networks?", help: "A network is the blockchain a stablecoin travels on. Fees and speed differ; USDC on Base is a popular low-cost choice. Only the combinations zerohash supports will appear in your guide.", when: hasStable, selectAll: true, groups: [{ g: "Networks", items: NETWORKS }] };
+  const TRADE_TOKENS = [...CRYPTO, ["USDC", "USDC"]];
+  const CHAINS = [["ETH","Ethereum"],["AVAX","Avalanche"],["APT","Aptos"],["ARBITRUM","Arbitrum"],["OPTIMISM","Optimism"],["POLYGON","Polygon"],["CELO","Celo"],["SOL","Solana"]];
+  const netsFor = (tok) => NETWORKS.filter(([nw]) => (PAIRS[tok] || []).includes(nw));
+
+  /* Which assets a product's guide lets you add or remove. Nobody is asked about assets during
+     the questions: the guide starts on a sensible default and the chips there rewrite the code. */
+  const ASSET_DEFAULTS = {
+    fund: { tokens: ["USDC"], networks: ["BASE"] },
+    payouts: { tokens: ["USDC"], networks: ["SOL"] },
+    payins: { tokens: ["USDC"], networks: ["BASE"] },
+    trade: { tokens: ["BTC", "ETH"] },
+    ramps: { tokens: ["BTC"] },
+    saas: { tokens: ["BTC"] },
+    token: { chains: ["ETH"] },
+    va: { token: "USDC", network: "SOL" },
+  };
+  function assetFields(pid, a) {
+    if (pid === "fund" || pid === "payouts" || pid === "payins") return [
+      { key: "tokens", label: "Assets", kind: "multi", options: [...STABLE, ...CRYPTO] },
+      ...(hasStable(a) ? [{ key: "networks", label: "Networks", kind: "multi", options: NETWORKS.filter(([nw]) => (a.tokens || []).some(t => isStable(t) && PAIRS[t].includes(nw))) }] : []),
+    ];
+    if (pid === "trade" || pid === "ramps" || pid === "saas") return [{ key: "tokens", label: "Assets", kind: "multi", options: TRADE_TOKENS }];
+    if (pid === "token") return [{ key: "chains", label: "Networks", kind: "multi", options: CHAINS }];
+    if (pid === "va" && a.policy === "convert") return [
+      { key: "token", label: "Stablecoin", kind: "single", options: [["USDC","USDC"],["USDT","USDT (Tether)"],["PYUSD","PayPal USD"]] },
+      { key: "network", label: "Network", kind: "single", options: netsFor(a.token || "USDC") },
+    ];
+    return [];
+  }
+  /* Fill in defaults and drop combinations zerohash does not support. */
+  function seedAssets(pid) {
+    const a = ans(pid), d = ASSET_DEFAULTS[pid] || {};
+    for (const k in d) if (a[k] === undefined || (Array.isArray(a[k]) && !a[k].length)) a[k] = Array.isArray(d[k]) ? d[k].slice() : d[k];
+    if (Array.isArray(a.tokens) && Array.isArray(a.networks)) {
+      const fits = (nw) => a.tokens.some(t => isStable(t) && PAIRS[t].includes(nw));
+      if (!hasStable(a)) a.networks = [];
+      else {
+        a.networks = a.networks.filter(fits);
+        if (!a.networks.length) { const first = NETWORKS.map(([nw]) => nw).find(fits); if (first) a.networks = [first]; }
+      }
+    }
+    if (pid === "va" && a.policy === "convert") {
+      const ok = netsFor(a.token || "USDC").map(([nw]) => nw);
+      if (!ok.includes(a.network)) a.network = ok[0];
+    }
+    return a;
+  }
   function symbols(a, fallback) {
     const out = [];
     for (const t of a.tokens || []) {
@@ -79,21 +124,17 @@
       { id: "style", type: "single", title: "How do you want to build the screens?", opts: [["sdk","Use zerohash's ready-made screens","Fastest. A drop-in flow that shows the address, QR code and receipts, in your colors."],["api","Build my own screens","You call the API and design every step yourself."]], src: "fund-overview" },
       { id: "auth", type: "single", title: "Should customers be able to connect their exchange or wallet?", plain: "This is called <b>AUTH</b>. Instead of copying an address into Coinbase or MetaMask, the customer connects their account and the transfer starts from inside your app. It also adds checks on where the money came from.",
         opts: [["off","No, keep it simple","Customers send from any wallet to the address you show."],["on","Yes, add AUTH","Connect exchanges and wallets in-app."]], src: "auth" },
-      TOKENS_Q, NETWORKS_Q,
     ],
     trade: [
       { id: "model", type: "multi", title: "How should trades be priced?", plain: "Start with a quote if you're unsure. It's the simpler integration and the right fit for most consumer apps.",
         opts: [["rfq","Firm quote (RFQ)","Ask for a price, show it, confirm within 30 seconds. Two API calls."],["clob","Order book (CLOB)","Place limit and market orders into a live order book. For trading platforms and high volume."]], src: "buysell" },
-      { id: "tokens", type: "multi", title: "Which assets can customers trade?", selectAll: true, groups: [{ g: "Crypto", items: CRYPTO }, { g: "Stablecoins", items: [["USDC","USDC"]] }], src: "supported-instruments-1" },
     ],
     payouts: [
       { id: "type", type: "single", title: "How much do you want to manage yourself?", opts: [["single","Keep it simple","One API call per payout; zerohash handles verification and wallet linking."],["modular","Control each step","Register the recipient, link their wallet and send as separate steps, for custom screens."]], src: "payouts" },
       { id: "bene", type: "multi", title: "Who will you pay?", opts: [["individual","People","Contractors, creators, sellers."],["entity","Businesses","Companies and LLCs."]], src: "new-payouts-api-integration-guide" },
-      TOKENS_Q, NETWORKS_Q,
     ],
     payins: [
       { id: "role", type: "single", title: "Who is selling?", opts: [["self","We are","Your platform sells its own goods or services."],["psp","Other businesses on our platform","You're a payment provider; each merchant is registered separately."]], src: "payins-api-integration-guide" },
-      TOKENS_Q, NETWORKS_Q,
     ],
     bank: [
       { id: "model", type: "single", title: "How fast should bank deposits be usable?", plain: "Bank transfers (ACH) take 1–3 business days to settle. Faster options mean you front the money from a float balance you keep with zerohash.",
@@ -102,23 +143,18 @@
     ],
     va: [
       { id: "policy", type: "single", title: "When dollars arrive, what happens?", opts: [["hold","Hold them as a balance","The customer decides later whether to buy crypto or withdraw."],["convert","Convert and send on-chain","Dollars become a stablecoin and go to a wallet you've approved for that customer."]], src: "create-a-virtual-account" },
-      { id: "token", type: "single", title: "Convert into which stablecoin?", when: a => a.policy === "convert", opts: [["USDC","USDC",""],["USDT","USDT",""],["PYUSD","PayPal USD",""]], src: "create-a-virtual-account" },
-      { id: "network", type: "single", title: "On which network?", when: a => a.policy === "convert", opts: [["SOL","Solana",""],["ETH","Ethereum",""],["BASE","Base",""],["POLYGON","Polygon",""]], src: "create-a-virtual-account" },
     ],
     ramps: [
       { id: "dir", type: "multi", title: "Which way should money go?", opts: [["on","Dollars → crypto (on-ramp)","Customer pays in dollars; crypto lands in their own wallet."],["off","Crypto → dollars (off-ramp)","Customer sends crypto; they get dollars."]], src: "on-off-ramps" },
-      { id: "tokens", type: "multi", title: "Which assets?", selectAll: true, groups: [{ g: "Crypto", items: CRYPTO }, { g: "Stablecoins", items: [["USDC","USDC"]] }], src: "on-ramp-integration-guide" },
     ],
     staking: [
       { id: "asset", type: "single", title: "Which asset?", opts: [["ETH","Ethereum (ETH)","Available now."],["SOL","Solana (SOL)","Coming Q4 2026."]], src: "staking" },
     ],
     saas: [
       { id: "model", type: "single", title: "What's your role in the trade?", opts: [["agency","Middleman","You match a buyer and a seller and take no risk yourself."],["principal","Counterparty","You buy and sell with your own balance sheet."]], src: "settlements-as-a-service" },
-      { id: "tokens", type: "multi", title: "Which assets will you settle?", selectAll: true, groups: [{ g: "Crypto", items: CRYPTO }, { g: "Stablecoins", items: [["USDC","USDC"]] }], src: "settlements-as-a-service-integration-guide" },
     ],
     token: [
       { id: "kind", type: "single", title: "What kind of token?", opts: [["fungible","A currency-like token","A stablecoin or security. Many identical units."],["nft","Unique tokens (NFTs)","Each token represents one specific asset, like a loan."]], src: "tokenization-engine" },
-      { id: "chains", type: "multi", title: "On which networks?", selectAll: true, opts: [["ETH","Ethereum",""],["AVAX","Avalanche",""],["APT","Aptos",""],["ARBITRUM","Arbitrum",""],["OPTIMISM","Optimism",""],["POLYGON","Polygon",""],["CELO","Celo",""],["SOL","Solana",""]], src: "tokenization-engine" },
     ],
   };
   const PAGE_TITLES = { "fund-overview": "Account Funding", "sdk-index": "Available SDKs", "auth": "AUTH", "buysell": "Buy/Sell", "usdc-trading-pairs": "USDC Trading Pairs", "submit-and-execute-quotes": "Request and Execute Quotes", "spreads-and-fees": "Spreads and Fees", "supported-instruments-1": "Supported Instruments (RFQ)", "payouts": "Payouts", "modular-payouts": "Modular Payouts", "new-payouts-api-integration-guide": "Single API Call Payouts guide", "payins-api-integration-guide": "Payins API guide", "payins-integration-guide": "Payins SDK guide", "funding-models": "Funding Models", "bank-account-linking": "Bank Account Linking", "fiat": "Bank Rails", "create-a-virtual-account": "Create and Use Virtual Accounts", "on-off-ramps": "On & Off Ramps", "off-ramp-integration-guide": "Off Ramp guide", "on-ramp-integration-guide": "On Ramp guide", "staking": "Staking", "settlements-as-a-service": "Settlements as a Service", "settlements-as-a-service-integration-guide": "Settlements as a Service guide", "tokenization-engine": "Tokenization Engine", "account-setup-1": "Account Setup & Funding Models" };
@@ -324,7 +360,7 @@
     phases.push(onb);
 
     let n = 3;
-    for (const pid of PRODUCT_IDS.filter(id => S.products.includes(id))) { const ph = PRODUCT_PHASE[pid](ans(pid), { h, R, link, ref }); ph.eyebrow = `Phase ${n++}`; phases.push(ph); }
+    for (const pid of PRODUCT_IDS.filter(id => S.products.includes(id))) { const ph = PRODUCT_PHASE[pid](seedAssets(pid), { h, R, link, ref }); ph.eyebrow = `Phase ${n++}`; ph.pid = pid; phases.push(ph); }
     return phases;
   }
 
@@ -450,17 +486,59 @@
   function copy(text, msg) { navigator.clipboard.writeText(text).then(() => toast(msg || "Copied")).catch(() => toast("Couldn't copy — select the text instead")); }
   let toastT; function toast(m) { const t = $(".toast"); t.textContent = m; t.classList.add("show"); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove("show"), 1600); }
 
+  /* Chips inside a guide phase: adding or removing an asset rewrites that phase's text and code. */
+  function assetPanel(pid) {
+    const a = ans(pid), fields = assetFields(pid, a);
+    if (!fields.length) return null;
+    const box = el(`<div class="assets"><p class="assets-title">Assets in this phase<span class="assets-hint">Add or remove to rewrite the steps and code below. Only combinations zerohash supports appear here.</span></p></div>`);
+    for (const f of fields) {
+      const row = el(`<div class="afield"><p class="alabel">${esc(f.label)}</p><div class="chips"></div></div>`);
+      const chips = row.querySelector(".chips");
+      const onCount = f.kind === "single" ? 1 : f.options.filter(([v]) => (a[f.key] || []).includes(v)).length;
+      for (const [val, label] of f.options) {
+        const on = f.kind === "single" ? a[f.key] === val : (a[f.key] || []).includes(val);
+        const last = on && onCount === 1;
+        const c = el(`<button type="button" class="chip ${on ? "on" : ""} ${last ? "locked" : ""}" aria-pressed="${on}"${last ? ' title="Keep at least one"' : ""}>${esc(label)}${label !== val ? `<span class="sym">${esc(val)}</span>` : ""}</button>`);
+        c.onclick = () => {
+          if (last) return;
+          if (f.kind === "single") { if (a[f.key] === val) return; a[f.key] = val; }
+          else {
+            const cur = a[f.key] || [];
+            a[f.key] = cur.includes(val) ? cur.filter(x => x !== val) : [...cur, val];
+          }
+          save(); refreshGuide();
+        };
+        chips.append(c);
+      }
+      box.append(row);
+    }
+    return box;
+  }
+
+  /* Rebuild the guide without losing the reader's place or the code blocks they opened. */
+  function refreshGuide() {
+    const main = $(".main"), old = main.querySelector("section");
+    if (!old) { render(); return; }
+    const opened = [...main.querySelectorAll(".codewrap")].map(w => !w.classList.contains("collapsed"));
+    const y = window.scrollY;
+    main.replaceChild(viewGuide(), old);
+    const wraps = [...main.querySelectorAll(".codewrap")];
+    if (wraps.length === opened.length) wraps.forEach((w, i) => { if (opened[i]) w.querySelector(".show").click(); });
+    window.scrollTo({ top: y });
+  }
+
   function viewGuide() {
     const phases = buildGuide(), R = REG();
     const v = el(`<section>
       <div class="guide-head"><div><p class="eyebrow">Your guide</p><p class="h1">Here's what to build</p></div><button type="button" class="btn small copymd">Copy as Markdown</button></div>
-      <p class="lede">${phases.length} phases, in the order you'll do them. Read the steps first; the code is there when you're ready — tap <b>Show code</b>. Where zerohash needs to set something up for you, the step says so.</p>
+      <p class="lede">${phases.length} phases, in the order you'll do them. Read the steps first; the code is there when you're ready — tap <b>Show code</b>. Where zerohash needs to set something up for you, the step says so. Change the assets in a phase and its steps and code follow.</p>
       <div class="summary"></div><div class="phases"></div></section>`);
     const sum = v.querySelector(".summary");
     [["Region", R.name], ["Sandbox", host().replace("https://", "")], ["Verification", S.kyc === "sdk" ? "by zerohash" : "your own"], ...S.products.map(p => ["Product", PRODUCTS.find(x => x.id === p).name])].forEach(([k, val]) => sum.append(el(`<span class="pill">${esc(k)} <b>${esc(val)}</b></span>`)));
     const box = v.querySelector(".phases");
     phases.forEach((ph) => {
       const sec = el(`<section class="phase"><p class="phase-eyebrow">${esc(ph.eyebrow)}</p><p class="h2">${esc(ph.title)}</p>${ph.intro ? `<p class="intro">${ph.intro}</p>` : ""}</section>`);
+      if (ph.pid) { const panel = assetPanel(ph.pid); if (panel) sec.append(panel); }
       ph.steps.forEach((st, i) => {
         const g = el(`<div class="gstep"><div class="n">${i + 1}</div><div><p class="h3">${esc(st.title)}</p>${st.html || ""}</div></div>`);
         const body = g.children[1];
