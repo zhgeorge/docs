@@ -527,12 +527,52 @@
     window.scrollTo({ top: y });
   }
 
+  /* A deep link carries a short brief, not the whole guide: the schemes below are URLs, and a
+     full guide is far too long for one. The agent reads /agents.md for the grounding it needs. */
+  function agentPrompt(phases) {
+    const host = location.host;
+    // the guide talks to the reader ("you build the screens"); the brief is the reader talking
+    const ours = (t) => t.replace(/\byourself\b/gi, "ourselves").replace(/\bYou\b/g, "We").replace(/\byou\b/g, "we").replace(/\byour\b/gi, "our");
+    const lines = phases.filter(ph => ph.pid).map(ph => `- ${ph.title}: ${ours(strip(ph.intro || "").replace(/\s+/g, " "))}`);
+    const head = `Use curl to read ${host}/agents.md, then help me build this zerohash integration.\n\nRegion: ${REG().name} (start in Cert). Customer verification: ${S.kyc === "sdk" ? "zerohash does KYC with its ready-made screen" : "we verify customers ourselves and pass zerohash the results"}.\n\nWhat I am building:\n`;
+    const tail = `\nWork through agents.md in order. Stop and tell me when something needs zerohash to provision access or approve a key.`;
+    const full = head + lines.join("\n") + tail;
+    if (full.length <= 4000) return full;
+    return head + phases.filter(ph => ph.pid).map(ph => `- ${ph.title}`).join("\n") + tail;
+  }
+
+  function agentButton(phases) {
+    const box = el(`<div class="agentbtn">
+      <button type="button" class="btn small agent-main" title="Copy this guide as Markdown"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg><span class="agent-label">Copy as Markdown</span><span class="agent-icons" aria-hidden="true"><img src="/images/agents/claude.png" alt=""><img src="/images/agents/codex.svg" alt=""><img src="/images/agents/cursor.png" alt=""></span></button>
+      <button type="button" class="btn small agent-more" aria-haspopup="menu" aria-expanded="false" aria-label="Open this guide in an agent"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>
+      <div class="agent-menu" role="menu" hidden>
+        <a role="menuitem" class="agent-item" data-agent="claude" href="/agents"><img src="/images/agents/claude.png" alt=""><span>Open in Claude Code</span><i>↗</i></a>
+        <a role="menuitem" class="agent-item" data-agent="codex" href="/agents"><img src="/images/agents/codex.svg" alt=""><span>Open in Codex</span><i>↗</i></a>
+        <a role="menuitem" class="agent-item" data-agent="cursor" href="/agents"><img src="/images/agents/cursor.png" alt=""><span>Open in Cursor</span><i>↗</i></a>
+        <div class="agent-sep"></div>
+        <a role="menuitem" class="agent-item agent-view" href="/agents" target="_blank" rel="noopener"><span>View agents.md</span><i>↗</i></a>
+      </div>
+    </div>`);
+    const enc = encodeURIComponent(agentPrompt(phases));
+    const links = { claude: `claude-cli://open?q=${enc}`, codex: `codex://new?prompt=${enc}`, cursor: `cursor://anysphere.cursor-deeplink/prompt?text=${enc}` };
+    box.querySelectorAll("[data-agent]").forEach(a => { a.href = links[a.dataset.agent]; });
+    const main = box.querySelector(".agent-main"), more = box.querySelector(".agent-more"), menu = box.querySelector(".agent-menu");
+    const open = (on) => { menu.hidden = !on; more.setAttribute("aria-expanded", String(on)); };
+    main.onclick = () => { copy(toMarkdown(phases), "Guide copied as Markdown"); box.classList.add("is-copied"); setTimeout(() => box.classList.remove("is-copied"), 1600); };
+    more.onclick = (e) => { e.stopPropagation(); open(menu.hidden); };
+    menu.onclick = () => open(false);
+    document.addEventListener("click", (e) => { if (!box.contains(e.target)) open(false); });
+    document.addEventListener("keydown", (e) => { if (e.key === "Escape") open(false); });
+    return box;
+  }
+
   function viewGuide() {
     const phases = buildGuide(), R = REG();
     const v = el(`<section>
-      <div class="guide-head"><div><p class="eyebrow">Your guide</p><p class="h1">Here's what to build</p></div><button type="button" class="btn small copymd">Copy as Markdown</button></div>
+      <div class="guide-head"><div><p class="eyebrow">Your guide</p><p class="h1">Here's what to build</p></div></div>
       <p class="lede">${phases.length} phases, in the order you'll do them. Read the steps first; the code is there when you're ready — tap <b>Show code</b>. Where zerohash needs to set something up for you, the step says so. Change the assets in a phase and its steps and code follow.</p>
       <div class="summary"></div><div class="phases"></div></section>`);
+    v.querySelector(".guide-head").append(agentButton(phases));
     const sum = v.querySelector(".summary");
     [["Region", R.name], ["Sandbox", host().replace("https://", "")], ["Verification", S.kyc === "sdk" ? "by zerohash" : "your own"], ...S.products.map(p => ["Product", PRODUCTS.find(x => x.id === p).name])].forEach(([k, val]) => sum.append(el(`<span class="pill">${esc(k)} <b>${esc(val)}</b></span>`)));
     const box = v.querySelector(".phases");
@@ -549,11 +589,11 @@
       if (ph.config && ph.config.length) sec.append(el(`<p class="setup-note">Your zerohash contact sets this up with you: ${esc(sentence(ph.config))}.</p>`));
       box.append(sec);
     });
-    v.querySelector(".copymd").onclick = () => copy(toMarkdown(phases), "Guide copied as Markdown");
     return v;
   }
+  const strip = (h) => h.replace(/<br\s*\/?>/g, "\n").replace(/<li>/g, "\n- ").replace(/<[^>]+>/g, "").replace(/&quot;/g, '"').replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/\n{3,}/g, "\n\n").trim();
+
   function toMarkdown(phases) {
-    const strip = (h) => h.replace(/<br\s*\/?>/g, "\n").replace(/<li>/g, "\n- ").replace(/<[^>]+>/g, "").replace(/&quot;/g, '"').replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/\n{3,}/g, "\n\n").trim();
     let md = `# zerohash setup guide\n\nRegion: ${REG().name} · Sandbox: ${host()}\nProducts: ${S.products.map(p => PRODUCTS.find(x => x.id === p).name).join(", ")}\n\n`;
     for (const ph of phases) {
       md += `## ${ph.eyebrow} — ${ph.title}\n\n${ph.intro ? strip(ph.intro) + "\n\n" : ""}`;

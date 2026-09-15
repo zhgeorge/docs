@@ -111,6 +111,29 @@
 .zh-wiz .btn.small { padding: 6px 11px; font-size: 13px; border-radius: 8px; }
 .zh-wiz .hint { font-size: 13px; color: var(--w-muted); }
 
+/* "Copy as Markdown" split button: copy the guide, or open it in an agent (mirrors the landing hero) */
+.zh-wiz .agentbtn { position: relative; display: inline-flex; align-items: stretch; }
+.zh-wiz .agentbtn .btn { display: inline-flex; align-items: center; gap: 8px; }
+.zh-wiz .agentbtn .btn:hover:not(:disabled) { transform: none; box-shadow: none; border-color: var(--w-hair-strong); }
+.zh-wiz .agent-main { border-radius: 8px 0 0 8px; }
+.zh-wiz .agent-more { border-radius: 0 8px 8px 0; margin-left: -1.5px; padding: 6px 8px; }
+.zh-wiz .agent-more[aria-expanded="true"], .zh-wiz .agentbtn.is-copied .agent-main { border-color: var(--w-green); }
+.zh-wiz .agentbtn.is-copied .agent-label { color: var(--w-green); }
+.zh-wiz .agent-main svg { color: var(--w-muted); flex: 0 0 auto; }
+.zh-wiz .agent-icons { display: inline-flex; align-items: center; gap: 5px; padding-left: 8px; border-left: 1px solid var(--w-hair); }
+.zh-wiz .agent-icons img { width: 15px; height: 15px; display: block; }
+.zh-wiz .agent-menu {
+  position: absolute; top: calc(100% + 7px); right: 0; z-index: 30; min-width: 224px;
+  padding: 6px; border-radius: 12px; background: var(--w-surface);
+  border: 1.5px solid var(--w-hair); box-shadow: var(--w-shadow);
+}
+.zh-wiz .agent-item { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 8px; font-size: 13.5px; font-weight: 500; color: var(--w-ink); text-decoration: none; }
+.zh-wiz .agent-item:hover { background: var(--w-tint); }
+.zh-wiz .agent-item img { width: 17px; height: 17px; }
+.zh-wiz .agent-item i { margin-left: auto; font-style: normal; font-size: 12.5px; color: var(--w-muted); }
+.zh-wiz .agent-view { padding-left: 37px; color: var(--w-muted); }
+.zh-wiz .agent-sep { height: 1px; margin: 5px 4px; background: var(--w-hair); }
+
 /* guide */
 .zh-wiz .guide-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; margin-bottom: 8px; }
 .zh-wiz .summary { display: flex; flex-wrap: wrap; gap: 8px; margin: 18px 0 30px; }
