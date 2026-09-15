@@ -249,12 +249,12 @@
       <p class="lede">These decide which zerohash entity you work with and how your customers get verified.</p>
       <div class="q"><p class="h2">Where are you based?</p><div class="body"></div></div>
       <div class="q"><p class="h2">Who are your customers?</p><p class="q-help">Pick as many as you like.</p><div class="body"></div></div>
-      <div class="q"><p class="h2">Who verifies your customers' identity (KYC)?</p><p class="q-help">Every customer must be identity-checked before they can transact. Most platforms let zerohash do it.</p><div class="body"></div></div>
+      <div class="q"><p class="h2">Who do you expect to verify your customer's identity?</p><p class="q-help">Every customer must be identity-checked before they can transact. Most platforms let zerohash do it.</p><div class="body"></div></div>
     </section>`);
     const bodies = v.querySelectorAll(".body");
     bodies[0].replaceWith(singleCards([["us","United States","zerohash LLC"],["eu","European Union","zerohash europe B.V., licensed by the Dutch AFM"]], S.region, (val) => { S.region = val; render(); }));
     bodies[1].replaceWith(multiCards([["individuals","People",""],["businesses","Businesses",""]], S.customers, (sel) => { S.customers = sel; render(); }));
-    bodies[2].replaceWith(singleCards([["sdk","zerohash does it","A ready-made verification screen you drop into your app. zerohash handles the checks and any manual review."],["api","We already verify customers","You pass zerohash the results. Needs approval from zerohash."]], S.kyc, (val) => { S.kyc = val; render(); }));
+    bodies[2].replaceWith(singleCards([["sdk","zerohash","A ready-made verification screen you drop into your app. zerohash handles the checks and any manual review."],["api","Ourselves","You verify customers yourself and pass zerohash the results. Needs approval from zerohash."]], S.kyc, (val) => { S.kyc = val; render(); }));
     return v;
   }
 
@@ -620,7 +620,7 @@
         { key: "products", kind: "multi", title: "Which products are you interested in?", opts: PRODUCTS.map(p => [p.id, p.name]), get: () => H.products, set: v => { H.products = v; } },
         { key: "region", kind: "single", title: "Where is your platform based?", opts: [["us", "United States"], ["eu", "European Union"]], get: () => H.region, set: v => { H.region = v; } },
         { key: "customers", kind: "multi", title: "Who are your customers?", opts: [["individuals", "People"], ["businesses", "Businesses"]], get: () => H.customers, set: v => { H.customers = v; } },
-        { key: "kyc", kind: "single", title: "Who verifies your customers' identity (KYC)?", hint: "Most platforms let zerohash do it with a ready-made screen.", opts: [["sdk", "zerohash does it"], ["api", "We already verify customers"]], get: () => H.kyc, set: v => { H.kyc = v; } },
+        { key: "kyc", kind: "single", title: "Who do you expect to verify your customer's identity?", hint: "Most platforms let zerohash do it with a ready-made screen.", opts: [["sdk", "zerohash"], ["api", "Ourselves"]], get: () => H.kyc, set: v => { H.kyc = v; } },
       ];
       for (const pid of PRODUCT_IDS.filter(id => H.products.includes(id))) {
         const p = PRODUCTS.find(x => x.id === pid), a = hAns(pid);
