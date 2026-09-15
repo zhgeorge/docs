@@ -43,7 +43,8 @@
 .zh-landing .zh-hero {
   position: relative;
   padding: 92px 0 72px;
-  overflow: hidden;
+  /* not clipped: the agent menu opens past the bottom edge. The background layers are
+     inset to this box anyway, so there is nothing here that needs clipping. */
 }
 
 /* ---- pointer-tracking background: a grid revealed around the cursor and a glow that follows it.
