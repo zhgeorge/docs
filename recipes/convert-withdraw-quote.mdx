@@ -1,0 +1,182 @@
+---
+title: "Convert Withdraw Quote"
+description: "Learn how to get a quote to the zerohash convert withdraw product."
+---
+
+<Steps>
+  <Step title="Underlying Asset">
+    Select the asset that you are getting a quote for purchase and withdrawal.
+
+    ```python Python
+    'underlying' : 'USDC' ,
+    ```
+
+  </Step>
+
+  <Step title="Quoted Currency">
+    Select the quoted currency you will purchase the asset with.
+
+    ```python Python
+    'quoted_currency' : 'USD',
+    ```
+
+  </Step>
+
+  <Step title="Side">
+    Convert withdraw only supports `buy` quotes.
+
+  </Step>
+
+  <Step title="Total">
+    The total value in `quoted_currency` the end user is obtaining a quote for.
+
+    ```python Python
+    'total' : '20',
+    ```
+
+  </Step>
+
+  <Step title="Withdrawal Address">
+    Enter an address that your purchased asset will be withdrawn to upon execution
+
+    ```python Python
+    'withdrawal_address': '0xd3c5967d94d79F17bDc493401c33f7e8897c5f81',
+    ```
+
+  </Step>
+
+  <Step title="Participant Code">
+    Enter the `participant_code` for the participant requesting a quote.
+
+    ```python Python
+    'participant_code': 'NSTMF1',
+    ```
+
+  </Step>
+
+  <Step title="Spread">
+    Define a basis point spread that will be added to the quote for platforms commission capture.
+
+    ```python Python
+    'spread': '100',
+    ```
+
+  </Step>
+
+</Steps>
+
+## Full example
+
+```python Python
+import hmac
+import hashlib
+import json
+from base64 import b64decode, b64encode
+from datetime import datetime
+from typing import Any, Dict, Optional
+from urllib.parse import urljoin, urlencode
+import time
+
+import requests
+from logging import getLogger
+
+BASE_URL = 'BASE_URL'
+API_PUBLIC_KEY = "API_PUBLIC_KEY"
+API_PRIVATE_KEY = "API_PRIVATE_KEY"
+PASSPHRASE = "PASSPHRASE"
+
+def sign_request(api_private_key: str, method: str,resource_path: str, json_body: str, timestamp: str) -> bytes:
+    msg = bytes(timestamp + method + resource_path + json_body,encoding='utf-8')
+    hm = hmac.new(key=b64decode(api_private_key),msg=msg,digestmod=hashlib.sha256)
+
+    return b64encode(hm.digest()).decode()
+
+def build_headers() -> Dict[str, Any]:
+    timestamp = str(int(datetime.now().timestamp()))
+
+    return {
+        'X-SCX-API-KEY': API_PUBLIC_KEY,
+        'X-SCX-SIGNED': '<to be filled>', # PLEASE NOTE: will be auto filled below
+        'X-SCX-TIMESTAMP': timestamp,
+        'X-SCX-PASSPHRASE': PASSPHRASE
+    }
+
+def send_signed_http_request(method: str, resource_path: str, body: Optional[Dict[str, str]] = None) -> requests.Response:
+    if body is None:
+        body = {}
+        
+    headers = build_headers()
+    json_body = json.dumps(body, separators=(',', ':'))
+    signature = sign_request(
+        API_PRIVATE_KEY,
+        method,
+        resource_path,
+        json_body,
+        headers['X-SCX-TIMESTAMP']
+    )
+    headers['X-SCX-SIGNED'] = signature
+
+    absolute_url = urljoin(BASE_URL, resource_path)
+
+    request_args = {
+        'method': method,
+        'url': absolute_url,
+        'headers': headers
+    }
+    if body:
+        request_args['data'] = json_body
+        headers['Content-Type'] = 'application/json'
+
+    response = requests.request(**request_args)
+
+    return json.loads(response.text)
+
+
+
+if __name__ == '__main__':
+    params = {
+        'underlying' : 'USDC' , 
+        'quoted_currency' : 'USD', 
+        'side': 'buy',
+        'total' : '20',
+        'withdrawal_address': '0xd3c5967d94d79F17bDc493401c33f7e8897c5f81',
+        'participant_code': 'NSTMF1',
+        'spread': '100',
+    }
+    rfq_quote = send_signed_http_request(
+        'GET', 
+        f'/convert_withdraw/rfq?{urlencode(params)}', 
+        {}
+    )
+```
+
+## Response
+
+```json Response
+{
+  "message": {
+    "request_id": "5e3c31c2-0a5f-4a6e-bd8e-e96b2feb21aa",
+    "participant_code": "R6WI2F",
+    "quoted_currency": "USD",
+    "side": "buy",
+    "quantity": "19.8",
+    "price": "1.0101010101010101",
+    "quote_id": "7cce2d7c-aa2f-483e-9d04-1ae26401c53c",
+    "expire_ts": 1712861462344,
+    "account_group": "00SCXM",
+    "account_label": "general",
+    "obo_participant": {
+      "participant_code": "NSTMF1",
+      "account_group": "R6WI2F",
+      "account_label": "general"
+    },
+    "network_fee_notional": "0.34",
+    "network_fee_quantity": "0.000094",
+    "total_notional": "20.34",
+    "underlying": "USDC.ETH",
+    "asset_cost_notional": "20",
+    "spread_notional": "0.2",
+    "spread_bps": "100"
+  }
+}
+```

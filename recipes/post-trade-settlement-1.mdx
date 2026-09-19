@@ -1,0 +1,249 @@
+---
+title: "Post Trade Settlement"
+description: "How to send a trade for settlement."
+---
+
+<Steps>
+  <Step title="Enter trade details">
+    We add data to the trade object to be submitted and settlement details.
+
+    ```python Python
+    "client_trade_id": "f2f14251-e296-42ac-9bc7-01c9186b9219",
+    "trade_state": "terminated",
+    "market_identifier_code": "TEST",
+    "trade_reporter": "reporter@mail.com",
+    "reporting_party": "SGC7CQ",
+    "settlement_schedule": "ABCDEF",
+    "symbol": "BTC/USD",
+    "trade_quantity": "1.0",
+    "trade_price": "10000.000000",
+    "trade_type": "regular",
+    "physical_delivery": true,
+    "comment": "Some comments about the trade for Zero Hash to store",
+    "contract_size": 1,
+    "bank_fee": "1.00",
+    "underlying": "BTC",
+    "quoted_currency": "USD",
+    "platform_code": "00TEST",
+    "product_type": "spot",
+    "parties_anonymous": true,
+    "parties": [
+    ```
+
+  </Step>
+
+  <Step title="Add parties to trade">
+    We define the parties and participants associated with the trade.
+
+    ```python Python
+    {
+      "participant_code": "PKOHXY",
+      "side": "buy",
+      "asset": "BTC",
+      "amount": "1.0",
+      "settling": true
+    },
+    {
+      "participant_code": "S1I5ED",
+      "side": "sell",
+      "asset": "USD",
+      "amount": "4000.0000",
+      "settling": true
+    }
+    ```
+
+  </Step>
+
+  <Step title="Submit trade">
+    Send the trade object to the POST /trades endpoint to submit the trade.
+
+    ```python Python
+    submit_trade = send_signed_http_request(
+        'POST', 
+        f'/trades', 
+        body
+    )
+    ```
+
+  </Step>
+
+</Steps>
+
+## Full example
+
+```python Python
+import hmac
+import hashlib
+import json
+from base64 import b64decode, b64encode
+from datetime import datetime
+from typing import Any, Dict, Optional
+from urllib.parse import urljoin, urlencode
+import time
+
+import requests
+from logging import getLogger
+
+BASE_URL = 'BASE_URL'
+API_PUBLIC_KEY = "API_PUBLIC_KEY"
+API_PRIVATE_KEY = "API_PRIVATE_KEY"
+PASSPHRASE = "PASSPHRASE"
+
+def sign_request(api_private_key: str, method: str,resource_path: str, json_body: str, timestamp: str) -> bytes:
+    msg = bytes(timestamp + method + resource_path + json_body,encoding='utf-8')
+    hm = hmac.new(key=b64decode(api_private_key),msg=msg,digestmod=hashlib.sha256)
+
+    return b64encode(hm.digest()).decode()
+
+def build_headers() -> Dict[str, Any]:
+    timestamp = str(int(datetime.now().timestamp()))
+
+    return {
+        'X-SCX-API-KEY': API_PUBLIC_KEY,
+        'X-SCX-SIGNED': '<to be filled>', # PLEASE NOTE: will be auto filled below
+        'X-SCX-TIMESTAMP': timestamp,
+        'X-SCX-PASSPHRASE': PASSPHRASE
+    }
+
+def send_signed_http_request(method: str, resource_path: str, body: Optional[Dict[str, str]] = None) -> requests.Response:
+    if body is None:
+        body = {}
+        
+    headers = build_headers()
+    json_body = json.dumps(body, separators=(',', ':'))
+    signature = sign_request(
+        API_PRIVATE_KEY,
+        method,
+        resource_path,
+        json_body,
+        headers['X-SCX-TIMESTAMP']
+    )
+    headers['X-SCX-SIGNED'] = signature
+
+    absolute_url = urljoin(BASE_URL, resource_path)
+
+    request_args = {
+        'method': method,
+        'url': absolute_url,
+        'headers': headers
+    }
+    if body:
+        request_args['data'] = json_body
+        headers['Content-Type'] = 'application/json'
+
+    response = requests.request(**request_args)
+
+    return json.loads(response.text)
+
+
+
+if __name__ == '__main__':
+  body = {
+      "client_trade_id": "f2f14251-e296-42ac-9bc7-01c9186b9219",
+      "trade_state": "terminated",
+      "market_identifier_code": "TEST",
+      "trade_reporter": "reporter@mail.com",
+      "reporting_party": "SGC7CQ",
+      "settlement_schedule": "ABCDEF",
+      "symbol": "BTC/USD",
+      "trade_quantity": "1.0",
+      "trade_price": "10000.000000",
+      "trade_type": "regular",
+      "physical_delivery": true,
+      "comment": "Some comments about the trade for Zero Hash to store",
+      "contract_size": 1,
+      "bank_fee": "1.00",
+      "underlying": "BTC",
+      "quoted_currency": "USD",
+      "platform_code": "00TEST",
+      "product_type": "spot",
+      "parties_anonymous": true,
+      "parties": [
+        {
+          "participant_code": "PKOHXY",
+          "side": "buy",
+          "asset": "BTC",
+          "amount": "1.0",
+          "settling": true
+        },
+        {
+          "participant_code": "S1I5ED",
+          "side": "sell",
+          "asset": "USD",
+          "amount": "4000.0000",
+          "settling": true
+        }
+      ]
+    }
+
+    submit_trade = send_signed_http_request(
+        'POST', 
+        f'/trades', 
+        body
+    )
+	print(submit_trade)
+```
+
+## Response
+
+```json Response
+{
+  "message": {
+    "trade_id": "92616fce-31d3-465a-af01-0fb5d2dc4d40",
+    "client_trade_id": "f2f14251-e296-42ac-9bc7-01c9186b9219",
+    "session_id": "20190801000000",
+    "trade_state": "terminated",
+    "market_identifier_code": "TEST",
+    "trade_reporter": "reporter@mail.com",
+    "reporting_party": "SGC7CQ",
+    "settlement_schedule": "ABCDEF",
+    "symbol": "BTC/USD",
+    "trade_quantity": "1.0",
+    "trade_price": "10000.000000",
+    "trade_type": "regular",
+    "physical_delivery": true,
+    "comment": "Some comments about the trade for Zero Hash to store",
+    "settlement_timestamp": 1575849302321,
+    "transaction_timestamp": 1575849302321,
+    "accepted_timestamp": 1564686909724,
+    "settled_timestamp": null,
+    "defaulted_timestamp": null,
+    "contract_size": 1,
+    "bank_fee": "1.00",
+    "underlying": "BTC",
+    "quoted_currency": "USD",
+    "platform_code": "00TEST",
+    "product_type": "spot",
+    "parties_anonymous": true,
+    "last_update": 1564686909724,
+    "parties": [
+      {
+        "participant_code": "PKOHXY",
+        "side": "buy",
+        "asset": "BTC",
+        "amount": "1.0",
+        "liquidity_indicator": null,
+        "execution_id": null,
+        "order_id": null,
+        "current_obligations_met_timestamp": 1564686909724,
+        "obligations_outstanding_timestamp": 1564686909724,
+        "client_order_id": null,
+        "settling": true
+      },
+      {
+        "participant_code": "S1I5ED",
+        "side": "sell",
+        "asset": "USD",
+        "amount": "4000.0000",
+        "liquidity_indicator": null,
+        "execution_id": null,
+        "order_id": null,
+        "current_obligations_met_timestamp": 1564686909724,
+        "obligations_outstanding_timestamp": 1564686909724,
+        "client_order_id": null,
+        "settling": true
+      }
+    ]
+  }
+}
+```

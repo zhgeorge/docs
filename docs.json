@@ -12,11 +12,24 @@
     "light": "#3ecf8e",
     "dark": "#0b7a54"
   },
+  "icons": {
+    "library": "lucide"
+  },
   "navbar": {
     "primary": {
       "type": "button",
       "label": "Get Access",
       "href": "mailto:sales@zerohash.com"
+    }
+  },
+  "background": {
+    "color": {
+      "dark": "#1C1B1C"
+    }
+  },
+  "api": {
+    "playground": {
+      "display": "simple"
     }
   },
   "navigation": {
@@ -626,6 +639,49 @@
         ]
       },
       {
+        "tab": "Recipes",
+        "groups": [
+          {
+            "group": "Overview",
+            "pages": [
+              "recipes/overview"
+            ]
+          },
+          {
+            "group": "REST API",
+            "pages": [
+              "recipes/rest-api-authentication-1",
+              "recipes/liquidity-quote",
+              "recipes/convert-withdraw-quote",
+              "recipes/fund-get-transactions",
+              "recipes/post-trade-settlement-1"
+            ]
+          },
+          {
+            "group": "Realtime and webhooks",
+            "pages": [
+              "recipes/websocket-authentication",
+              "recipes/webhook-signatures"
+            ]
+          },
+          {
+            "group": "SDKs",
+            "pages": [
+              "recipes/web-sdk-integration",
+              "recipes/auth-frontend-sdk",
+              "recipes/ios-sdk-auth"
+            ]
+          },
+          {
+            "group": "Connect",
+            "pages": [
+              "recipes/connect-create-session",
+              "recipes/connect-validate-webhook-signature"
+            ]
+          }
+        ]
+      },
+      {
         "tab": "Changelog",
         "groups": [
           {
@@ -637,15 +693,5 @@
         ]
       }
     ]
-  },
-  "background": {
-    "color": {
-      "dark": "#1C1B1C"
-    }
-  },
-  "api": {
-    "playground": {
-      "display": "simple"
-    }
   }
 }

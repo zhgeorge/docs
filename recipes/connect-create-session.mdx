@@ -1,0 +1,1141 @@
+---
+title: "Connect - Create Session"
+description: "The following is a code recipe that helps the Organization more efficiently and quickly integrate to the POST /sessions endpoint."
+---
+
+<Steps>
+  <Step title="Load Organization Info">
+    Load your Organization Info (Client ID, Client Secret, Organization ID).
+
+    <CodeGroup>
+    ```go Go
+    organizationID := "your-organization-id-uuid"
+
+    credentials := TokenRequest{
+    	ClientID:       "your-client-id",
+    	ClientSecret:   "your-client-secret",
+    	Audience:       "https://api.cert.connect.xyz",
+    	GrantType:      "client_credentials",
+    	OrganizationID: organizationID,
+    }
+    ```
+
+    ```java Java
+    String organizationId = "your-organization-id-uuid";
+
+    TokenRequest credentials = new TokenRequest(
+        "your-client-id",
+        "your-client-secret",
+        "https://api.cert.connect.xyz",
+        "client_credentials",
+        organizationId
+    );
+    ```
+
+    ```python Python
+    organization_id = "your-organization-id-uuid"
+
+    credentials = TokenRequest(
+        client_id="your-client-id",
+        client_secret="your-client-secret",
+        audience="https://api.cert.connect.xyz",
+        grant_type="client_credentials",
+        organization_id=organization_id
+    )
+    ```
+
+    </CodeGroup>
+
+  </Step>
+
+  <Step title="Load Private Key">
+    Load the Organization private key
+
+    <CodeGroup>
+    ```go Go
+    	// Example private key (you should load this from a secure location)
+    	privateKeyPEM := `-----BEGIN RSA PRIVATE KEY-----
+    ... (truncated for example) ...
+    -----END RSA PRIVATE KEY-----`
+    ```
+
+    ```java Java
+    // Example private key (load from secure location in production)
+    String privateKeyPEM = """
+    -----BEGIN PRIVATE KEY-----
+    MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC7Q4Q8h4Yf5g7y
+    ... your private key here ...
+    -----END PRIVATE KEY-----
+    """;
+    ```
+
+    ```python Python
+        # Example private key (load from secure location in production)
+        private_key_pem = """-----BEGIN RSA PRIVATE KEY-----
+    ... your private key here ...
+    -----END RSA PRIVATE KEY-----"""
+    ```
+
+    </CodeGroup>
+
+  </Step>
+
+  <Step title="Get Organization Access Token">
+    Replace these placeholders with your actual credentials.
+
+    <CodeGroup>
+    ```go Go
+    // Get Organization Access Token
+    tokenResp, err := GetAccessToken(credentials)
+    if err != nil {
+    	fmt.Printf("Failed to get access token: %v\n", err)
+    	return
+    }
+    jwtToken := tokenResp.AccessToken
+    ```
+
+    ```java Java
+    String jwtToken;
+    TokenResponse tokenResp = getAccessToken(credentials);
+    jwtToken = tokenResp.access_token;
+    ```
+
+    ```python Python
+    jwt_token = ""
+    token_resp = get_access_token(credentials)
+    jwt_token = token_resp.access_token
+    ```
+
+    </CodeGroup>
+
+  </Step>
+
+  <Step title="Create the ConnectClientSigner Instance">
+    This step initializes the client, parsing and validating the private key.
+
+    <CodeGroup>
+    ```go Go
+    // Create signer
+    signer, err := NewConnectClientSigner(privateKeyPEM, organizationID, jwtToken)
+    if err != nil {
+    	fmt.Printf("Failed to create signer: %v\n", err)
+    	return
+    }
+    ```
+
+    ```java Java
+    // Create signer
+    ConnectClientSigner signer = new ConnectClientSigner(privateKeyPEM, organizationId, jwtToken);
+    ```
+
+    ```python Python
+    signer = ConnectClientSigner(private_key_pem, organization_id, jwt_token)
+    ```
+
+    </CodeGroup>
+
+  </Step>
+
+  <Step title="Prepare the Session Request Payload">
+    Define the necessary data for creating the session
+
+    <CodeGroup>
+    ```go Go
+    // Create session request
+    sessionReq := SessionRequest{
+    	RequestID: uuid.New().String(),
+    	Account: Account{
+    		ReferenceID: "user-12345",
+    	},
+    	Session: Session{
+    		Metadata: map[string]interface{}{
+    			"example": "metadata-example",
+    		},
+    		Scopes: []string{"user:deposit:send"},
+    	},
+    }
+    ```
+
+    ```java Java
+    // Create session request
+    Map<String, Object> metadata = new HashMap<>();
+    metadata.put("example", "metadata-example");
+            
+    SessionRequest sessionRequest = new SessionRequest(
+        "550e8400-e29b-41d4-a716-446655440000",
+        new Account("user-12345"),
+        new Session(metadata, Arrays.asList("user:deposit:send"))
+    );
+    ```
+
+    ```python Python
+    session_request = create_session_request(
+        request_id=str(uuid.uuid4()),
+        reference_id="user-12345",
+        metadata={
+            "example": "metadata-example",
+        },
+        scopes=["user:deposit:send"]
+    )
+    ```
+
+    </CodeGroup>
+
+  </Step>
+
+  <Step title="Execute the API Call to Create the Session">
+    The CreateSession method handles signing, setting headers, sending the request, and checking the response
+
+    <CodeGroup>
+    ```go Go
+    // Send request
+    if err := signer.CreateSession(sessionReq); err != nil {
+    	fmt.Printf("Failed to create session: %v\n", err)
+    	return
+    }
+    ```
+
+    ```java Java
+    signer.createSession(sessionRequest);
+    ```
+
+    ```python Python
+    signer.create_session(session_request)
+    ```
+
+    </CodeGroup>
+
+  </Step>
+
+</Steps>
+
+## Full example
+
+<CodeGroup>
+
+```go Go
+package main
+
+import (
+	"bytes"
+	"crypto"
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/sha256"
+	"crypto/x509"
+	"encoding/base64"
+	"encoding/json"
+	"encoding/pem"
+	"fmt"
+	"io"
+	"net/http"
+	"strconv"
+  "time"
+  
+	"github.com/google/uuid"
+)
+
+const (
+	connectAPIURL       = "https://api.sandbox.connect.xyz"
+	signatureHeader     = "signature"
+	timestampHeader     = "timestamp"
+	clientIDHeader      = "x-connect-client-id"
+	authorizationHeader = "Authorization"
+	tokenURL            = "https://api.sandbox.connect.xyz/api/v1/oauth2/token"
+)
+
+// SessionRequest represents the payload for creating a session
+type SessionRequest struct {
+	RequestID string  `json:"request_id"`
+	Account   Account `json:"account"`
+	Session   Session `json:"session"`
+}
+
+type Account struct {
+	ReferenceID string `json:"reference_id"`
+}
+
+type Session struct {
+	Metadata map[string]interface{} `json:"metadata"`
+	Scopes   []string               `json:"scopes"`
+}
+
+// ConnectClientSigner handles request signing for Connect API
+type ConnectClientSigner struct {
+	privateKey     *rsa.PrivateKey
+	organizationID string
+	jwtToken       string
+}
+
+// Structure to request an M2M Token
+type TokenRequest struct {
+	ClientID       string `json:"client_id"`
+	ClientSecret   string `json:"client_secret"`
+	Audience       string `json:"audience"`
+	GrantType      string `json:"grant_type"`
+	OrganizationID string `json:"organization_id"`
+}
+
+// Structure to receive an M2M Token response
+type TokenResponse struct {
+	AccessToken string `json:"access_token"`
+	TokenType   string `json:"token_type"`
+	ExpiresIn   int    `json:"expires_in"` // Duration in seconds
+}
+
+// Example usage
+func main() {
+	organizationID := "your-organization-id-uuid"
+
+	credentials := TokenRequest{
+		ClientID:       "your-client-id",
+		ClientSecret:   "your-client-secret",
+		Audience:       "https://api.cert.connect.xyz",
+		GrantType:      "client_credentials",
+		OrganizationID: organizationID,
+	}
+
+	// Example private key (you should load this from a secure location)
+	privateKeyPEM := `-----BEGIN RSA PRIVATE KEY-----
+... (truncated for example) ...
+-----END RSA PRIVATE KEY-----`
+
+	// Get Organization Access Token
+	tokenResp, err := GetAccessToken(credentials)
+	if err != nil {
+		fmt.Printf("Failed to get access token: %v\n", err)
+		return
+	}
+	jwtToken := tokenResp.AccessToken
+
+	// Create signer
+	signer, err := NewConnectClientSigner(privateKeyPEM, organizationID, jwtToken)
+	if err != nil {
+		fmt.Printf("Failed to create signer: %v\n", err)
+		return
+	}
+
+	// Create session request
+	sessionReq := SessionRequest{
+		RequestID: uuid.New().String(),
+		Account: Account{
+			ReferenceID: "user-12345",
+		},
+		Session: Session{
+			Metadata: map[string]interface{}{
+				"example": "metadata-example",
+			},
+			Scopes: []string{"user:deposit:send"},
+		},
+	}
+
+	// Send request
+	if err := signer.CreateSession(sessionReq); err != nil {
+		fmt.Printf("Failed to create session: %v\n", err)
+		return
+	}
+}
+
+// GetAccessToken execute the HTTP POST request to get an M2M access token
+func GetAccessToken(reqData TokenRequest) (*TokenResponse, error) {
+	requestBody, err := json.Marshal(reqData)
+	if err != nil {
+		return nil, fmt.Errorf("error serializing request body: %w", err)
+	}
+
+	req, err := http.NewRequest("POST", tokenURL, bytes.NewBuffer(requestBody))
+	if err != nil {
+		return nil, fmt.Errorf("error creating request: %w", err)
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("error executing HTTP request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("request failed with status: %s. Response: %s", resp.Status, bodyBytes)
+	}
+
+	var tokenResp TokenResponse
+	if err := json.NewDecoder(resp.Body).Decode(&tokenResp); err != nil {
+		return nil, fmt.Errorf("error decoding JSON response: %w", err)
+	}
+
+	return &tokenResp, nil
+}
+
+// NewConnectClientSigner creates a new client signer
+func NewConnectClientSigner(privateKeyPEM, organizationID, jwtToken string) (*ConnectClientSigner, error) {
+	// Parse private key
+	block, _ := pem.Decode([]byte(privateKeyPEM))
+	if block == nil {
+		return nil, fmt.Errorf("failed to decode PEM block")
+	}
+
+	privateKey, err := x509.ParsePKCS1PrivateKey(block.Bytes)
+	if err != nil {
+		// Try PKCS8 format
+		key, err := x509.ParsePKCS8PrivateKey(block.Bytes)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse private key: %w", err)
+		}
+		var ok bool
+		privateKey, ok = key.(*rsa.PrivateKey)
+		if !ok {
+			return nil, fmt.Errorf("key is not RSA private key")
+		}
+	}
+
+	return &ConnectClientSigner{
+		privateKey:     privateKey,
+		organizationID: organizationID,
+		jwtToken:       jwtToken,
+	}, nil
+}
+
+// SignRequest signs a request using RSA-PKCS1v15 with SHA256
+func (c *ConnectClientSigner) SignRequest(method, path string, body interface{}, timestamp int64) (string, error) {
+	// Serialize body to JSON
+	bodyJSON, err := json.Marshal(body)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal body: %w", err)
+	}
+
+	// Construct message to sign: timestamp + method + path + body
+	message := fmt.Sprintf("%d%s%s%s", timestamp, method, path, string(bodyJSON))
+
+	// Hash the message
+	hashed := sha256.Sum256([]byte(message))
+
+	// Sign using RSA-PKCS1v15
+	signature, err := rsa.SignPKCS1v15(rand.Reader, c.privateKey, crypto.SHA256, hashed[:])
+	if err != nil {
+		return "", fmt.Errorf("failed to sign message: %w", err)
+	}
+
+	// Encode to base64
+	return base64.StdEncoding.EncodeToString(signature), nil
+}
+
+// CreateSession creates a new session by calling Connect API
+func (c *ConnectClientSigner) CreateSession(sessionReq SessionRequest) error {
+	endpoint := "/api/v1/sessions"
+	url := connectAPIURL + endpoint
+	timestamp := time.Now().Unix()
+
+	// Sign the request
+	signature, err := c.SignRequest("POST", endpoint, sessionReq, timestamp)
+	if err != nil {
+		return fmt.Errorf("failed to sign request: %w", err)
+	}
+
+	// Serialize body
+	bodyBytes, err := json.Marshal(sessionReq)
+	if err != nil {
+		return fmt.Errorf("failed to marshal request: %w", err)
+	}
+
+	// Create HTTP request
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(bodyBytes))
+	if err != nil {
+		return fmt.Errorf("failed to create request: %w", err)
+	}
+
+	// Set headers
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set(authorizationHeader, "Bearer "+c.jwtToken)
+	req.Header.Set(clientIDHeader, c.organizationID)
+	req.Header.Set(signatureHeader, signature)
+	req.Header.Set(timestampHeader, strconv.FormatInt(timestamp, 10))
+
+	// Send request
+	client := &http.Client{Timeout: 30 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("failed to send request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	// Read response
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("failed to read response: %w", err)
+	}
+
+	// Check status
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return fmt.Errorf("API error %d: %s", resp.StatusCode, string(respBody))
+	}
+
+	fmt.Printf("Session created successfully!\n")
+	fmt.Printf("Response: %s\n", string(respBody))
+	return nil
+}
+```
+
+```java Java
+import java.io.*;
+import java.net.http.*;
+import java.net.URI;
+import java.nio.charset.StandardCharsets;
+import java.security.*;
+import java.security.interfaces.RSAPrivateKey;
+import java.security.spec.PKCS8EncodedKeySpec;
+import java.util.*;
+import java.time.Instant;
+import java.util.UUID;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+/**
+ * Connect Client Request Signer for Java
+ * 
+ * This class demonstrates how to sign requests to Connect API endpoints
+ * using RSA-PKCS1v15 signature with SHA256 hashing.
+ * 
+ * Dependencies (Maven):
+ * <dependency>
+ *   <groupId>com.fasterxml.jackson.core</groupId>
+ *   <artifactId>jackson-databind</artifactId>
+ *   <version>2.15.2</version>
+ * </dependency>
+ */
+public class ConnectClientSigner {
+    
+    private static final String CONNECT_API_URL = "https://api.sandbox.connect.xyz";
+    private static final String TOKEN_URL = "https://api.sandbox.connect.xyz/api/v1/oauth2/token";
+    private static final String SIGNATURE_HEADER = "signature";
+    private static final String TIMESTAMP_HEADER = "timestamp";
+    private static final String CLIENT_ID_HEADER = "x-connect-client-id";
+    private static final String AUTHORIZATION_HEADER = "Authorization";
+    
+    private final RSAPrivateKey privateKey;
+    private final String organizationId;
+    private final String jwtToken;
+    private final ObjectMapper objectMapper;
+    private final HttpClient httpClient;
+
+    // Structure for the M2M Token request
+    public static class TokenRequest {
+        public String client_id;
+        public String client_secret;
+        public String audience;
+        public String grant_type;
+        public String organization_id;
+
+        public TokenRequest(String clientId, String clientSecret, String audience, String grantType, String organizationId) {
+            this.client_id = clientId;
+            this.client_secret = clientSecret;
+            this.audience = audience;
+            this.grant_type = grantType;
+            this.organization_id = organizationId;
+        }
+    }
+
+    // Structure for the M2M Token response
+    public static class TokenResponse {
+        public String access_token;
+        public String token_type;
+        public int expires_in; // Duration in seconds
+    }
+    
+    public static class SessionRequest {
+        public String request_id;
+        public Account account;
+        public Session session;
+        
+        public SessionRequest(String requestId, Account account, Session session) {
+            this.request_id = requestId;
+            this.account = account;
+            this.session = session;
+        }
+    }
+    
+    public static class Account {
+        public String reference_id;
+        
+        public Account(String referenceId) {
+            this.reference_id = referenceId;
+        }
+    }
+    
+    public static class Session {
+        public Map<String, Object> metadata;
+        public List<String> scopes;
+        
+        public Session(Map<String, Object> metadata, List<String> scopes) {
+            this.metadata = metadata;
+            this.scopes = scopes;
+        }
+    }
+    
+    public static class SigningException extends Exception {
+        public SigningException(String message) {
+            super(message);
+        }
+        
+        public SigningException(String message, Throwable cause) {
+            super(message, cause);
+        }
+    }
+    
+    public ConnectClientSigner(String privateKeyPEM, String organizationId, String jwtToken) 
+            throws SigningException {
+        this.privateKey = parsePrivateKey(privateKeyPEM);
+        this.organizationId = organizationId;
+        this.jwtToken = jwtToken;
+        this.objectMapper = new ObjectMapper();
+        this.httpClient = HttpClient.newHttpClient();
+    }
+    
+    /**
+     * Parse RSA private key from PEM format
+     */
+    private RSAPrivateKey parsePrivateKey(String privateKeyPEM) throws SigningException {
+        try {
+            // Remove PEM headers and decode base64
+            String privateKeyContent = privateKeyPEM
+                .replace("-----BEGIN PRIVATE KEY-----", "")
+                .replace("-----END PRIVATE KEY-----", "")
+                .replace("-----BEGIN RSA PRIVATE KEY-----", "")
+                .replace("-----END RSA PRIVATE KEY-----", "")
+                .replaceAll("\\s", "");
+            
+            byte[] keyBytes = Base64.getDecoder().decode(privateKeyContent);
+            
+            // Try PKCS8 format first
+            try {
+                PKCS8EncodedKeySpec spec = new PKCS8EncodedKeySpec(keyBytes);
+                KeyFactory factory = KeyFactory.getInstance("RSA");
+                return (RSAPrivateKey) factory.generatePrivate(spec);
+            } catch (Exception e) {
+                // If PKCS8 fails, you might need to convert PKCS1 to PKCS8
+                // This is a simplified example - in production, use a proper library
+                throw new SigningException("Failed to parse private key. Ensure it's in PKCS8 format.", e);
+            }
+            
+        } catch (Exception e) {
+            throw new SigningException("Failed to parse private key", e);
+        }
+    }
+    
+    /**
+     * Sign a request using RSA-PKCS1v15 with SHA256
+     */
+    public String signRequest(String method, String path, Object body, long timestamp) 
+            throws SigningException {
+        try {
+            // Serialize body to JSON
+            String bodyJson = objectMapper.writeValueAsString(body);
+            
+            // Construct message to sign: timestamp + method + path + body
+            String message = timestamp + method + path + bodyJson;
+            
+            // Hash the message with SHA256
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] messageHash = digest.digest(message.getBytes(StandardCharsets.UTF_8));
+            
+            // Sign using RSA-PKCS1v15
+            Signature signature = Signature.getInstance("SHA256withRSA");
+            signature.initSign(privateKey);
+            signature.update(messageHash);
+            byte[] signatureBytes = signature.sign();
+            
+            // Encode to base64
+            return Base64.getEncoder().encodeToString(signatureBytes);
+            
+        } catch (Exception e) {
+            throw new SigningException("Failed to sign request", e);
+        }
+    }
+    
+    /**
+     * Create a session by calling Connect API
+     */
+    public void createSession(SessionRequest sessionRequest) throws SigningException {
+        try {
+            String endpoint = "/api/v1/sessions";
+            String url = CONNECT_API_URL + endpoint;
+            long timestamp = Instant.now().getEpochSecond();
+            
+            // Sign the request
+            String signature = signRequest("POST", endpoint, sessionRequest, timestamp);
+            
+            // Serialize body
+            String bodyJson = objectMapper.writeValueAsString(sessionRequest);
+            
+            // Create HTTP request
+            HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(url))
+                .header("Content-Type", "application/json")
+                .header(AUTHORIZATION_HEADER, "Bearer " + jwtToken)
+                .header(CLIENT_ID_HEADER, organizationId)
+                .header(SIGNATURE_HEADER, signature)
+                .header(TIMESTAMP_HEADER, String.valueOf(timestamp))
+                .POST(HttpRequest.BodyPublishers.ofString(bodyJson))
+                .build();
+            
+            // Send request
+            HttpResponse<String> response = httpClient.send(request, 
+                HttpResponse.BodyHandlers.ofString());
+            
+            // Check response
+            if (response.statusCode() < 200 || response.statusCode() >= 300) {
+                throw new SigningException("API error " + response.statusCode() + ": " + response.body());
+            }
+            
+            System.out.println("Session created successfully!");
+            System.out.println("Response: " + response.body());
+            
+        } catch (Exception e) {
+            if (e instanceof SigningException) {
+                throw e;
+            }
+            throw new SigningException("Failed to create session", e);
+        }
+    }
+
+    /**
+     * GetAccessToken executes the HTTP POST request to get an M2M access token (similar to Go's function).
+     */
+    public static TokenResponse getAccessToken(TokenRequest reqData) throws SigningException {
+        try {
+            // Serialize request body to JSON
+            String requestBody = staticObjectMapper.writeValueAsString(reqData);
+
+            // Create HTTP request
+            HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(TOKEN_URL))
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(requestBody))
+                .build();
+            
+            // Send request (using the static HttpClient)
+            HttpResponse<String> response = staticHttpClient.send(request, 
+                HttpResponse.BodyHandlers.ofString());
+
+            // Check response status
+            if (response.statusCode() != 200) {
+                throw new IOException("Request failed with status: " + response.statusCode() + ". Response: " + response.body());
+            }
+
+            // Decode the response body
+            return staticObjectMapper.readValue(response.body(), TokenResponse.class);
+
+        } catch (Exception e) {
+            throw new SigningException("Failed to get access token", e);
+        }
+    }
+    
+    // Example usage
+    public static void main(String[] args) {
+        try {
+            String organizationId = "your-organization-id-uuid";
+
+            TokenRequest credentials = new TokenRequest(
+                "your-client-id",
+                "your-client-secret",
+                "https://api.cert.connect.xyz",
+                "client_credentials",
+                organizationId
+            );
+
+            // Example private key (load from secure location in production)
+            String privateKeyPEM = """
+            -----BEGIN PRIVATE KEY-----
+            MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC7Q4Q8h4Yf5g7y
+            ... your private key here ...
+            -----END PRIVATE KEY-----
+            """;
+
+            String jwtToken;
+            TokenResponse tokenResp = getAccessToken(credentials);
+            jwtToken = tokenResp.access_token;
+
+            // Create signer
+            ConnectClientSigner signer = new ConnectClientSigner(privateKeyPEM, organizationId, jwtToken);
+            
+            // Create session request
+            Map<String, Object> metadata = new HashMap<>();
+            metadata.put("example", "metadata-example");
+            
+            SessionRequest sessionRequest = new SessionRequest(
+                "550e8400-e29b-41d4-a716-446655440000",
+                new Account("user-12345"),
+                new Session(metadata, Arrays.asList("user:deposit:send"))
+            );
+            
+            signer.createSession(sessionRequest);
+            
+        } catch (SigningException e) {
+            System.err.println("Error: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+}
+```
+
+```python Python
+#!/usr/bin/env python3
+"""
+Connect Client Request Signer for Python
+
+This module demonstrates how to sign requests to Connect API endpoints
+using RSA-PKCS1v15 signature with SHA256 hashing and how to obtain an M2M token.
+
+Dependencies:
+pip install cryptography requests
+
+Usage:
+    # (Inside main function or a script)
+    token_resp = get_access_token(credentials)
+    signer = ConnectClientSigner(private_key_pem, organization_id, token_resp.access_token)
+    signer.create_session(session_request)
+"""
+
+import base64
+import hashlib
+import json
+import time
+import uuid
+from typing import Dict, List, Any, Optional
+
+import requests
+from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives.asymmetric import rsa, padding
+from cryptography.hazmat.backends import default_backend
+
+
+# --- Constants ---
+CONNECT_API_URL = "https://api.sandbox.connect.xyz"
+TOKEN_URL = "https://api.sandbox.connect.xyz/api/v1/oauth2/token"
+SIGNATURE_HEADER = "signature"
+TIMESTAMP_HEADER = "timestamp"
+CLIENT_ID_HEADER = "x-connect-client-id"
+AUTHORIZATION_HEADER = "Authorization"
+
+
+class SigningError(Exception):
+    """Raised when request signing fails"""
+    pass
+
+# --- Token Data Structures (Similar to Go structs) ---
+
+class TokenRequest:
+    """Structure to request an M2M Token"""
+    def __init__(self, client_id: str, client_secret: str, audience: str, grant_type: str, organization_id: str):
+        self.client_id = client_id
+        self.client_secret = client_secret
+        self.audience = audience
+        self.grant_type = grant_type
+        self.organization_id = organization_id
+
+    def to_dict(self) -> Dict[str, str]:
+        """Converts the object attributes to a dictionary for JSON serialization."""
+        return self.__dict__
+
+class TokenResponse:
+    """Structure to receive an M2M Token response"""
+    def __init__(self, access_token: str, token_type: str, expires_in: int):
+        self.access_token = access_token
+        self.token_type = token_type
+        self.expires_in = expires_in
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]):
+        """Creates a TokenResponse object from a dictionary."""
+        return cls(
+            access_token=data.get("access_token"),
+            token_type=data.get("token_type"),
+            expires_in=data.get("expires_in")
+        )
+
+# --- Token Retrieval Function (Similar to Go's GetAccessToken) ---
+
+def get_access_token(req_data: TokenRequest) -> TokenResponse:
+    """
+    GetAccessToken executes the HTTP POST request to get an M2M access token.
+    
+    Args:
+        req_data: TokenRequest object containing client credentials.
+        
+    Returns:
+        TokenResponse object with the access token.
+        
+    Raises:
+        SigningError: If request fails or status code is not 200.
+    """
+    try:
+        # Serialize request body to JSON
+        request_body = req_data.to_dict()
+        
+        headers = {
+            "Content-Type": "application/json"
+        }
+        
+        # Execute HTTP POST request
+        response = requests.post(
+            TOKEN_URL,
+            json=request_body,
+            headers=headers,
+            timeout=10 
+        )
+
+        # Check response status
+        if not response.ok:
+            raise SigningError(
+                f"Request failed with status: {response.status_code}. Response: {response.text}"
+            )
+            
+        # Decode the response body
+        response_data = response.json()
+        return TokenResponse.from_dict(response_data)
+        
+    except requests.RequestException as e:
+        raise SigningError(f"Error executing HTTP request for token: {e}")
+    except Exception as e:
+        if isinstance(e, SigningError):
+            raise
+        raise SigningError(f"Failed to decode token response: {e}")
+
+
+# --- ConnectClientSigner Class (Original Class) ---
+
+class ConnectClientSigner:
+    """Connect API client request signer"""
+    
+    CONNECT_API_URL = CONNECT_API_URL
+    SIGNATURE_HEADER = SIGNATURE_HEADER
+    TIMESTAMP_HEADER = TIMESTAMP_HEADER
+    CLIENT_ID_HEADER = CLIENT_ID_HEADER
+    AUTHORIZATION_HEADER = AUTHORIZATION_HEADER
+    
+    def __init__(self, private_key_pem: str, organization_id: str, jwt_token: str):
+        """
+        Initialize the signer with private key and credentials
+        
+        Args:
+            private_key_pem: RSA private key in PEM format
+            organization_id: Your organization UUID
+            jwt_token: JWT token for authorization
+        """
+        self.private_key = self._parse_private_key(private_key_pem)
+        self.organization_id = organization_id
+        self.jwt_token = jwt_token
+        self.session = requests.Session()
+        self.session.timeout = 30
+    
+    def _parse_private_key(self, private_key_pem: str) -> rsa.RSAPrivateKey:
+        """
+        Parse RSA private key from PEM format
+        
+        Args:
+            private_key_pem: Private key in PEM format
+            
+        Returns:
+            RSA private key object
+            
+        Raises:
+            SigningError: If key parsing fails
+        """
+        try:
+            private_key = serialization.load_pem_private_key(
+                private_key_pem.encode('utf-8'),
+                password=None,
+                backend=default_backend()
+            )
+            
+            if not isinstance(private_key, rsa.RSAPrivateKey):
+                raise SigningError("Key is not an RSA private key")
+                
+            return private_key
+            
+        except Exception as e:
+            raise SigningError(f"Failed to parse private key: {e}")
+    
+    def sign_request(
+        self, 
+        method: str, 
+        path: str, 
+        body: Any, 
+        timestamp: int
+    ) -> str:
+        """
+        Sign a request using RSA-PKCS1v15 with SHA256
+        
+        Args:
+            method: HTTP method (e.g., "POST")
+            path: API endpoint path (e.g., "/api/v1/sessions")
+            body: Request body (will be JSON serialized)
+            timestamp: Unix timestamp
+            
+        Returns:
+            Base64 encoded signature
+            
+        Raises:
+            SigningError: If signing fails
+        """
+        try:
+            # Serialize body to JSON (using compact formatting for consistency)
+            body_json = json.dumps(body, separators=(',', ':'))
+            
+            # Construct message to sign: timestamp + method + path + body
+            message = f"{timestamp}{method}{path}{body_json}"
+            
+            # Hash the message with SHA256
+            message_hash = hashlib.sha256(message.encode('utf-8')).digest()
+            
+            # Sign using RSA-PKCS1v15
+            signature = self.private_key.sign(
+                message_hash,
+                padding.PKCS1v15(),
+                hashes.SHA256() # Note: The hash is passed here mainly for integrity checking
+            )
+            
+            # Encode to base64
+            return base64.b64encode(signature).decode('utf-8')
+            
+        except Exception as e:
+            raise SigningError(f"Failed to sign request: {e}")
+    
+    def create_session(self, session_request: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Create a session by calling Connect API
+        
+        Args:
+            session_request: Session request payload
+            
+        Returns:
+            API response as dict
+            
+        Raises:
+            SigningError: If request fails
+        """
+        try:
+            endpoint = "/api/v1/sessions"
+            url = self.CONNECT_API_URL + endpoint
+            timestamp = int(time.time())
+            
+            # Sign the request
+            signature = self.sign_request("POST", endpoint, session_request, timestamp)
+            
+            # Prepare headers
+            headers = {
+                "Content-Type": "application/json",
+                self.AUTHORIZATION_HEADER: f"Bearer {self.jwt_token}",
+                self.CLIENT_ID_HEADER: self.organization_id,
+                self.SIGNATURE_HEADER: signature,
+                self.TIMESTAMP_HEADER: str(timestamp),
+            }
+            
+            # Send request
+            response = self.session.post(
+                url,
+                json=session_request,
+                headers=headers
+            )
+            
+            # Check response
+            if not response.ok:
+                raise SigningError(
+                    f"API error {response.status_code}: {response.text}"
+                )
+            
+            print("Session created successfully! 🎉")
+            result = response.json()
+            print(f"Response: {json.dumps(result, indent=2)}")
+            return result
+            
+        except requests.RequestException as e:
+            raise SigningError(f"Request failed: {e}")
+        except Exception as e:
+            if isinstance(e, SigningError):
+                raise
+            raise SigningError(f"Failed to create session: {e}")
+        
+# Utility functions for creating requests (kept as is)
+def create_session_request(
+    request_id: str,
+    reference_id: str,
+    metadata: Optional[Dict[str, Any]] = None,
+    scopes: Optional[List[str]] = None
+) -> Dict[str, Any]:
+    """
+    Create a session request payload
+    
+    Args:
+        request_id: Unique request identifier
+        reference_id: User reference ID
+        metadata: Optional session metadata
+        scopes: Optional permission scopes
+        
+    Returns:
+        Session request dict
+    """
+    if metadata is None:
+        metadata = {}
+    
+    if scopes is None:
+        scopes = []
+    
+    return {
+        "request_id": request_id,
+        "account": {
+            "reference_id": reference_id
+        },
+        "session": {
+            "metadata": metadata,
+            "scopes": scopes
+        }
+    }
+
+
+# Example usage (main function updated to get token first)
+def main():
+    organization_id = "your-organization-id-uuid"
+
+    credentials = TokenRequest(
+        client_id="your-client-id",
+        client_secret="your-client-secret",
+        audience="https://api.cert.connect.xyz",
+        grant_type="client_credentials",
+        organization_id=organization_id
+    )
+
+    # Example private key (load from secure location in production)
+    private_key_pem = """-----BEGIN RSA PRIVATE KEY-----
+... your private key here ...
+-----END RSA PRIVATE KEY-----"""
+
+    jwt_token = ""
+    token_resp = get_access_token(credentials)
+    jwt_token = token_resp.access_token
+
+    try:
+        signer = ConnectClientSigner(private_key_pem, organization_id, jwt_token)
+        
+        session_request = create_session_request(
+            request_id=str(uuid.uuid4()),
+            reference_id="user-12345",
+            metadata={
+                "example": "metadata-example",
+            },
+            scopes=["user:deposit:send"]
+        )
+        
+        signer.create_session(session_request)
+        
+    except SigningError as e:
+        print(f"Error: {e}")
+
+if __name__ == "__main__":
+    main()
+```
+
+</CodeGroup>

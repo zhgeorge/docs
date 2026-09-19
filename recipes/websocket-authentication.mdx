@@ -1,0 +1,328 @@
+---
+title: "Websocket Authentication"
+description: "Learn how to authenticate to the zerohash websocket API."
+---
+
+<Steps>
+  <Step title="Create Message signature">
+    Zero Hash uses signatures to validate the authenticity of requests to our API.
+
+    ```python Python
+    hm = hmac.new(key=b64decode(api_key), msg=msg, digestmod=hashlib.sha256)
+    return b64encode(hm.digest())
+    ```
+
+  </Step>
+
+  <Step title="Create message handler">
+    This function handles new incoming messages from the websock subscription.
+
+    ```python Python
+    def _message_handler(self, msg: str):
+        """Simple message handling for data received from the WebSocket."""
+        try:
+            msg = json.loads(msg)
+        except json.JSONDecodeError:
+            logger.error("Error loading JSON message from server: {}".format(msg))
+            return
+        if "message" in msg:
+            logger.info(msg["message"])
+            return print("received message:", msg)
+    ```
+
+  </Step>
+
+  <Step title="Wait for connection">
+    Wait for the websockets to connect and create a signed request
+
+    ```python Python
+    async for conn in connect(WS_URL):
+        t = str(int(datetime.now().timestamp()))
+        sig = self._sign(API_PRIVATE_KEY, "POST", "/", json.dumps({"filter": {}}, separators=(",", ":")), t)
+        msg = json.dumps(
+            {
+                "messageType": "subscribe",
+                "body": {"filter": {}},
+                "key": API_PUBLIC_KEY,
+                "passphrase": API_PASSPHRASE,
+                "timestamp": t,
+                "signature": sig.decode("utf-8"),
+            },
+            indent=2,
+        )
+    ```
+
+  </Step>
+
+</Steps>
+
+## Full example
+
+<CodeGroup>
+
+```python Python
+import asyncio
+import hashlib
+import hmac
+import json
+from asyncio.exceptions import IncompleteReadError
+from base64 import b64decode, b64encode
+from datetime import datetime
+from logging import getLogger
+
+from websockets.client import connect
+from websockets.exceptions import ConnectionClosed, ConnectionClosedError
+
+logger = getLogger(__name__)
+
+WS_URL = "WS_URL"
+API_PUBLIC_KEY = "API_PUBLIC_KEY"
+API_PRIVATE_KEY = "API_PRIVATE_KEY"
+API_PASSPHRASE = "API_PASSPHRASE"
+
+
+class Feed:
+    async def connect_private(self):
+        """Connect to the private websocket endpoint that requires authentication."""
+        async for conn in connect(WS_URL):
+            t = str(int(datetime.now().timestamp()))
+            sig = self._sign(API_PRIVATE_KEY, "POST", "/", json.dumps({"filter": {}}, separators=(",", ":")), t)
+            msg = json.dumps(
+                {
+                    "messageType": "subscribe",
+                    "body": {"filter": {}},
+                    "key": API_PUBLIC_KEY,
+                    "passphrase": API_PASSPHRASE,
+                    "timestamp": t,
+                    "signature": sig.decode("utf-8"),
+                },
+                indent=2,
+            )
+
+            try:
+                print("sending message:", msg)
+                await conn.send(msg)
+                while True:
+                    self._message_handler(await conn.recv())
+            except ConnectionClosed or ConnectionClosedError or IncompleteReadError as e:
+                print("Network issue encountered, backing off and reconnecting. Details: ", e)
+                asyncio.sleep(5)
+                continue
+
+
+    def _message_handler(self, msg: str):
+        """Simple message handling for data received from the WebSocket."""
+        try:
+            msg = json.loads(msg)
+        except json.JSONDecodeError:
+            logger.error("Error loading JSON message from server: {}".format(msg))
+            return
+        if "message" in msg:
+            logger.info(msg["message"])
+            return print("received message:", msg)
+
+
+    def _sign(self, api_key: str, method: str, route: str, json_body: str, timestamp: str) -> bytes:
+        msg = bytes(timestamp + method + route + json_body, encoding="utf-8")
+        hm = hmac.new(key=b64decode(api_key), msg=msg, digestmod=hashlib.sha256)
+        return b64encode(hm.digest())
+
+
+loop = asyncio.get_event_loop()
+loop.run_until_complete(Feed().connect_private())
+```
+
+```javascript JavaScript
+const crypto = require('crypto');
+
+const sign = (body, secret) => {
+  let ts = String(Math.round(Date.now() / 1000));
+  let payload = ts + 'POST' + '/' + JSON.stringify(body);
+  let decodedSecret = Buffer.from(secret, 'base64');
+  let hmac = crypto.createHmac('sha256', decodedSecret);
+  let signedPayload = hmac.update(payload).digest('base64');
+};
+```
+
+</CodeGroup>
+
+## Response
+
+```json Response
+{
+   "messageType":"initial-balance",
+   "body":[
+      {
+         "account_id":"72727d2e-02aa-40e8-8814-365c6c708aeb",
+         "participant_code":"5TJPSX",
+         "account_group":"S8NSEL",
+         "account_label":"general",
+         "account_type":"available",
+         "asset":"ETH",
+         "balance":"1"
+      },
+      {
+         "account_id":"eeaed241-6b74-4779-a385-58acca32cb54",
+         "participant_code":"HN853Q",
+         "account_group":"S8NSEL",
+         "account_label":"general",
+         "account_type":"available",
+         "asset":"EUR",
+         "balance":"5.88"
+      },
+      {
+         "account_id":"85653305-9fea-4528-9eee-fadc51cb2e59",
+         "participant_code":"HN853Q",
+         "account_group":"S8NSEL",
+         "account_label":"general",
+         "account_type":"available",
+         "asset":"USDC.XLM",
+         "balance":"249687.5"
+      },
+      {
+         "account_id":"4b955453-b2ae-4f37-81da-e97431479350",
+         "participant_code":"HN853Q",
+         "account_group":"S8NSEL",
+         "account_label":"general",
+         "account_type":"available",
+         "asset":"USDC",
+         "balance":"1396.61"
+      },
+      {
+         "account_id":"86338efa-d43d-469c-894a-f3c04b46f327",
+         "participant_code":"HN853Q",
+         "account_group":"S8NSEL",
+         "account_label":"general",
+         "account_type":"available",
+         "asset":"ETH.OPTIMISM",
+         "balance":"2.2260362287833405"
+      },
+      {
+         "account_id":"524a77b8-de28-462d-a295-9cfc2adf0bfb",
+         "participant_code":"HN853Q",
+         "account_group":"S8NSEL",
+         "account_label":"general",
+         "account_type":"available",
+         "asset":"ETH.ARBITRUM",
+         "balance":"2.6881666969445908"
+      },
+      {
+         "account_id":"4973f1bb-56c1-4987-a973-8df474b42922",
+         "participant_code":"HN853Q",
+         "account_group":"S8NSEL",
+         "account_label":"general",
+         "account_type":"available",
+         "asset":"ETH",
+         "balance":"0.0555433450904049"
+      },
+      {
+         "account_id":"be289f71-1383-4b19-b7f3-3d3693deedaa",
+         "participant_code":"HN853Q",
+         "account_group":"S8NSEL",
+         "account_label":"general",
+         "account_type":"available",
+         "asset":"MATIC.POLYGON",
+         "balance":"373.0260029428672288"
+      },
+      {
+         "account_id":"e6e6e9b9-88ce-4564-a3e2-4c5d3f5facf3",
+         "participant_code":"HN853Q",
+         "account_group":"S8NSEL",
+         "account_label":"general",
+         "account_type":"available",
+         "asset":"USD",
+         "balance":"2.15"
+      },
+      {
+         "account_id":"508ac460-3bd4-4481-85a1-363cfb75a217",
+         "participant_code":"HN853Q",
+         "account_group":"S8NSEL",
+         "account_label":"general",
+         "account_type":"available",
+         "asset":"EURC.XLM",
+         "balance":"159843.82"
+      },
+      {
+         "account_id":"01fd0766-89a7-4475-b6db-0524b0f813b5",
+         "participant_code":"HN853Q",
+         "account_group":"S8NSEL",
+         "account_label":"general",
+         "account_type":"collateral",
+         "asset":"USDC",
+         "balance":"99.45"
+      },
+      {
+         "account_id":"6da7e4f8-966d-451e-af5e-b19bfcc42b0d",
+         "participant_code":"00SCXM",
+         "account_group":"S8NSEL",
+         "account_label":"general",
+         "account_type":"available",
+         "asset":"EUR",
+         "balance":"340079.82"
+      },
+      {
+         "account_id":"42e917e1-7a68-42f6-9ace-91fe726607ea",
+         "participant_code":"00SCXM",
+         "account_group":"S8NSEL",
+         "account_label":"general",
+         "account_type":"available",
+         "asset":"USD",
+         "balance":"9717326.42"
+      },
+      {
+         "account_id":"edf5eea2-4174-4eac-aba9-92111fcbfa72",
+         "participant_code":"00SCXM",
+         "account_group":"S8NSEL",
+         "account_label":"general",
+         "account_type":"receivable",
+         "asset":"EUR",
+         "balance":"159914.3"
+      },
+      {
+         "account_id":"dcd98f53-db1f-4142-8869-d6eaedfe38f2",
+         "participant_code":"00SCXM",
+         "account_group":"S8NSEL",
+         "account_label":"general",
+         "account_type":"receivable",
+         "asset":"USD",
+         "balance":"273289.59"
+      },
+      {
+         "account_id":"19f56b96-8fb6-4ba8-8fca-65dbda4a8f42",
+         "participant_code":"GTSQHB",
+         "account_group":"S8NSEL",
+         "account_label":"general",
+         "account_type":"available",
+         "asset":"ETH",
+         "balance":"4"
+      },
+      {
+         "account_id":"51d8846e-2936-40ad-82e6-95e31c87af09",
+         "participant_code":"S8NSEL",
+         "account_group":"S8NSEL",
+         "account_label":"general",
+         "account_type":"payable",
+         "asset":"USD",
+         "balance":"273289.6"
+      },
+      {
+         "account_id":"4867383b-8392-4193-83a8-79b6de433cef",
+         "participant_code":"S8NSEL",
+         "account_group":"S8NSEL",
+         "account_label":"general",
+         "account_type":"payable",
+         "asset":"EUR",
+         "balance":"159914.3"
+      },
+      {
+         "account_id":"08838b2a-7bfa-4bb9-83e8-45a59f79aa3b",
+         "participant_code":"S8NSEL",
+         "account_group":"S8NSEL",
+         "account_label":"general",
+         "account_type":"available",
+         "asset":"EUR",
+         "balance":"4.8"
+      }
+   ]
+}
+```

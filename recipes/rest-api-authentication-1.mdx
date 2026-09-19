@@ -1,0 +1,571 @@
+---
+title: "REST API Authentication"
+description: "Learn how to authenticate to the zerohash REST API."
+---
+
+<Steps>
+  <Step title="Import required packages">
+    The Zero Hash authentication system requires some additional packages to be imported.
+
+    <CodeGroup>
+    ```python Python
+    import hashlib
+    import hmac
+    import json
+    from base64 import b64decode, b64encode
+    from datetime import datetime
+    from typing import Any, Dict, Optional
+    from urllib.parse import urljoin
+    ```
+
+    ```javascript JavaScript
+    const crypto = require('crypto')
+    const request = require('request-promise') // You can use axios, fetch, or whatever HTTP client you prefer.
+    ```
+
+    ```rust Rust
+    use hmac::{Hmac, Mac};
+    use reqwest::Client;
+    use sha2::Sha256;
+    use std::time::{SystemTime, UNIX_EPOCH};
+    use base64::{encode, decode};
+    use serde_json::json;
+    use dotenv::dotenv;
+    use std::env;
+    type HmacSha256 = Hmac<Sha256>;
+    ```
+
+    </CodeGroup>
+
+  </Step>
+
+  <Step title="Request signing">
+    Zero Hash uses hmac encryption to sign your requests.
+
+    <CodeGroup>
+    ```python Python
+    hm = hmac.new(
+        key=b64decode(api_private_key),
+        msg=msg,
+        digestmod=hashlib.sha256
+    )
+    # ...
+    signature = sign_request(
+        API_PRIVATE_KEY,
+        method,
+        resource_path,
+        json_body,
+        headers['X-SCX-TIMESTAMP']
+    )
+    ```
+
+    ```javascript JavaScript
+    const timestamp = Math.round(Date.now() / 1000)
+    const payload = timestamp + method + route + JSON.stringify(body)
+    const decodedSecret = Buffer.from(apiSecret, 'base64')
+    const hmac = crypto.createHmac('sha256', decodedSecret)
+    // Don't forget to base 64 encode your digest
+    const signedPayload = hmac.update(payload).digest('base64')
+    ```
+
+    ```rust Rust
+    let start = SystemTime::now();
+    let timestamp = start.duration_since(UNIX_EPOCH).expect("Time went backwards").as_secs();
+    let payload = format!("{}{}{}{}", timestamp, method, route, body.to_string());
+    let decoded_secret = decode(api_secret).expect("Decoding failed");
+    let mut mac = HmacSha256::new_from_slice(&decoded_secret).expect("HMAC can take key of any size");    mac.update(payload.as_bytes());
+    let signed_payload = encode(&mac.finalize().into_bytes());
+    ```
+
+    </CodeGroup>
+
+  </Step>
+
+  <Step title="Building request headers">
+    This function constructs the necessary authentication headers that are required by the Zero Hash Web API.
+
+    <CodeGroup>
+    ```python Python
+    def build_headers() -> Dict[str, Any]:
+        timestamp = str(int(datetime.now().timestamp()))
+
+        return {
+            'X-SCX-API-KEY': API_PUBLIC_KEY,
+            'X-SCX-SIGNED': '<to be filled>', # PLEASE NOTE: will be auto filled below
+            'X-SCX-TIMESTAMP': timestamp,
+            'X-SCX-PASSPHRASE': PASSPHRASE
+        }
+    ```
+
+    ```javascript JavaScript
+    const headers = {
+      'X-SCX-API-KEY': apiKey,
+      'X-SCX-SIGNED': signedPayload,
+      'X-SCX-TIMESTAMP': timestamp,
+      'X-SCX-PASSPHRASE': passphrase
+    }
+    ```
+
+    ```rust Rust
+    let mut headers = reqwest::header::HeaderMap::new();
+    headers.insert("X-SCX-API-KEY", reqwest::header::HeaderValue::from_str(api_key).unwrap());
+    headers.insert("X-SCX-SIGNED", reqwest::header::HeaderValue::from_str(&signed_payload).unwrap());
+    headers.insert("X-SCX-TIMESTAMP", reqwest::header::HeaderValue::from_str(&timestamp.to_string()).unwrap());
+    headers.insert("X-SCX-PASSPHRASE", reqwest::header::HeaderValue::from_str(passphrase).unwrap());
+    ```
+
+    </CodeGroup>
+
+  </Step>
+
+  <Step title="Request building function">
+    We then build a function to handle our various http request methods. This function is responsible for the sending and retrieval of information.
+
+    <CodeGroup>
+    ```python Python
+    def send_signed_http_request(
+        method: str, resource_path: str, body: Optional[Dict[str, str]] = None
+    ) -> requests.Response:
+        if body is None:
+            body = {}
+
+        headers = build_headers()
+
+        json_body = json.dumps(body, separators=(',', ':'))
+        signature = sign_request(
+            API_PRIVATE_KEY,
+            method,
+            resource_path,
+            json_body,
+            headers['X-SCX-TIMESTAMP']
+        )
+        headers['X-SCX-SIGNED'] = signature
+
+        absolute_url = urljoin(BASE_URL, resource_path)
+        request_args = {
+            'method': method,
+            'url': absolute_url,
+            'headers': headers
+        }
+        if body:
+            request_args['data'] = json_body
+            headers['Content-Type'] = 'application/json'
+
+        response = requests.request(**request_args)
+
+        return response
+    ```
+
+    ```javascript JavaScript
+    const makeRequest = (
+      apiKey,
+      apiSecret,
+      passphrase,
+      host,
+      route,
+      method,
+      body
+    ) => {
+    ```
+
+    ```rust Rust
+    let request_builder = match method {
+        "POST" => client.post(format!("https://{}{}", host, route)),
+        "PUT" => client.put(format!("https://{}{}", host, route)),
+        "GET" => client.get(format!("https://{}{}", host, route)),
+        _ => panic!("Unsupported HTTP method"),
+    };
+
+    let response = request_builder
+        .headers(headers.clone())
+        .json(body)
+        .send()
+        .await;
+    ```
+
+    </CodeGroup>
+
+  </Step>
+
+  <Step title="Set up the environment">
+    Add the credentials and environment that you are requesting.
+
+    <CodeGroup>
+    ```python Python
+    BASE_URL = 'https://api.cert.zerohash.com'
+
+    API_PUBLIC_KEY = '<please fill me in>'
+    API_PRIVATE_KEY = '<please fill me in>'
+    PASSPHRASE = '<please fill me in>'
+    ```
+
+    ```javascript JavaScript
+    const headers = {
+      'X-SCX-API-KEY': apiKey,
+      'X-SCX-SIGNED': signedPayload,
+      'X-SCX-TIMESTAMP': timestamp,
+      'X-SCX-PASSPHRASE': passphrase
+    }
+    ```
+
+    ```rust Rust
+    let api_secret = env::var("API_SECRET").expect("API_SECRET must be set");
+    let passphrase = env::var("PASSPHRASE").expect("PASSPHRASE must be set");
+    let host = env::var("HOST").expect("HOST must be set");
+    ```
+
+    </CodeGroup>
+
+  </Step>
+
+  <Step title="Send a request">
+    <CodeGroup>
+    ```python Python
+    send_signed_http_request('GET', '/index?underlying=BTC&quoted_currency=USD')
+    ```
+
+    ```javascript JavaScript
+    return request[derivedMethod](`https://${host}${route}`, options)
+    ```
+
+    ```rust Rust
+        let timestamp = start.duration_since(UNIX_EPOCH).expect("Time went backwards").as_secs() * 1000;
+
+        let route = "/index?underlying=BTC&quoted_currency=USD";
+        let method = "GET";
+        let body = json!({
+        });
+
+        if let Err(e) = make_request(&api_key, &api_secret, &passphrase, &host, route, method, &body).await {
+            println!("Failed to make request: {:?}", e);
+        }
+    }
+    ```
+
+    </CodeGroup>
+
+  </Step>
+
+</Steps>
+
+## Full example
+
+<CodeGroup>
+
+```python Python
+import hashlib
+import hmac
+import json
+from base64 import b64decode, b64encode
+from datetime import datetime
+from typing import Any, Dict, Optional
+from urllib.parse import urljoin
+
+import requests
+from logging import getLogger
+
+BASE_URL = 'https://api.cert.zerohash.com'
+
+API_PUBLIC_KEY = '<please fill me in>'
+API_PRIVATE_KEY = '<please fill me in>'
+PASSPHRASE = '<please fill me in>'
+
+def sign_request(api_private_key: str, method: str,
+                 resource_path: str, json_body: str, timestamp: str) -> bytes:
+    msg = bytes(
+        timestamp + method + resource_path + json_body,
+        encoding='utf-8'
+    )
+    hm = hmac.new(
+        key=b64decode(api_private_key),
+        msg=msg,
+        digestmod=hashlib.sha256
+    )
+    return b64encode(hm.digest()).decode()
+
+
+def build_headers() -> Dict[str, Any]:
+    timestamp = str(int(datetime.now().timestamp()))
+
+    return {
+        'X-SCX-API-KEY': API_PUBLIC_KEY,
+        'X-SCX-SIGNED': '<to be filled>', # PLEASE NOTE: will be auto filled below
+        'X-SCX-TIMESTAMP': timestamp,
+        'X-SCX-PASSPHRASE': PASSPHRASE
+    }
+
+
+def send_signed_http_request(
+    method: str, resource_path: str, body: Optional[Dict[str, str]] = None
+) -> requests.Response:
+    if body is None:
+        body = {}
+
+    headers = build_headers()
+
+    json_body = json.dumps(body, separators=(',', ':'))
+    signature = sign_request(
+        API_PRIVATE_KEY,
+        method,
+        resource_path,
+        json_body,
+        headers['X-SCX-TIMESTAMP']
+    )
+    headers['X-SCX-SIGNED'] = signature
+
+    absolute_url = urljoin(BASE_URL, resource_path)
+    request_args = {
+        'method': method,
+        'url': absolute_url,
+        'headers': headers
+    }
+    if body:
+        request_args['data'] = json_body
+        headers['Content-Type'] = 'application/json'
+
+    response = requests.request(**request_args)
+
+    return response
+  
+if __name__ == '__main__':
+    send_signed_http_request('GET', '/index?underlying=BTC&quoted_currency=USD')
+```
+
+```javascript JavaScript
+const crypto = require('crypto')
+const request = require('request-promise') // You can use axios, fetch, or whatever HTTP client you prefer.
+
+const makeRequest = (
+  apiKey,
+  apiSecret,
+  passphrase,
+  host,
+  route,
+  method,
+  body
+) => {
+  // CREATE SIGNATURE
+  const timestamp = Math.round(Date.now() / 1000)
+  const payload = timestamp + method + route + JSON.stringify(body)
+  const decodedSecret = Buffer.from(apiSecret, 'base64')
+  const hmac = crypto.createHmac('sha256', decodedSecret)
+  // Don't forget to base 64 encode your digest
+  const signedPayload = hmac.update(payload).digest('base64')
+
+  // SET HEADERS
+  const headers = {
+    'X-SCX-API-KEY': apiKey,
+    'X-SCX-SIGNED': signedPayload,
+    'X-SCX-TIMESTAMP': timestamp,
+    'X-SCX-PASSPHRASE': passphrase
+  }
+
+  const derivedMethod = {
+    POST: 'post',
+    PUT: 'put',
+    GET: 'get'
+  }[method]
+
+  const options = {
+    headers,
+    body,
+    json: true
+  }
+
+  return request[derivedMethod](`https://${host}${route}`, options)
+}
+
+
+// FOR POSTMAN
+
+// SET ENV VARS:
+// Set the following variables in an environment: 
+// passphrase, publicApiKey and secretApiKey
+
+// SET PRE-REQ SCRIPT
+// Then set this `pre-req` script:
+
+//    const uuid = require('uuid');
+//    const moment = require("moment")
+//    const passphrase = pm.environment.get("passphrase")
+//    const publicApiKey = pm.environment.get("publicApiKey")
+//    const secretApiKey = pm.environment.get("secretApiKey")
+//    var requestUrl = pm.request.url.getPathWithQuery()
+//    requestUrl = pm.variables.replaceIn(requestUrl)
+//    const requestMethod = pm.request.method;
+//    const requestTimeStamp = Math.round(Date.now() / 1000);
+//    let requestBody = "{}"
+//    console.log(pm.request.body.raw === true)
+//    if (Object.keys(pm.request.body).length !== 0) {
+//       requestBody = JSON.stringify(JSON.parse(pm.request.body.raw.toString()))
+//    }
+//    const signedPayload = requestTimeStamp + requestMethod + requestUrl + requestBody
+//    const secretByteArray = CryptoJS.enc.Base64.parse(secretApiKey);
+//    const signatureBytes = CryptoJS.HmacSHA256(signedPayload,secretByteArray);
+//    const requestSignatureBase64String = CryptoJS.enc.Base64.stringify(signatureBytes);
+//    pm.environment.set("signedPayload", requestSignatureBase64String)
+//    pm.environment.set("timestamp", requestTimeStamp)
+
+// SET HEADERS
+// Then set the following headers:
+// 		Content-Type:application/json
+// 		X-SCX-API-KEY:{{publicApiKey}}
+// 		X-SCX-SIGNED:{{signedPayload}}
+// 		X-SCX-TIMESTAMP:{{timestamp}}
+// 		X-SCX-PASSPHRASE:{{passphrase}}
+```
+
+```rust Rust
+use hmac::{Hmac, Mac};
+use reqwest::Client;
+use sha2::Sha256;
+use std::time::{SystemTime, UNIX_EPOCH};
+use base64::{encode, decode};
+use serde_json::json;
+use dotenv::dotenv;
+use std::env;
+type HmacSha256 = Hmac<Sha256>;
+
+async fn make_request(
+    api_key: &str,
+    api_secret: &str,
+    passphrase: &str,
+    host: &str,
+    route: &str,
+    method: &str,
+    body: &serde_json::Value,
+) -> Result<reqwest::Response, reqwest::Error> {
+    // CREATE SIGNATURE
+    let start = SystemTime::now();
+    let timestamp = start.duration_since(UNIX_EPOCH).expect("Time went backwards").as_secs();
+    let payload = format!("{}{}{}{}", timestamp, method, route, body.to_string());
+    let decoded_secret = decode(api_secret).expect("Decoding failed");
+    let mut mac = HmacSha256::new_from_slice(&decoded_secret).expect("HMAC can take key of any size");    mac.update(payload.as_bytes());
+    let signed_payload = encode(&mac.finalize().into_bytes());
+
+    // SET HEADERS
+    let mut headers = reqwest::header::HeaderMap::new();
+    headers.insert("X-SCX-API-KEY", reqwest::header::HeaderValue::from_str(api_key).unwrap());
+    headers.insert("X-SCX-SIGNED", reqwest::header::HeaderValue::from_str(&signed_payload).unwrap());
+    headers.insert("X-SCX-TIMESTAMP", reqwest::header::HeaderValue::from_str(&timestamp.to_string()).unwrap());
+    headers.insert("X-SCX-PASSPHRASE", reqwest::header::HeaderValue::from_str(passphrase).unwrap());
+
+    let client = Client::new();
+    let request_builder = match method {
+        "POST" => client.post(format!("https://{}{}", host, route)),
+        "PUT" => client.put(format!("https://{}{}", host, route)),
+        "GET" => client.get(format!("https://{}{}", host, route)),
+        _ => panic!("Unsupported HTTP method"),
+    };
+
+    let response = request_builder
+        .headers(headers.clone())
+        .json(body)
+        .send()
+        .await;
+
+    match response {
+        Ok(res) => {
+            println!("Request successful: {:?}", res);
+            Ok(res)
+        },
+        Err(e) => {
+            println!("Request error: {}", e);
+            Err(e)
+        }
+    }
+}
+
+#[tokio::main]
+async fn main() {
+    dotenv().ok();
+
+    let api_key = env::var("API_KEY").expect("API_KEY must be set");
+    let api_secret = env::var("API_SECRET").expect("API_SECRET must be set");
+    let passphrase = env::var("PASSPHRASE").expect("PASSPHRASE must be set");
+    let host = env::var("HOST").expect("HOST must be set");
+
+    let start = SystemTime::now();
+    let timestamp = start.duration_since(UNIX_EPOCH).expect("Time went backwards").as_secs() * 1000;
+
+    let route = "/index?underlying=BTC&quoted_currency=USD";
+    let method = "GET";
+    let body = json!({
+    });
+
+    if let Err(e) = make_request(&api_key, &api_secret, &passphrase, &host, route, method, &body).await {
+        println!("Failed to make request: {:?}", e);
+    }
+}
+```
+
+```java Java
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
+
+public class ZeroHashHttpClient {
+    public static void main(String[] args) throws Exception {
+        // Credentials
+        String apiKey = "PUBLIC_KEY";
+        String apiSecret = "SECRET_KEY";
+        String passphrase = "PASSPHRASE";
+        String baseUrl = "https://api.cert.zerohash.com";
+        String resourcePath = "/clob/accounts";
+        String method = "POST";
+
+        // Minimal JSON body
+        String jsonBody = "{" +
+            "\"participant_code\":\"4CQMKC\"," +
+            "\"prefunded\":false," +
+            "\"account_label\":\"4CQMKC-label\"," +
+            "\"account_tier\":\"gold\"}";
+
+        String timestamp = String.valueOf(System.currentTimeMillis() / 1000L); // seconds
+        String prehash = timestamp + method + resourcePath + jsonBody;
+        String signature = signRequest(apiSecret, prehash);
+
+        HttpRequest request = HttpRequest.newBuilder()
+            .uri(URI.create(baseUrl + resourcePath))
+            .header("Content-Type", "application/json")
+            .header("X-SCX-API-KEY", apiKey)
+            .header("X-SCX-SIGNED", signature)
+            .header("X-SCX-TIMESTAMP", timestamp)
+            .header("X-SCX-PASSPHRASE", passphrase)
+            .POST(HttpRequest.BodyPublishers.ofString(jsonBody))
+            .build();
+
+        HttpClient client = HttpClient.newHttpClient();
+        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+        System.out.println("Response code: " + response.statusCode());
+        System.out.println("Response body: " + response.body());
+    }
+
+    private static String signRequest(String apiSecret, String prehash) throws Exception {
+        byte[] keyBytes = Base64.getDecoder().decode(apiSecret);
+        Mac hmacSha256 = Mac.getInstance("HmacSHA256");
+        hmacSha256.init(new SecretKeySpec(keyBytes, "HmacSHA256"));
+        byte[] signedBytes = hmacSha256.doFinal(prehash.getBytes(StandardCharsets.UTF_8));
+        return Base64.getEncoder().encodeToString(signedBytes);
+    }
+}
+```
+
+</CodeGroup>
+
+## Response
+
+```json Response
+{
+    "index": "BTC/USD",
+    "quoted_currency": "USD",
+    "timestamp": 1737132419000,
+    "underlying": "BTC",
+    "value": 104369.9804271604
+}
+```

@@ -1,0 +1,584 @@
+---
+title: "Webhook Signatures"
+description: "How to validate incoming webhook notifications."
+---
+
+<Steps>
+  <Step title="Extract data from headers">
+    Get the request signature and timestamp from headers
+
+    <CodeGroup>
+    ```java Java
+    long requestTime = Long.parseLong(timestamp);
+    // ...
+    byte[] signature = Hex.decode(signatureHex);
+    ```
+
+    ```go Go
+    // Extract headers
+    signatureHex := r.Header.Get(zhWebhookRSASigHeader)
+    if signatureHex == "" {
+        return errors.New("missing signature header")
+    }
+
+    timestamp := r.Header.Get(zhWebhookTimestampHeader)
+    if timestamp == "" {
+        return errors.New("missing timestamp header")
+    }
+    ```
+
+    ```javascript JavaScript
+      const signatureHex = request.headers["x-zh-hook-rsa-signature"];
+      const timestamp = request.headers["x-zh-hook-timestamp"];
+      
+    if (!signatureHex) {
+        return 'Missing signature header';
+    }
+    if (!timestamp) {
+        return 'Missing timestamp header';
+    }
+    ```
+
+    ```php PHP
+    if (empty($headers['x-zh-hook-rsa-signature'])) {
+        return 'Missing signature header';
+    }
+    if (empty($headers['x-zh-hook-timestamp'])) {
+        return 'Missing timestamp header';
+    }
+    ```
+
+    ```ruby Ruby
+    signature_hex = request['HTTP_X_ZH_HOOK_RSA_SIGNATURE']
+    timestamp = request['HTTP_X_ZH_HOOK_TIMESTAMP']
+
+    return 'Missing signature header' if signature_hex.nil? || signature_hex.empty?
+    return 'Missing timestamp header' if timestamp.nil? || timestamp.empty?
+    ```
+
+    </CodeGroup>
+
+  </Step>
+
+  <Step title="Validate timestamp">
+    Validate webhook is not 'expired' as per your configuration/needs.
+
+    <CodeGroup>
+    ```java Java
+    long requestTime = Long.parseLong(timestamp);
+    long currentTime = Instant.now().toEpochMilli();
+    if (Math.abs(currentTime - requestTime) > (MAX_ALLOWED_DRIFT_SECONDS * 1000)) {
+        System.err.println("Webhook rejected: Timestamp drift too large.");
+        return false;
+    }
+    ```
+
+    ```go Go
+    // Validate timestamp
+    tsInt, err := strconv.ParseInt(timestamp, 10, 64)
+    if err != nil {
+        return fmt.Errorf("invalid timestamp: %w", err)
+    }
+
+    now := time.Now().UnixMilli()
+    if abs(now-tsInt) > allowedDriftSeconds {
+        return errors.New("timestamp outside allowed range")
+    }
+    ```
+
+    ```javascript JavaScript
+    const tsMillis = parseInt(timestamp, 10);
+    if (isNaN(tsMillis)) {
+        return 'Invalid timestamp format';
+    }
+
+    const nowMillis = Date.now();
+    if (Math.abs(nowMillis - tsMillis) > ALLOWED_DRIFT_MS) {
+        return 'Timestamp outside allowed range';
+    }
+    ```
+
+    ```php PHP
+    if (!ctype_digit($timestamp)) {
+        return 'Invalid timestamp format';
+    }
+
+    $ts_millis = intval($timestamp);
+    $ts_seconds = intdiv($ts_millis, 1000);
+    $now_seconds = time();
+
+    if (abs($now_seconds - $ts_seconds) > ALLOWED_DRIFT_SECONDS) {
+        return 'Timestamp outside allowed range';
+    }
+    ```
+
+    ```ruby Ruby
+    begin
+      ts_millis = Integer(timestamp)
+    rescue ArgumentError
+      return 'Invalid timestamp format'
+    end
+
+    ts_seconds = ts_millis / 1000
+    now_seconds = Time.now.to_i
+
+    if (now_seconds - ts_seconds).abs > ALLOWED_DRIFT_SECONDS
+      return 'Timestamp outside allowed range'
+    end
+    ```
+
+    </CodeGroup>
+
+  </Step>
+
+  <Step title="Reconstruct message">
+    Reconstruct the message that was signed
+
+    <CodeGroup>
+    ```java Java
+    byte[] message = (payload + timestamp).getBytes(StandardCharsets.UTF_8);
+    ```
+
+    ```go Go
+    // Read and reconstruct payload + timestamp
+    payload, err := io.ReadAll(r.Body)
+    if err != nil {
+        return fmt.Errorf("read body: %w", err)
+    }
+
+    signedMessage := append(payload, []byte(timestamp)...)
+
+    // Hash the message
+    hashed := sha256.Sum256(signedMessage)
+    ```
+
+    ```javascript JavaScript
+    const signedMessage = Buffer.concat([request.rawBody,  Buffer.from(timestamp)]);
+    ```
+
+    ```php PHP
+    $signed_message = $payload . $timestamp;
+
+    // Hash the signed message
+    $digest = hash('sha256', $signed_message, true);
+
+    // Convert hex signature to binary
+    $signature = hex2bin($signature_hex);
+    ```
+
+    ```ruby Ruby
+    payload = request.body.read
+
+    signed_message = payload + timestamp
+    digest = OpenSSL::Digest::SHA256.digest(signed_message)
+
+    signature = [signature_hex].pack('H*')
+    ```
+
+    </CodeGroup>
+
+  </Step>
+
+  <Step title="Verify signature">
+    Verify the reconstructed message matched with the received signature by using the shared public key
+
+    <CodeGroup>
+    ```java Java
+    int saltLen = (publicKey.getModulus().bitLength() / 8) - 32 - 2;
+            
+    Signature sig = Signature.getInstance("SHA256withRSA/PSS", "BC");
+    sig.initVerify(publicKey);
+    sig.setParameter(new PSSParameterSpec(
+        "SHA-256", "MGF1", MGF1ParameterSpec.SHA256, saltLen, 1
+    ));
+            
+    sig.update(message);
+    return sig.verify(signature);
+    ```
+
+    ```go Go
+    // Decode signature
+    signature, err := hex.DecodeString(signatureHex)
+    if err != nil {
+        return fmt.Errorf("decode signature: %w", err)
+    }
+
+    // Verify RSA signature
+    err = rsa.VerifyPSS(pub, crypto.SHA256, hashed[:], signature, nil)
+    if err != nil {
+        return fmt.Errorf("signature verification failed: %w", err)
+    }
+
+    return nil
+    ```
+
+    ```javascript JavaScript
+    const isValid = verify.verify(
+      'sha256',
+       crypto.createHash('sha256').update(signedMessage).digest(),
+        { key: pubKey, padding: crypto.constants.RSA_PKCS1_PSS_PADDING },
+        requestSignature
+    );
+
+    return isValid
+    ```
+
+    ```php PHP
+    $ok = openssl_verify(
+        $digest,
+        $signature,
+        $public_key_pem,
+        OPENSSL_ALGO_SHA256
+    );
+
+    if ($ok !== 1) {
+        return 'Signature verification failed';
+    }
+
+    return null; // Success
+    ```
+
+    ```ruby Ruby
+    public_key = OpenSSL::PKey::RSA.new(public_key_pem)
+
+    verified = public_key.verify_pss(
+      'SHA256',
+      signature,
+      digest,
+      salt_length: :max,
+      mgf1_hash: 'SHA256'
+    )
+
+    return 'Signature verification failed' unless verified
+    ```
+
+    </CodeGroup>
+
+  </Step>
+
+</Steps>
+
+## Full example
+
+<CodeGroup>
+
+```java Java
+import org.bouncycastle.jce.provider.BouncyCastleProvider;
+import org.bouncycastle.util.encoders.Hex;
+import org.bouncycastle.util.io.pem.PemReader;
+
+import java.io.StringReader;
+import java.nio.charset.StandardCharsets;
+import java.security.KeyFactory;
+import java.security.Security;
+import java.security.Signature;
+import java.security.interfaces.RSAPublicKey;
+import java.security.spec.MGF1ParameterSpec;
+import java.security.spec.PSSParameterSpec;
+import java.security.spec.RSAPublicKeySpec;
+import java.time.Instant;
+
+/**
+ * Robust RSA-PSS signature verification for incoming webhooks.
+ */
+public class WebhookVerifier {
+
+    static {
+        // Ensure BouncyCastle is registered for RSASSA-PSS support
+        if (Security.getProvider("BC") == null) {
+            Security.addProvider(new BouncyCastleProvider());
+        }
+    }
+
+    private static final long MAX_ALLOWED_DRIFT_SECONDS = 300; // 5 minutes
+
+    /**
+     * Verifies the signature of a webhook request.
+     * * @param payload      The raw JSON body of the request.
+     * @param timestamp    The X-Webhook-Timestamp header value.
+     * @param signatureHex The X-Webhook-Signature header value (Hex encoded).
+     * @param publicKeyPem Your public key in PEM format.
+     * @return true if valid and within time drift limits.
+     */
+    public static boolean verify(String payload, String timestamp, String signatureHex, String publicKeyPem) {
+        try {
+            // 1. Prevent Replay Attacks: Check if the timestamp is too old
+            long requestTime = Long.parseLong(timestamp);
+            long currentTime = Instant.now().toEpochMilli();
+            if (Math.abs(currentTime - requestTime) > (MAX_ALLOWED_DRIFT_SECONDS * 1000)) {
+                System.err.println("Webhook rejected: Timestamp drift too large.");
+                return false;
+            }
+
+            // 2. Parse the Public Key
+            RSAPublicKey publicKey = parsePublicKey(publicKeyPem);
+
+            // 3. Reconstruct the signed message (Payload + Timestamp)
+            byte[] message = (payload + timestamp).getBytes(StandardCharsets.UTF_8);
+            byte[] signature = Hex.decode(signatureHex);
+
+            // 4. Verify RSA-PSS Signature
+            // Salt length calculation: (Modulus size in bytes) - (Hash size in bytes) - 2
+            int saltLen = (publicKey.getModulus().bitLength() / 8) - 32 - 2;
+            
+            Signature sig = Signature.getInstance("SHA256withRSA/PSS", "BC");
+            sig.initVerify(publicKey);
+            sig.setParameter(new PSSParameterSpec(
+                "SHA-256", "MGF1", MGF1ParameterSpec.SHA256, saltLen, 1
+            ));
+            
+            sig.update(message);
+            return sig.verify(signature);
+
+        } catch (Exception e) {
+            System.err.println("Verification failed: " + e.getMessage());
+            return false;
+        }
+    }
+
+    private static RSAPublicKey parsePublicKey(String pem) throws Exception {
+        try (PemReader reader = new PemReader(new StringReader(pem))) {
+            byte[] der = reader.readPemObject().getContent();
+            // Handling PKCS#1 format specifically as used in your example
+            org.bouncycastle.asn1.pkcs.RSAPublicKey bcKey = 
+                org.bouncycastle.asn1.pkcs.RSAPublicKey.getInstance(der);
+            RSAPublicKeySpec spec = new RSAPublicKeySpec(bcKey.getModulus(), bcKey.getPublicExponent());
+            return (RSAPublicKey) KeyFactory.getInstance("RSA").generatePublic(spec);
+        }
+    }
+}
+```
+
+```go Go
+import (
+    "crypto"
+    "crypto/hmac"
+    "crypto/rsa"
+    "crypto/sha256"
+    "encoding/hex"
+    "errors"
+    "fmt"
+    "io"
+    "net/http"
+    "strconv"
+    "time"
+)
+
+const (
+    zhWebhookRSASigHeader  = "x-zh-hook-rsa-signature"
+    zhWebhookTimestampHeader = "x-zh-hook-timestamp"
+    allowedDriftSeconds      = 300 // 5 minutes
+)
+
+func verifyWebhookSignature(r *http.Request, pub *rsa.PublicKey) error {
+    // Extract headers
+    signatureHex := r.Header.Get(zhWebhookRSASigHeader)
+    if signatureHex == "" {
+        return errors.New("missing signature header")
+    }
+
+    timestamp := r.Header.Get(zhWebhookTimestampHeader)
+    if timestamp == "" {
+        return errors.New("missing timestamp header")
+    }
+
+    // Validate timestamp
+    tsInt, err := strconv.ParseInt(timestamp, 10, 64)
+    if err != nil {
+        return fmt.Errorf("invalid timestamp: %w", err)
+    }
+
+    now := time.Now().UnixMilli()
+    if abs(now-tsInt) > allowedDriftSeconds {
+        return errors.New("timestamp outside allowed range")
+    }
+
+    // Read and reconstruct payload + timestamp
+    payload, err := io.ReadAll(r.Body)
+    if err != nil {
+        return fmt.Errorf("read body: %w", err)
+    }
+
+    signedMessage := append(payload, []byte(timestamp)...)
+
+    // Hash the message
+    hashed := sha256.Sum256(signedMessage)
+
+    // Decode signature
+    signature, err := hex.DecodeString(signatureHex)
+    if err != nil {
+        return fmt.Errorf("decode signature: %w", err)
+    }
+
+    // Verify RSA signature
+    err = rsa.VerifyPSS(pub, crypto.SHA256, hashed[:], signature, nil)
+    if err != nil {
+        return fmt.Errorf("signature verification failed: %w", err)
+    }
+
+    return nil
+}
+
+func abs(x int64) int64 {
+    if x < 0 {
+        return -x
+    }
+    return x
+}
+```
+
+```javascript JavaScript
+import * as crypto from 'crypto';
+
+const ALLOWED_DRIFT_MS = 5 * 60 * 1000;
+
+function verifySignature(request, pubKey) {
+    try { 
+        // Decode signature from hex
+        const signatureHex = request.headers["x-zh-hook-rsa-signature"];
+        const timestamp = request.headers["x-zh-hook-timestamp"];
+      
+      if (!signatureHex) {
+          return 'Missing signature header';
+      }
+      if (!timestamp) {
+          return 'Missing timestamp header';
+      }
+
+      const tsMillis = parseInt(timestamp, 10);
+      if (isNaN(tsMillis)) {
+          return 'Invalid timestamp format';
+      }
+
+      const nowMillis = Date.now();
+      if (Math.abs(nowMillis - tsMillis) > ALLOWED_DRIFT_MS) {
+          return 'Timestamp outside allowed range';
+      }
+      
+      const requestSignature = Buffer.from(signatureHex, 'hex');
+      const signedMessage = Buffer.concat([request.rawBody,  Buffer.from(timestamp)]);
+      
+        // Create verifier
+        const verify = crypto.createVerify('RSA-SHA256');
+      
+        // Verify signature using PKCS1_PSS padding
+        const isValid = verify.verify(
+          'sha256',
+           crypto.createHash('sha256').update(signedMessage).digest(),
+            { key: pubKey, padding: crypto.constants.RSA_PKCS1_PSS_PADDING },
+            requestSignature
+        );
+
+        return isValid
+
+    } catch (error) {
+        console.error(`Failed verifying signature: ${error.message}`);
+        return false;
+    }
+}
+```
+
+```php PHP
+<?php
+
+  define('ALLOWED_DRIFT_SECONDS', 300); // ±5 minutes
+
+function verify_signature($headers, $payload, $public_key_pem) {
+    if (empty($headers['x-zh-hook-rsa-signature'])) {
+        return 'Missing signature header';
+    }
+    if (empty($headers['x-zh-hook-timestamp'])) {
+        return 'Missing timestamp header';
+    }
+
+    $signature_hex = $headers['x-zh-hook-rsa-signature'];
+    $timestamp = $headers['x-zh-hook-timestamp'];
+
+    if (!ctype_digit($timestamp)) {
+        return 'Invalid timestamp format';
+    }
+
+    $ts_millis = intval($timestamp);
+    $ts_seconds = intdiv($ts_millis, 1000);
+    $now_seconds = time();
+
+    if (abs($now_seconds - $ts_seconds) > ALLOWED_DRIFT_SECONDS) {
+        return 'Timestamp outside allowed range';
+    }
+
+    // Concatenate payload + timestamp
+    $signed_message = $payload . $timestamp;
+
+    // Hash the signed message
+    $digest = hash('sha256', $signed_message, true);
+
+    // Convert hex signature to binary
+    $signature = hex2bin($signature_hex);
+
+    // Verify the signature using OpenSSL with PSS padding
+    $ok = openssl_verify(
+        $digest,
+        $signature,
+        $public_key_pem,
+        OPENSSL_ALGO_SHA256
+    );
+
+    if ($ok !== 1) {
+        return 'Signature verification failed';
+    }
+
+    return null; // Success
+}
+?>
+```
+
+```ruby Ruby
+require 'openssl'
+require 'time'
+
+ALLOWED_DRIFT_SECONDS = 300  # ±5 minutes
+
+def verify_signature(request, public_key_pem)
+  signature_hex = request['HTTP_X_ZH_HOOK_RSA_SIGNATURE']
+  timestamp = request['HTTP_X_ZH_HOOK_TIMESTAMP']
+
+  return 'Missing signature header' if signature_hex.nil? || signature_hex.empty?
+  return 'Missing timestamp header' if timestamp.nil? || timestamp.empty?
+
+  begin
+    ts_millis = Integer(timestamp)
+  rescue ArgumentError
+    return 'Invalid timestamp format'
+  end
+
+  ts_seconds = ts_millis / 1000
+  now_seconds = Time.now.to_i
+
+  if (now_seconds - ts_seconds).abs > ALLOWED_DRIFT_SECONDS
+    return 'Timestamp outside allowed range'
+  end
+
+  payload = request.body.read
+
+  signed_message = payload + timestamp
+  digest = OpenSSL::Digest::SHA256.digest(signed_message)
+
+  signature = [signature_hex].pack('H*')
+
+  public_key = OpenSSL::PKey::RSA.new(public_key_pem)
+
+  verified = public_key.verify_pss(
+    'SHA256',
+    signature,
+    digest,
+    salt_length: :max,
+    mgf1_hash: 'SHA256'
+  )
+
+  return 'Signature verification failed' unless verified
+
+  nil # Success
+end
+```
+
+</CodeGroup>

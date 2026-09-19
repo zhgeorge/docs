@@ -1,0 +1,118 @@
+---
+title: "Liquidity Quote"
+description: "Learn how to get a quote to the zerohash liquidity product."
+---
+
+<Steps>
+  <Step title="Participant Code">
+    Participant code is the 6 character alphanumeric that identifies the buying or selling participant
+
+    ```python Python
+    'participant_code': 'NHQAYQ',
+    ```
+
+  </Step>
+
+  <Step title="Side">
+    The side of the trade you are requesting.  
+    Buy is to purchase the underlying asset.  
+    Sell is to sell the underlying asset.
+
+    ```python Python
+    'side': 'buy',
+    ```
+
+  </Step>
+
+  <Step title="Underlying Asset">
+    The underlying parameter is the asset that you are wishing to purchase or sell depending on the side parameter.
+
+    ```python Python
+    'underlying': 'USDC',
+    ```
+
+  </Step>
+
+  <Step title="Quoted Currency">
+    The quoted_currency parameters is the asset that you wish to get quoted in.  
+    For example, USDC/USD is the instrument.
+
+    ```python Python
+    'quoted_currency': 'USD',
+    ```
+
+  </Step>
+
+  <Step title="Total & Quantity">
+    The /liquidity/rfq endpoint accepts two parameters to help the user define an amount. 
+
+    The request can use total or quantity.  
+    Total is the value in quoted_currency you wish to buy or sell.  
+    E.g. - 100 USD of BTC
+
+    The quantity parameter is concerned with the quantity of crypto you wish to purchase.  
+    E.g. - 1 BTC
+
+    ```python Python
+    'total': '1000',
+    ```
+
+  </Step>
+
+</Steps>
+
+## Full example
+
+```python Python
+import requests
+
+url = "https://api.cert.zerohash.com/liquidity/rfq"
+
+headers = {
+    "accept": "application/json",
+    "X-SCX-API-KEY": "<<apiKey>>",
+    "X-SCX-PASSPHRASE": "<<apiKey>>",
+    "X-PK": "<<apiKey>>"
+}
+params = {
+  'participant_code': 'NHQAYQ',
+  'side': 'buy',
+  'underlying': 'USDC',
+  'quoted_currency': 'USD',
+  'total': '1000',
+}
+resp
+response = requests.get(url, headers=headers)
+
+print(response.text)
+```
+
+## Response
+
+```json Response
+{
+  "message": {
+    "request_id": "d891d59e-ce1a-4882-8470-05d878745c86",
+    "participant_code": "FP2F20",
+    "quoted_currency": "USD",
+    "side": "buy",
+    "quantity": "1000",
+    "price": "1",
+    "quote_id": "cd74994a-ad9c-4697-adbd-1f6c6a1c6dbc",
+    "expire_ts": 1712723867686,
+    "account_group": "00SCXM",
+    "account_label": "general",
+    "obo_participant": {
+      "participant_code": "NHQAYQ",
+      "account_group": "FP2F20",
+      "account_label": "general"
+    },
+    "parent_link_id": "",
+    "parent_link_id_source": 0,
+    "underlying": "USDC.ETH",
+    "asset_cost_notional": "1000",
+    "spread_notional": "0",
+    "spread_bps": "0"
+  }
+}
+```

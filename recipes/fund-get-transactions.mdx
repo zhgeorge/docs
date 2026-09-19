@@ -1,0 +1,220 @@
+---
+title: "Fund Get Transactions"
+description: "Sign a request and list a customer's Account Funding deposits."
+---
+
+<Steps>
+  <Step title="Import required packages">
+    Use this code recipe to populate a user-facing transaction history page or an internal dashboard
+
+    ```python Python
+    import hashlib
+    import hmac
+    import json
+    from base64 import b64decode, b64encode
+    from datetime import datetime
+    from typing import Any, Dict, Optional
+    from urllib.parse import urljoin
+
+    import requests
+    ```
+
+  </Step>
+
+  <Step title="Set up the environment">
+    Add the credentials and environment that you are requesting.
+
+    ```python Python
+    BASE_URL = 'https://api.cert.zerohash.com'
+
+    API_PUBLIC_KEY = '<please fill me in>'
+    API_PRIVATE_KEY = '<please fill me in>'
+    PASSPHRASE = '<please fill me in>'
+    ```
+
+  </Step>
+
+  <Step title="Sign and sent request">
+    Zero Hash uses hmac encryption to sign your requests and authentication headers.
+
+    ```python Python
+    def sign_request(api_private_key: str, method: str,
+                     resource_path: str, json_body: str, timestamp: str) -> bytes:
+        msg = bytes(
+            timestamp + method + resource_path + json_body,
+            encoding='utf-8'
+        )
+        hm = hmac.new(
+            key=b64decode(api_private_key),
+            msg=msg,
+            digestmod=hashlib.sha256
+        )
+        return b64encode(hm.digest()).decode()
+
+
+    def build_headers() -> Dict[str, Any]:
+        timestamp = str(int(datetime.now().timestamp()))
+
+        return {
+            'X-SCX-API-KEY': API_PUBLIC_KEY,
+            'X-SCX-SIGNED': '<to be filled>', # PLEASE NOTE: will be auto filled below
+            'X-SCX-TIMESTAMP': timestamp,
+            'X-SCX-PASSPHRASE': PASSPHRASE
+        }
+
+
+    def send_signed_http_request(
+        method: str, resource_path: str, body: Optional[Dict[str, str]] = None
+    ) -> requests.Response:
+        if body is None:
+            body = {}
+
+        headers = build_headers()
+
+        json_body = json.dumps(body, separators=(',', ':'))
+        signature = sign_request(
+            API_PRIVATE_KEY,
+            method,
+            resource_path,
+            json_body,
+            headers['X-SCX-TIMESTAMP']
+        )
+        headers['X-SCX-SIGNED'] = signature
+
+        absolute_url = urljoin(BASE_URL, resource_path)
+        request_args = {
+            'method': method,
+            'url': absolute_url,
+            'headers': headers
+        }
+        if body:
+            request_args['data'] = json_body
+            headers['Content-Type'] = 'application/json'
+
+        response = requests.request(**request_args)
+
+        return response
+    ```
+
+  </Step>
+
+  <Step title="Send get transactions request">
+    Use the send_signed_http_request function to handle all your requests.
+
+    ```python Python
+    send_signed_http_request('GET', '/fund/transactions')
+    ```
+
+  </Step>
+
+</Steps>
+
+## Full example
+
+```python Python
+import hashlib
+import hmac
+import json
+from base64 import b64decode, b64encode
+from datetime import datetime
+from typing import Any, Dict, Optional
+from urllib.parse import urljoin
+
+import requests
+
+BASE_URL = 'https://api.cert.zerohash.com'
+
+API_PUBLIC_KEY = '<please fill me in>'
+API_PRIVATE_KEY = '<please fill me in>'
+PASSPHRASE = '<please fill me in>'
+
+def sign_request(api_private_key: str, method: str,
+                 resource_path: str, json_body: str, timestamp: str) -> bytes:
+    msg = bytes(
+        timestamp + method + resource_path + json_body,
+        encoding='utf-8'
+    )
+    hm = hmac.new(
+        key=b64decode(api_private_key),
+        msg=msg,
+        digestmod=hashlib.sha256
+    )
+    return b64encode(hm.digest()).decode()
+
+
+def build_headers() -> Dict[str, Any]:
+    timestamp = str(int(datetime.now().timestamp()))
+
+    return {
+        'X-SCX-API-KEY': API_PUBLIC_KEY,
+        'X-SCX-SIGNED': '<to be filled>', # PLEASE NOTE: will be auto filled below
+        'X-SCX-TIMESTAMP': timestamp,
+        'X-SCX-PASSPHRASE': PASSPHRASE
+    }
+
+
+def send_signed_http_request(
+    method: str, resource_path: str, body: Optional[Dict[str, str]] = None
+) -> requests.Response:
+    if body is None:
+        body = {}
+
+    headers = build_headers()
+
+    json_body = json.dumps(body, separators=(',', ':'))
+    signature = sign_request(
+        API_PRIVATE_KEY,
+        method,
+        resource_path,
+        json_body,
+        headers['X-SCX-TIMESTAMP']
+    )
+    headers['X-SCX-SIGNED'] = signature
+
+    absolute_url = urljoin(BASE_URL, resource_path)
+    request_args = {
+        'method': method,
+        'url': absolute_url,
+        'headers': headers
+    }
+    if body:
+        request_args['data'] = json_body
+        headers['Content-Type'] = 'application/json'
+
+    response = requests.request(**request_args)
+
+    return response
+
+if __name__ == '__main__':
+    send_signed_http_request('GET', '/fund/transactions')
+```
+
+## Response
+
+```json Response
+{
+  "message": [
+    {
+      "participant_code": "ABCDEF",
+      "fund_asset": "USDC",
+      "deposited_asset": "USDC",
+      "rate": "1",
+      "quoted_currency": "USD",
+      "source_address": "0xA32A6aA6a3B87b49BeaB01393e2020C3C191CD61",
+      "deposit_address": "0xF6C6E7d76Ec47F992aEbF46987879a4E3991a03b",
+      "quantity": "100",
+      "notional": "100",
+      "fund_id": "29e6d7b8-d604-4212-86ee-998fef35505e",
+      "fund_timestamp": 1708631671631,
+      "deposit_timestamp": 1708631681631,
+      "transaction_id": "ec963207-69f4-44d0-9251-2977dda86fcd",
+      "account_label": "general",
+      "success": true,
+      "status_reason": "success"
+    }
+  ],
+  "page": 1,
+  "page_size": 50,
+  "total_pages": 1
+}
+```

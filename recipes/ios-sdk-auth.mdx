@@ -1,0 +1,126 @@
+---
+title: "iOS SDK (Auth)"
+description: "Guide on how to use the iOS SDK and invoke the Auth experience."
+---
+
+<Steps>
+  <Step title="Installation process">
+    Please, make sure you followed the installation process described here
+
+    [Mobile SDKs](/docs/mobile-sdks#installation-via-xcode)
+
+  </Step>
+
+  <Step title="Import the SDK main class">
+    ```swift Swift
+    import ConnectSDK // Import the SDK main class
+    ```
+
+  </Step>
+
+  <Step title="Add a trigger">
+    Attach a button and a function to trigger the SDK initialization
+
+    ```swift Swift
+    var body: some View {
+        Button("Deposit with crypto") {
+            startConnect()
+        }
+    }
+    ```
+
+  </Step>
+
+  <Step title="Get a JWT from your backend">
+    Make a call to your backend to retrieve the JWT token.
+
+    [https://docs.zerohash.com/docs/auth-standalone#2-generate-an-access-token](https://docs.zerohash.com/docs/auth-standalone#2-generate-an-access-token)
+
+    ```swift Swift
+        let jwt = getJWT()
+    // ...
+    func getJWT() -> String {
+        // Make a backend call to retrieve the JWT.
+        return "jwt-token"
+    }
+    ```
+
+  </Step>
+
+  <Step title="Configure the session">
+    Use the .configureAuth method to configure the SDK.
+
+    Make sure you send the JWT and environment. Optionally, add themes and callbacks if you want your app to be notified about events that happen on the SDK.
+
+    You'll receive the same payloads that you already receive on the web integration: [AUTH v1.0 - AUTH Connect (Legacy)](/docs/front-end-implementation-guide)
+
+    ```swift Swift
+    let session = ConnectSDK.configureAuth(
+        jwt: jwt, // JWT returned by backend, REQUIRED.
+        environment: .sandbox, // Environment you want to use (OPTIONAL, defaults to .production)
+        theme: .dark, // Appearance. Options: .light, .dark and .system (OPTIONAL, defaults to .system)
+        callbacks: AuthCallbacks( // Listen for events. OPTIONAL. 
+            onClose: { print("Closed") },
+            onError: { error in print("Error: \(error.message)") },
+            onDeposit: { deposit in print("Deposit: \(deposit.success ? "successful" : "failed")") }
+        )
+    )
+    ```
+
+  </Step>
+
+  <Step title="Display the SDK">
+    After configuring, define a ViewController that you want to present the SDK and pass it to the session.present method.
+
+    ```swift Swift
+    if let rootVC = UIApplication.shared.windows.first?.rootViewController {
+    // ...
+    }
+    ```
+
+  </Step>
+
+</Steps>
+
+## Full example
+
+```swift Swift
+import SwiftUI
+import ConnectSDK // Import the SDK main class
+
+struct ContentView: View {
+   // Attach start function with a button or other UI element.
+    var body: some View {
+        Button("Deposit with crypto") {
+            startConnect()
+        }
+    }
+
+    func startConnect() {
+        // Get a JWT from your backend
+        let jwt = getJWT()
+        
+        // Configure the session
+        let session = ConnectSDK.configureAuth(
+            jwt: jwt, // JWT returned by backend, REQUIRED.
+            environment: .sandbox, // Environment you want to use (OPTIONAL, defaults to .production)
+            theme: .dark, // Appearance. Options: .light, .dark and .system (OPTIONAL, defaults to .system)
+            callbacks: AuthCallbacks( // Listen for events. OPTIONAL. 
+                onClose: { print("Closed") },
+                onError: { error in print("Error: \(error.message)") },
+                onDeposit: { deposit in print("Deposit: \(deposit.success ? "successful" : "failed")") }
+            )
+        )
+
+        // Present the SDK by calling the .present method with the ViewController you want to use.
+        if let rootVC = UIApplication.shared.windows.first?.rootViewController {
+            session.present(from: rootVC)
+        }
+    }
+
+    func getJWT() -> String {
+        // Make a backend call to retrieve the JWT.
+        return "jwt-token"
+    }
+}
+```

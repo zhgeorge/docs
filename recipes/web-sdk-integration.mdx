@@ -1,0 +1,145 @@
+---
+title: "Web SDK Integration"
+description: "Step by step guide to integrate the zerohash Web SDK with your front end application."
+---
+
+<Steps>
+  <Step title="Import the zerohash SDK">
+    After installing the zh-web-sdk package, import it into your file to start using it.
+
+    ```jsx React
+    import ZeroHashSDK, { AppIdentifier, IncomingMessageType } from "zh-web-sdk";
+    ```
+
+  </Step>
+
+  <Step title="Instantiate the ZeroHashSDK class">
+    Now, we need to initialize the zerohash SDK to interact with its methods.
+
+    We recommend instantiating it only once.
+
+    ```jsx React
+    const zhWeb = new ZeroHashSDK({
+    	env: "cert",
+      // Optional, you can set the JWT upon calling the .openModal method
+      // You also can set JWT for other SDKs here as well if needed.
+      fundJWT: "JWT_HERE" 
+    })
+    ```
+
+  </Step>
+
+  <Step title="Create the open function">
+    Now, create a function that will trigger the openModal function from the Web SDK.
+
+    ```jsx React
+    const openModal = () => {
+      zhWeb.openModal({
+        appIdentifier: AppIdentifier.FUND,
+        // If you did not provide the JWT when instantiating the ZeroHashSDK class, you can provide it here.
+        // If you've provided but wants to replace it with a new one, you can overwrite it here, e.g:
+        jwt: "NEW_FUND_JWT_HERE"
+      })
+    }
+    ```
+
+  </Step>
+
+  <Step title="Create a call to action">
+    Usually, there is a call to action to invoke the SDK. Let's create a sample call to action.
+
+    ```jsx React
+    return (
+      <div style={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        height: "100vh"
+      }}>
+        <button onClick={openModal}>
+          Open Fund Modal
+        </button>
+      </div>
+    );
+    ```
+
+  </Step>
+
+  <Step title="Listen to events">
+    Our SDK emits some events to let your application know what actions the user completed or not.
+
+    You can create your own event listeners and handle only messages that matters to your app.
+
+    ```jsx React
+    useEffect(() => {
+       window.addEventListener('message', message => {
+         if (message.data.type === IncomingMessageType.FundCloseButtonClicked) {
+           console.log("Close button clicked!")
+           zhWeb.closeModal(AppIdentifier.FUND)
+         }
+       })
+    
+       return () => {
+         window.removeEventListener('message', () => {})
+       }
+     }, [])
+    ```
+
+  </Step>
+
+</Steps>
+
+## Full example
+
+```jsx React
+import { useEffect } from "react";
+import ZeroHashSDK, { AppIdentifier, IncomingMessageType } from "zh-web-sdk";
+
+const zhWeb = new ZeroHashSDK({
+	env: "cert",
+  // Optional, you can set the JWT upon calling the .openModal method
+  // You also can set JWT for other SDKs here as well if needed.
+  fundJWT: "JWT_HERE" 
+})
+
+function App() {
+  const openModal = () => {
+    zhWeb.openModal({
+      appIdentifier: AppIdentifier.FUND,
+      // If you did not provide the JWT when instantiating the ZeroHashSDK class, you can provide it here.
+      // If you've provided but wants to replace it with a new one, you can overwrite it here, e.g:
+      jwt: "NEW_FUND_JWT_HERE"
+    })
+  }
+
+ useEffect(() => {
+    window.addEventListener('message', message => {
+      if (message.data.type === IncomingMessageType.FundCloseButtonClicked) {
+        console.log("Close button clicked!")
+        zhWeb.closeModal(AppIdentifier.FUND)
+      }
+    })
+    
+    return () => {
+      window.removeEventListener('message', () => {})
+    }
+  }, [])
+
+  return (
+    <div style={{
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
+      justifyContent: "center",
+      height: "100vh"
+    }}>
+      <button onClick={openModal}>
+        Open Fund Modal
+      </button>
+    </div>
+  );
+}
+
+export default App;
+```

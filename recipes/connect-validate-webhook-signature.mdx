@@ -1,0 +1,652 @@
+---
+title: "Connect - Validate Webhook Signature"
+description: "Recipe DescriptionThe following is a code recipe that specifically helps the Organization validate that the webhook event that they received is truly coming from the Connect system."
+---
+
+<Steps>
+  <Step title="Retrieve Connect Public Key">
+    This call should be cached in a production environment to avoid hitting the JWKS endpoint on every request
+
+    <CodeGroup>
+    ```go Go
+    publicKey, err := getConnectPublicKey()
+    if err != nil {
+    	http.Error(w, "Failed to get public key", http.StatusInternalServerError)
+    	return
+    }
+    ```
+
+    ```java Java
+    // Caching is critical here to avoid latency and rate limiting.
+    RSAPublicKey publicKey = ConnectWebhookVerifier.getConnectPublicKey();
+    ```
+
+    ```python Python
+    public_key = get_connect_public_key()
+    ```
+
+    </CodeGroup>
+
+  </Step>
+
+  <Step title="Verify the Incoming Webhook Request">
+    Verify the Incoming Webhook Request. If verification fails (e.g., bad signature, expired timestamp), respond with 401 Unauthorized.
+
+    <CodeGroup>
+    ```go Go
+    if err := verifyConnectWebhook(r, publicKey); err != nil {
+    	http.Error(w, err.Error(), http.StatusUnauthorized)
+    	return
+    }
+    ```
+
+    ```java Java
+    ConnectWebhookVerifier.verifyConnectWebhook(
+        headers, 
+        method, 
+        url.toString(), 
+        body, 
+        publicKey
+    );
+    ```
+
+    ```python Python
+    # NOTE: Implementations will vary based on your web framework (Flask, Django, FastAPI)
+    simulated_headers = {
+        CONNECT_SIGNATURE_HEADER: request.headers.get(CONNECT_SIGNATURE_HEADER),
+        CONNECT_TIMESTAMP_HEADER: request.headers.get(CONNECT_TIMESTAMP_HEADER),
+        CONNECT_CLIENT_ID_HEADER: request.headers.get(CONNECT_CLIENT_ID_HEADER),
+    }
+    # Assuming request.data or request.body provides raw bytes
+    simulated_payload = request.data if hasattr(request, 'data') else request.body 
+    simulated_method = request.method
+    simulated_url = request.url
+
+    verify_connect_webhook(
+        simulated_headers, 
+        simulated_method, 
+        simulated_url, 
+        simulated_payload, 
+        public_key
+    )
+    ```
+
+    </CodeGroup>
+
+  </Step>
+
+  <Step title="Webhook is Valid">
+    Process Successfully. Respond with 200 OK to acknowledge receipt.
+
+    <CodeGroup>
+    ```go Go
+    // Webhook is valid - process it
+    fmt.Println("Valid Connect webhook received")
+    w.WriteHeader(http.StatusOK)
+    ```
+
+    ```java Java
+    System.out.println("Valid Connect webhook received. Status: 200 OK");
+    // Process the JSON body (e.g., parse event type, update database)
+    ```
+
+    ```python Python
+    print("Valid Connect webhook received")
+    return {"status": "success", "message": "Webhook processed"}, 200
+    ```
+
+    </CodeGroup>
+
+  </Step>
+
+</Steps>
+
+## Full example
+
+<CodeGroup>
+
+```go Go
+package main
+
+import (
+	"crypto"
+	"crypto/rsa"
+	"crypto/sha256"
+	"encoding/base64"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
+	"math/big"
+	"net/http"
+	"strconv"
+	"time"
+)
+
+const (
+	connectSignatureHeader = "signature"
+	connectTimestampHeader = "timestamp"
+	connectClientIDHeader  = "client-id"
+	connectJWKSURL         = "https://api.connect.xyz/api/v1/.well-known/jwks.json"
+	allowedDriftSeconds    = 300 // 5 minutes
+)
+
+type jwk struct {
+	Kty string `json:"kty"`
+	Use string `json:"use"`
+	N   string `json:"n"`
+	E   string `json:"e"`
+}
+
+type jwksResponse struct {
+	Keys []jwk `json:"keys"`
+}
+
+// Example webhook handler
+func webhookHandlerValidator(w http.ResponseWriter, r *http.Request) {
+	publicKey, err := getConnectPublicKey()
+	if err != nil {
+		http.Error(w, "Failed to get public key", http.StatusInternalServerError)
+		return
+	}
+
+	if err := verifyConnectWebhook(r, publicKey); err != nil {
+		http.Error(w, err.Error(), http.StatusUnauthorized)
+		return
+	}
+
+	// Webhook is valid - process it
+	fmt.Println("Valid Connect webhook received")
+	w.WriteHeader(http.StatusOK)
+}
+
+func verifyConnectWebhook(r *http.Request, publicKey *rsa.PublicKey) error {
+	// Extract headers
+	signature := r.Header.Get(connectSignatureHeader)
+	if signature == "" {
+		return errors.New("missing signature header")
+	}
+
+	timestamp := r.Header.Get(connectTimestampHeader)
+	if timestamp == "" {
+		return errors.New("missing timestamp header")
+	}
+
+	clientID := r.Header.Get(connectClientIDHeader)
+	if clientID != "Connect" {
+		return errors.New("invalid client-id")
+	}
+
+	// Validate timestamp
+	tsInt, err := strconv.ParseInt(timestamp, 10, 64)
+	if err != nil {
+		return fmt.Errorf("invalid timestamp: %w", err)
+	}
+
+	now := time.Now().Unix()
+	if abs(now-tsInt) > allowedDriftSeconds {
+		return errors.New("timestamp outside allowed range")
+	}
+
+	// Read payload
+	payload, err := io.ReadAll(r.Body)
+	if err != nil {
+		return fmt.Errorf("read body: %w", err)
+	}
+
+	// Construct signed message: timestamp + method + url + body
+	signedMessage := timestamp + r.Method + r.URL.String() + string(payload)
+
+	// Hash the message
+	hashed := sha256.Sum256([]byte(signedMessage))
+
+	// Decode signature from base64
+	sigBytes, err := base64.StdEncoding.DecodeString(signature)
+	if err != nil {
+		return fmt.Errorf("decode signature: %w", err)
+	}
+
+	// Verify RSA signature
+	err = rsa.VerifyPKCS1v15(publicKey, crypto.SHA256, hashed[:], sigBytes)
+	if err != nil {
+		return fmt.Errorf("signature verification failed: %w", err)
+	}
+
+	return nil
+}
+
+func getConnectPublicKey() (*rsa.PublicKey, error) {
+	resp, err := http.Get(connectJWKSURL)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	var jwks jwksResponse
+	if err := json.Unmarshal(body, &jwks); err != nil {
+		return nil, err
+	}
+
+	for _, key := range jwks.Keys {
+		if key.Kty == "RSA" && key.Use == "sig" {
+			return jwkToRSA(key)
+		}
+	}
+
+	return nil, errors.New("RSA signing key not found")
+}
+
+func jwkToRSA(j jwk) (*rsa.PublicKey, error) {
+	nBytes, err := base64.RawURLEncoding.DecodeString(j.N)
+	if err != nil {
+		return nil, err
+	}
+
+	eBytes, err := base64.RawURLEncoding.DecodeString(j.E)
+	if err != nil {
+		return nil, err
+	}
+
+	var n, e big.Int
+	n.SetBytes(nBytes)
+	e.SetBytes(eBytes)
+
+	return &rsa.PublicKey{N: &n, E: int(e.Int64())}, nil
+}
+
+func abs(x int64) int64 {
+	if x < 0 {
+		return -x
+	}
+	return x
+}
+```
+
+```java Java
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import java.io.IOException;
+import java.math.BigInteger;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.security.KeyFactory;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.security.Signature;
+import java.security.interfaces.RSAPublicKey;
+import java.security.spec.InvalidKeySpecException;
+import java.security.spec.RSAPublicKeySpec;
+import java.time.Instant;
+import java.util.Base64;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.TimeUnit;
+
+/**
+ * ConnectWebhookVerifier is responsible for verifying the authenticity of incoming
+ * webhooks from the Connect API using the published JWKS public keys.
+ */
+public class ConnectWebhookVerifier {
+
+    private static final String CONNECT_SIGNATURE_HEADER = "signature";
+    private static final String CONNECT_TIMESTAMP_HEADER = "timestamp";
+    private static final String CONNECT_CLIENT_ID_HEADER = "client-id";
+    private static final String CONNECT_JWKS_URL = "https://api.connect.xyz/api/v1/.well-known/jwks.json";
+    private static final long ALLOWED_DRIFT_SECONDS = 300; // 5 minutes tolerance for timestamp validation
+    
+    // jwk represents a single JSON Web Key (Public Key).
+    public static class Jwk {
+        @JsonProperty("kty") public String kty; // Key Type (Expected: "RSA")
+        @JsonProperty("use") public String use; // Public Key Use (Expected: "sig")
+        @JsonProperty("n") public String n; // RSA Modulus (Base64 URL-encoded)
+        @JsonProperty("e") public String e; // RSA Public Exponent (Base64 URL-encoded)
+    }
+
+    // JwksResponse represents the top-level JWKS document structure.
+    public static class JwksResponse {
+        @JsonProperty("keys") public List<Jwk> keys;
+    }
+
+    /**
+     * Verifies the Connect webhook signature, timestamp, and client ID.
+     *
+     * @param requestHeaders Map of HTTP request headers (case-insensitive keys recommended).
+     * @param requestMethod HTTP method (e.g., "POST").
+     * @param requestUrl Full URL of the incoming request.
+     * @param requestBody The raw byte array of the request payload.
+     * @param publicKey The validated RSA public key for verification.
+     * @throws Exception If verification fails at any stage (signature, timestamp, etc.).
+     */
+    public static void verifyConnectWebhook(
+            java.util.Map<String, String> requestHeaders,
+            String requestMethod,
+            String requestUrl,
+            byte[] requestBody,
+            RSAPublicKey publicKey
+    ) throws Exception {
+        String signature = requestHeaders.get(CONNECT_SIGNATURE_HEADER);
+        if (signature == null || signature.isEmpty()) {
+            throw new Exception("missing signature header");
+        }
+
+        String timestamp = requestHeaders.get(CONNECT_TIMESTAMP_HEADER);
+        if (timestamp == null || timestamp.isEmpty()) {
+            throw new Exception("missing timestamp header");
+        }
+
+        String clientID = requestHeaders.get(CONNECT_CLIENT_ID_HEADER);
+        if (!"Connect".equals(clientID)) {
+            throw new Exception("invalid client-id");
+        }
+
+        long tsInt;
+        try {
+            tsInt = Long.parseLong(timestamp);
+        } catch (NumberFormatException e) {
+            throw new Exception("invalid timestamp: " + e.getMessage());
+        }
+
+        long now = Instant.now().getEpochSecond();
+        if (Math.abs(now - tsInt) > ALLOWED_DRIFT_SECONDS) {
+            throw new Exception("timestamp outside allowed range");
+        }
+
+        // The message string is: timestamp + method + url + body
+        String signedMessage = timestamp + requestMethod + requestUrl + new String(requestBody, "UTF-8");
+
+        byte[] sigBytes;
+        try {
+            // Standard Base64 decoding (Go's StdEncoding equivalent)
+            sigBytes = Base64.getDecoder().decode(signature);
+        } catch (IllegalArgumentException e) {
+            throw new Exception("decode signature failed: " + e.getMessage());
+        }
+
+        // JCA's "SHA256withRSA" algorithm handles the PKCS1v15 padding and the hashing internally.
+        Signature verifier = Signature.getInstance("SHA256withRSA");
+        verifier.initVerify(publicKey);
+        
+        // Pass the raw message string bytes to the verifier.
+        verifier.update(signedMessage.getBytes("UTF-8")); 
+
+        if (!verifier.verify(sigBytes)) {
+             throw new Exception("signature verification failed: invalid signature");
+        }
+    }
+
+    /**
+     * Fetches the JWKS document and extracts the required RSA public key.
+     * NOTE: In production, the result of this method MUST be cached.
+     *
+     * @return RSAPublicKey for signature verification.
+     * @throws IOException If fetching or reading fails.
+     * @throws NoSuchAlgorithmException If RSA is unsupported or key is not found.
+     * @throws InvalidKeySpecException If the JWK format is invalid.
+     */
+    public static RSAPublicKey getConnectPublicKey() throws IOException, NoSuchAlgorithmException, InvalidKeySpecException {
+        HttpClient client = HttpClient.newBuilder().connectTimeout(java.time.Duration.ofSeconds(10)).build();
+        HttpRequest request = HttpRequest.newBuilder().uri(URI.create(CONNECT_JWKS_URL)).build();
+
+        HttpResponse<String> response;
+        try {
+            response = client.send(request, HttpResponse.BodyHandlers.ofString());
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IOException("HTTP request interrupted", e);
+        }
+        
+        if (response.statusCode() != 200) {
+            throw new IOException("Failed to fetch JWKS. Status: " + response.statusCode());
+        }
+
+        ObjectMapper mapper = new ObjectMapper();
+        JwksResponse jwks = mapper.readValue(response.body(), JwksResponse.class);
+
+        for (Jwk key : jwks.keys) {
+            if ("RSA".equals(key.kty) && "sig".equals(key.use)) {
+                // Step 4.4 -- Convert JWK to RSAPublicKey
+                return jwkToRSA(key);
+            }
+        }
+
+        throw new NoSuchAlgorithmException("RSA signing key not found in JWKS");
+    }
+
+    /**
+     * Converts a JWK object (N and E as Base64 URL-safe strings) into an RSAPublicKey object.
+     */
+    private static RSAPublicKey jwkToRSA(Jwk j) throws NoSuchAlgorithmException, InvalidKeySpecException {
+        byte[] nBytes = Base64.getUrlDecoder().decode(j.n);
+        BigInteger modulus = new BigInteger(1, nBytes); // Signum 1 for positive
+
+        byte[] eBytes = Base64.getUrlDecoder().decode(j.e);
+        BigInteger exponent = new BigInteger(1, eBytes);
+        
+        RSAPublicKeySpec keySpec = new RSAPublicKeySpec(modulus, exponent);
+        KeyFactory keyFactory = KeyFactory.getInstance("RSA");
+        return (RSAPublicKey) keyFactory.generatePublic(keySpec);
+    }
+}
+
+class WebhookHandlerExample {
+    public static void handleIncomingWebhook(Map<String, String> headers, String method, URI url, byte[] body) {
+        try {
+            // Caching is critical here to avoid latency and rate limiting.
+            RSAPublicKey publicKey = ConnectWebhookVerifier.getConnectPublicKey();
+
+            ConnectWebhookVerifier.verifyConnectWebhook(
+                headers, 
+                method, 
+                url.toString(), 
+                body, 
+                publicKey
+            );
+
+            System.out.println("Valid Connect webhook received. Status: 200 OK");
+            // Process the JSON body (e.g., parse event type, update database)
+
+        } catch (Exception e) {
+            System.err.println("Webhook verification failed: " + e.getMessage());
+            // Throw an exception or respond with an appropriate HTTP error status (e.g., 401)
+        }
+    }
+}
+```
+
+```python Python
+import base64
+import hashlib
+import json
+import time
+from typing import Dict, Any, List, Optional
+import requests
+from requests.exceptions import RequestException
+
+# Cryptography components
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.asymmetric import rsa, padding
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives.asymmetric.utils import Prehashed
+from cryptography.exceptions import InvalidSignature
+
+CONNECT_SIGNATURE_HEADER = "signature"
+CONNECT_TIMESTAMP_HEADER = "timestamp"
+CONNECT_CLIENT_ID_HEADER = "client-id"
+CONNECT_JWKS_URL = "https://api.connect.xyz/api/v1/.well-known/jwks.json"
+ALLOWED_DRIFT_SECONDS = 300  # 5 minutes
+
+class WebhookVerificationError(Exception):
+    """Custom exception for verification failures."""
+    pass
+
+class Jwk:
+    """Represents a single JSON Web Key."""
+    def __init__(self, kty: str, use: str, n: str, e: str):
+        self.kty = kty
+        self.use = use
+        self.n = n
+        self.e = e
+
+class JwksResponse:
+    """Represents the response structure for the JWKS endpoint."""
+    def __init__(self, keys: List[Jwk]):
+        self.keys = keys
+
+def jwk_to_rsa(j: Jwk) -> rsa.RSAPublicNumbers:
+    """
+    Converts a JWK object (N and E strings) into a cryptography RSAPublicNumbers object.
+    """
+    try:
+        # Base64 URL-safe decoding without padding (Go's RawURLEncoding equivalent)
+        n_bytes = base64.urlsafe_b64decode(j.n + '==')
+        e_bytes = base64.urlsafe_b64decode(j.e + '==')
+        
+        # Convert bytes to BigInteger (Python int)
+        modulus = int.from_bytes(n_bytes, byteorder='big')
+        exponent = int.from_bytes(e_bytes, byteorder='big')
+
+        return rsa.RSAPublicNumbers(exponent, modulus)
+    except Exception as e:
+        raise WebhookVerificationError(f"Failed to convert JWK to RSA: {e}")
+
+def get_connect_public_key() -> rsa.RSAPublicKey:
+    """
+    Fetches the JWKS document and extracts the required RSA public key.
+    
+    NOTE: In a production environment, this should be heavily cached.
+    """
+    try:
+        response = requests.get(CONNECT_JWKS_URL, timeout=10)
+        response.raise_for_status()
+    except RequestException as e:
+        raise WebhookVerificationError(f"Failed to fetch JWKS: {e}")
+
+    try:
+        data = response.json()
+        jwks = JwksResponse([Jwk(**key) for key in data.get('keys', [])])
+    except json.JSONDecodeError as e:
+        raise WebhookVerificationError(f"Failed to parse JWKS JSON: {e}")
+
+    for key in jwks.keys:
+        # Find the key used for signing (kty="RSA", use="sig")
+        if key.kty == "RSA" and key.use == "sig":
+            # Convert the JWK components to a cryptography RSAPublicKey object
+            public_numbers = jwk_to_rsa(key)
+            return public_numbers.public_key(default_backend())
+
+    raise WebhookVerificationError("RSA signing key not found in JWKS")
+
+def verify_connect_webhook(
+    headers: Dict[str, str], 
+    method: str, 
+    url: str, 
+    payload: bytes, 
+    public_key: rsa.RSAPublicKey
+) -> None:
+    """
+    Verifies the webhook signature, timestamp, and client ID.
+    
+    Args:
+        headers: Dictionary of request headers.
+        method: HTTP method (e.g., "POST").
+        url: Full URL of the incoming request.
+        payload: The raw byte payload of the request body.
+        public_key: The RSA public key for verification.
+        
+    Raises:
+        WebhookVerificationError: If verification fails at any stage.
+    """
+    signature = headers.get(CONNECT_SIGNATURE_HEADER)
+    timestamp = headers.get(CONNECT_TIMESTAMP_HEADER)
+    clientID = headers.get(CONNECT_CLIENT_ID_HEADER)
+    
+    if not signature:
+        raise WebhookVerificationError("Missing signature header")
+    if not timestamp:
+        raise WebhookVerificationError("Missing timestamp header")
+    if clientID != "Connect":
+        raise WebhookVerificationError("Invalid client-id")
+
+    try:
+        ts_int = int(timestamp)
+    except ValueError:
+        raise WebhookVerificationError("Invalid timestamp format")
+
+    now = int(time.time())
+    if abs(now - ts_int) > ALLOWED_DRIFT_SECONDS:
+        raise WebhookVerificationError("Timestamp outside allowed range (drift too large)")
+
+    # Message: timestamp + method + url + body (raw string)
+    signed_message = f"{timestamp}{method}{url}{payload.decode('utf-8')}"
+
+    # SHA256 is applied before signing/verification in PKCS1v15
+    hashed = hashlib.sha256(signed_message.encode('utf-8')).digest()
+
+    try:
+        # The Go code used StdEncoding, Python's standard Base64 decoder is equivalent here.
+        sig_bytes = base64.b64decode(signature)
+    except Exception as e:
+        raise WebhookVerificationError(f"Decode signature failed: {e}")
+
+    try:
+        # We use Prehashed to verify the hash we manually calculated
+        public_key.verify(
+            sig_bytes,
+            hashed,
+            padding.PKCS1v15(),
+            Prehashed(hashes.SHA256()) # Tells cryptography we already hashed it with SHA256
+        )
+    except InvalidSignature:
+        raise WebhookVerificationError("Signature verification failed: Invalid signature")
+    except Exception as e:
+        raise WebhookVerificationError(f"Signature verification failed: {e}")
+        
+    # If no exception is raised, the verification succeeded.
+
+def webhook_handler_validator(request: Any) -> Any:
+    """
+    Simulated handler function demonstrating verification use.
+    'request' is a stand-in for a framework-specific request object.
+    """
+    try:
+        public_key = get_connect_public_key()
+        
+        # NOTE: Implementations will vary based on your web framework (Flask, Django, FastAPI)
+        simulated_headers = {
+            CONNECT_SIGNATURE_HEADER: request.headers.get(CONNECT_SIGNATURE_HEADER),
+            CONNECT_TIMESTAMP_HEADER: request.headers.get(CONNECT_TIMESTAMP_HEADER),
+            CONNECT_CLIENT_ID_HEADER: request.headers.get(CONNECT_CLIENT_ID_HEADER),
+        }
+        # Assuming request.data or request.body provides raw bytes
+        simulated_payload = request.data if hasattr(request, 'data') else request.body 
+        simulated_method = request.method
+        simulated_url = request.url
+
+        verify_connect_webhook(
+            simulated_headers, 
+            simulated_method, 
+            simulated_url, 
+            simulated_payload, 
+            public_key
+        )
+
+        print("Valid Connect webhook received")
+        return {"status": "success", "message": "Webhook processed"}, 200
+
+    except WebhookVerificationError as e:
+        print(f"Webhook verification failed: {e}")
+        return {"status": "error", "message": str(e)}, 401
+    except Exception as e:
+        print(f"Internal server error: {e}")
+        return {"status": "error", "message": "Internal error getting public key"}, 500
+```
+
+</CodeGroup>
