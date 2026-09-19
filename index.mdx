@@ -219,6 +219,56 @@ mode: "custom"
   </section>
 
 
+  <section className="zh-section zh-faq">
+    <div className="zh-container zh-faq-inner">
+      <div className="zh-faq-intro">
+        <p className="zh-label">FAQ</p>
+        <h2 className="zh-h2">Questions</h2>
+        <p className="zh-section-sub">The short ones are answered here, taken from the docs. For anything else, ask in the last row.</p>
+      </div>
+      <div className="zh-faq-list" id="zh-faq">
+        <div className="zh-faq-item">
+          <button type="button" className="zh-faq-q" aria-expanded="false" aria-controls="zh-faq-a0">How do I get access to Cert?<span className="zh-faq-chev" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9l6 6 6-6" /></svg></span></button>
+          <div className="zh-faq-a" id="zh-faq-a0" hidden>
+            <p>There is no self-serve signup. Once you have spoken to sales or solutions engineering, zerohash creates your Cert platform and adds your team. You confirm the invite email, set a username and password, register a 2FA device, and you are in the Cert client portal, where you generate API keys and request IP allowlisting.</p>
+            <p className="zh-faq-src"><a href="/docs/get-platform-access">Get Platform Access<span className="zh-card-arrow">→</span></a></p>
+          </div>
+        </div>
+        <div className="zh-faq-item">
+          <button type="button" className="zh-faq-q" aria-expanded="false" aria-controls="zh-faq-a1">How do I authenticate a request?<span className="zh-faq-chev" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9l6 6 6-6" /></svg></span></button>
+          <div className="zh-faq-a" id="zh-faq-a1" hidden>
+            <p>Every endpoint except `GET /time` takes four headers: your public key, a signature, a Unix timestamp in seconds, and your passphrase. The signature is HMAC-SHA256 over the timestamp, the method, the route including its query string, and the body, keyed with your base64-decoded private key, then base64 encoded. A request with no body signs the literal `{}`.</p>
+            <p className="zh-faq-src"><a href="/api-reference/authentication">Authentication<span className="zh-card-arrow">→</span></a></p>
+          </div>
+        </div>
+        <div className="zh-faq-item">
+          <button type="button" className="zh-faq-q" aria-expanded="false" aria-controls="zh-faq-a2">My signature looks right but I get a 401. Why?<span className="zh-faq-chev" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9l6 6 6-6" /></svg></span></button>
+          <div className="zh-faq-a" id="zh-faq-a2" hidden>
+            <p>Three things fail the same way. A new API key sits in Created status until it gets two approvals in the portal. The calling IP has to be on that environment's allowlist, which zerohash manages. And your clock has to be close to the server's, which you can check against `GET /time`. If all three are fine, re-check the signed message: seconds rather than milliseconds, the query string included, and the body byte for byte as sent.</p>
+            <p className="zh-faq-src"><a href="/api-reference/authentication">Authentication<span className="zh-card-arrow">→</span></a></p>
+          </div>
+        </div>
+        <div className="zh-faq-item">
+          <button type="button" className="zh-faq-q" aria-expanded="false" aria-controls="zh-faq-a3">Do my customers need to be verified before they can transact?<span className="zh-faq-chev" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9l6 6 6-6" /></svg></span></button>
+          <div className="zh-faq-a" id="zh-faq-a3" hidden>
+            <p>Yes, every customer is identity-checked first. The Onboarding SDK is the low-code path: zerohash collects the sensitive data such as date of birth, address and government ID, keeps the compliance requirements embedded in the flow, and its own team handles any manual review. You follow approval through participant status webhooks.</p>
+            <p className="zh-faq-src"><a href="/docs/onboarding-experience-sample">Onboarding<span className="zh-card-arrow">→</span></a></p>
+          </div>
+        </div>
+        <div className="zh-faq-item">
+          <button type="button" className="zh-faq-q" aria-expanded="false" aria-controls="zh-faq-a4">Which environment and base URL should I build against?<span className="zh-faq-chev" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9l6 6 6-6" /></svg></span></button>
+          <div className="zh-faq-a" id="zh-faq-a4" hidden>
+            <p>Build against Cert, which uses mock balances and no real funds. US Cert is `api.cert.zerohash.com` and EU Cert is `api.cert.zerohash.eu`, with Prod at `api.zerohash.com` and `api.zerohash.eu`. Keys, IP allowlists and data are separate per environment, so nothing carries over when you move to Prod.</p>
+            <p className="zh-faq-src"><a href="/docs/submit-first-api-call">Submit First API Call<span className="zh-card-arrow">→</span></a></p>
+          </div>
+        </div>
+        <div className="zh-faq-item zh-faq-ask" id="zh-faq-ask">
+          <p className="zh-faq-fallback"><a href="/docs/getting-started">Ask anything else about building with zerohash</a></p>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <div className="zh-footer">
     <div className="zh-container zh-foot-inner">
       <div className="zh-foot-brand">

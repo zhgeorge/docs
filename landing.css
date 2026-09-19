@@ -621,6 +621,73 @@
   .zh-landing .zh-trust-sep::before { margin: 0 8px; }
 }
 
+/* ---------- FAQ ---------- */
+
+.zh-landing .zh-faq { padding-top: 76px; }
+.zh-landing .zh-faq-inner { display: grid; grid-template-columns: minmax(0, 300px) minmax(0, 1fr); gap: 56px; align-items: start; }
+.zh-landing .zh-faq-intro .zh-h2 { margin-bottom: 12px; }
+.zh-landing .zh-faq-intro .zh-section-sub { margin-bottom: 0; }
+
+.zh-landing .zh-faq-item { border-bottom: 1px solid var(--zh-hairline); }
+.zh-landing .zh-faq-item:first-child { border-top: 1px solid var(--zh-hairline); }
+
+.zh-landing .zh-faq-q {
+  width: 100%; display: flex; align-items: center; gap: 16px; justify-content: space-between;
+  padding: 19px 2px; background: none; border: 0; text-align: left; cursor: pointer;
+  font-size: 16.5px; font-weight: 500; line-height: 1.4; color: var(--zh-ink);
+  transition: color 0.12s ease;
+}
+.zh-landing .zh-faq-q:hover { color: var(--zh-green); }
+.zh-landing .zh-faq-chev { flex: 0 0 auto; color: var(--zh-muted); display: flex; transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1); }
+.zh-landing .zh-faq-q[aria-expanded="true"] .zh-faq-chev { transform: rotate(180deg); }
+
+.zh-landing .zh-faq-a { padding: 0 60px 20px 2px; }
+.zh-landing .zh-faq-a p { margin: 0 0 12px; font-size: 15px; line-height: 1.6; color: var(--zh-muted); }
+.zh-landing .zh-faq-a p:last-child { margin-bottom: 0; }
+.zh-landing .zh-faq-a code { font-size: 13.5px; padding: 1px 5px; border-radius: 5px; background: var(--zh-surface-2, #f0f1ec); color: var(--zh-ink); }
+.dark .zh-landing .zh-faq-a code { background: #1b1d1b; }
+.zh-landing .zh-faq-src a { font-size: 14px; font-weight: 500; color: var(--zh-ink); text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+.zh-landing .zh-faq-src a:hover { color: var(--zh-green); }
+
+/* the last row: a question of your own, answered from the docs */
+.zh-landing .zh-faq-form { display: flex; align-items: center; gap: 12px; padding: 13px 2px; }
+.zh-landing .zh-faq-input {
+  flex: 1 1 auto; min-width: 0; border: 0; background: none; padding: 6px 0;
+  font-size: 16.5px; font-weight: 500; color: var(--zh-ink); font-family: inherit;
+}
+.zh-landing .zh-faq-input::placeholder { color: var(--zh-muted); font-weight: 500; }
+.zh-landing .zh-faq-input:focus { outline: none; }
+.zh-landing .zh-faq-send {
+  flex: 0 0 auto; width: 30px; height: 30px; border-radius: 50%; border: 0; cursor: pointer;
+  display: grid; place-items: center; color: var(--zh-muted); background: var(--zh-surface-2, #f0f1ec);
+  transition: background 0.15s ease, color 0.15s ease, opacity 0.15s ease;
+}
+.dark .zh-landing .zh-faq-send { background: #1b1d1b; }
+.zh-landing .zh-faq-send:disabled { opacity: 0.45; cursor: default; }
+.zh-landing .zh-faq-send.on { background: var(--zh-btn-bg); color: var(--zh-btn-fg); }
+.zh-landing .zh-faq-answer { padding: 0 60px 20px 2px; animation: zh-msg-in 0.2s ease both; }
+.zh-landing .zh-faq-answer .zh-faq-qline { font-size: 13px; color: var(--zh-muted); margin: 0 0 10px; }
+.zh-landing .zh-faq-answer h4 { margin: 0 0 8px; font-size: 15px; font-weight: 600; color: var(--zh-ink); }
+.zh-landing .zh-faq-answer p { margin: 0 0 12px; font-size: 15px; line-height: 1.6; color: var(--zh-muted); }
+.zh-landing .zh-faq-answer .zh-faq-cite { font-size: 13.5px; }
+.zh-landing .zh-faq-more { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--zh-hairline); }
+.zh-landing .zh-faq-more span { font-size: 13.5px; color: var(--zh-muted); margin-right: 2px; }
+.zh-landing .zh-faq-more a {
+  display: inline-flex; align-items: center; gap: 7px; padding: 6px 11px; border-radius: 999px;
+  border: 1px solid var(--zh-hairline-strong); background: var(--zh-card-bg);
+  font-size: 13px; font-weight: 500; color: var(--zh-ink); text-decoration: none;
+}
+.zh-landing .zh-faq-more a:hover { border-color: var(--zh-green); color: var(--zh-green); }
+.zh-landing .zh-faq-more img { width: 15px; height: 15px; }
+.dark .zh-landing .zh-faq-more img[src*="codex"], .dark .zh-landing .zh-faq-more img[src*="cursor"] { filter: invert(1); }
+.zh-landing .zh-faq-fallback { margin: 0; padding: 19px 2px; font-size: 16.5px; font-weight: 500; }
+.zh-landing .zh-faq-fallback a { color: var(--zh-ink); text-decoration: none; }
+
+@media (max-width: 900px) {
+  .zh-landing .zh-faq-inner { grid-template-columns: minmax(0, 1fr); gap: 28px; }
+  .zh-landing .zh-faq-a, .zh-landing .zh-faq-answer { padding-right: 8px; }
+}
+
 /* ---------- footer (mirrors the one on docs.zerohash.com) ---------- */
 
 .zh-landing .zh-footer {

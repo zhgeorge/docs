@@ -647,6 +647,132 @@
     if (!reduced && "IntersectionObserver" in window) new IntersectionObserver((es) => es.forEach(e => { if (e.isIntersecting) { if (!raf) raf = requestAnimationFrame(frame); } else if (raf) { cancelAnimationFrame(raf); raf = null; } })).observe(canvas);
   }
 
+  /* ---------------- landing page: FAQ ----------------
+     Five rows expand in place. The last one takes a question and answers it from the docs:
+     scripts/build_faq_index.py ships a passage per heading as /faq-index.txt, fetched the first
+     time someone asks, scored here in the browser. A Mintlify assistant key would let this call
+     https://api.mintlify.com/discovery/v1/search/<domain> for semantic hits instead. */
+  const STOPWORDS = new Set("a an the is are was do does did how what when where which who why i my me we our you your can could should would will shall to of for in on at by with from and or but if then than that this these those it its as be been being have has had not no do i".split(" "));
+  let FAQ_INDEX = null;
+
+  // "stake" has to find "staking", so each word also matches on a crude stem
+  const stem = (w) => w.length > 4 ? w.replace(/(ings?|ed|es|s|e)$/, "") : w;
+
+  function scoreDocs(question) {
+    const words = (question.toLowerCase().match(/[a-z0-9./_-]{3,}/g) || []).filter(w => !STOPWORDS.has(w));
+    if (!words.length || !FAQ_INDEX) return [];
+    const terms = words.map(w => ({ w, s: stem(w) }));
+    const count = (hay, term) => {
+      const exact = hay.split(term.w).length - 1;
+      if (exact) return { n: exact, exact: true };
+      if (term.s !== term.w && term.s.length > 2) { const n = hay.split(term.s).length - 1; if (n) return { n, exact: false }; }
+      return { n: 0, exact: false };
+    };
+    const hits = [];
+    for (const page of FAQ_INDEX.pages) {
+      const title = page.t.toLowerCase(), desc = (page.d || "").toLowerCase(), url = page.u.toLowerCase();
+      let base = 0;
+      for (const term of terms) {
+        const inTitle = count(title, term);
+        if (inTitle.n) base += inTitle.exact ? 7 : 5;
+        if (count(desc, term).n) base += 3;
+        if (count(url, term).n) base += 2;
+      }
+      // a short title the question covers entirely ("Staking") beats one long title that
+      // happens to contain the word ("Preparing for the Ethereum Proof of Stake Merge Event")
+      const titleWords = title.split(/[^a-z0-9]+/).filter(w => w.length > 2 && !STOPWORDS.has(w));
+      if (titleWords.length && titleWords.every(tw => terms.some(term => tw.includes(term.s) || term.w.includes(tw)))) base += 9;
+      let best = null;
+      for (const passage of page.p || []) {
+        const h = (passage.h || "").toLowerCase(), t = passage.t.toLowerCase();
+        let sc = 0;
+        for (const term of terms) {
+          const inHead = count(h, term);
+          if (inHead.n) sc += inHead.exact ? 4 : 3;
+          const inText = count(t, term);
+          if (inText.n) sc += Math.min(inText.n, 3) * (inText.exact ? 2 : 1.5);
+        }
+        if (sc && (!best || sc > best.sc)) best = { sc, passage };
+      }
+      const total = base + (best ? best.sc : 0);
+      if (total >= 7 && best) hits.push({ page, passage: best.passage, score: total });
+    }
+    return hits.sort((a, b) => b.score - a.score).slice(0, 3);
+  }
+
+  // the page title and the heading often repeat each other; show one of them
+  const sameish = (title, heading) => {
+    if (!heading) return true;
+    const a = title.toLowerCase(), b = heading.toLowerCase();
+    return a.includes(b) || b.includes(a.split(" ")[0] + " " + (a.split(" ")[1] || ""));
+  };
+
+  function mountFaq() {
+    const list = document.getElementById("zh-faq");
+    if (!list || list.dataset.mounted) return;
+    list.dataset.mounted = "1";
+
+    list.querySelectorAll(".zh-faq-q").forEach(btn => {
+      const panel = document.getElementById(btn.getAttribute("aria-controls"));
+      btn.addEventListener("click", () => {
+        const open = btn.getAttribute("aria-expanded") === "true";
+        btn.setAttribute("aria-expanded", String(!open));
+        if (panel) panel.hidden = open;
+      });
+    });
+
+    const row = document.getElementById("zh-faq-ask");
+    if (!row) return;
+    row.innerHTML = `<form class="zh-faq-form" novalidate>
+      <input class="zh-faq-input" type="text" autocomplete="off" placeholder="Ask anything else about building with zerohash" aria-label="Ask anything else about building with zerohash" />
+      <button class="zh-faq-send" type="submit" disabled aria-label="Get an answer from the docs"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h13M13 6l6 6-6 6"/></svg></button>
+    </form>`;
+    const form = row.querySelector("form"), input = row.querySelector(".zh-faq-input"), send = row.querySelector(".zh-faq-send");
+    input.addEventListener("input", () => {
+      const ready = input.value.trim().length > 2;
+      send.disabled = !ready;
+      send.classList.toggle("on", ready);
+    });
+
+    const answer = el(`<div class="zh-faq-answer" hidden></div>`);
+    row.append(answer);
+
+    const handoffs = (question) => {
+      const prompt = `Answer this using ${location.host}/llms.txt and the zerohash docs it lists as your only source: ${question}`;
+      const q = encodeURIComponent(prompt);
+      return `<div class="zh-faq-more"><span>Want it written up?</span>
+        <a href="https://claude.ai/new?q=${q}" target="_blank" rel="noopener"><img src="/images/agents/claude.png" alt="" />Claude</a>
+        <a href="https://chatgpt.com/?q=${q}" target="_blank" rel="noopener"><img src="/images/agents/codex.svg" alt="" />ChatGPT</a>
+        <a href="https://www.perplexity.ai/search?q=${q}" target="_blank" rel="noopener">Perplexity</a></div>`;
+    };
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const question = input.value.trim();
+      if (question.length < 3) return;
+      answer.hidden = false;
+      answer.innerHTML = `<p class="zh-faq-qline">Looking through the docs…</p>`;
+      if (!FAQ_INDEX) {
+        try { FAQ_INDEX = await fetch("/faq-index.txt").then(r => r.json()); }
+        catch (err) { FAQ_INDEX = { pages: [] }; }
+      }
+      const hits = scoreDocs(question);
+      if (!hits.length) {
+        answer.innerHTML = `<p>Nothing in the docs matched that closely enough to quote. Try naming the endpoint or product, or take the question to an assistant with the docs as its source.</p>
+          ${handoffs(question)}`;
+        return;
+      }
+      const main = hits[0];
+      const strong = hits.slice(1).filter(h => h.score >= hits[0].score * 0.6);
+      const others = strong.map(h => `<a href="${h.page.u}">${esc(h.page.t)}${h.passage.h ? " · " + esc(h.passage.h) : ""}</a>`).join(" ");
+      answer.innerHTML = `<h4>${esc(sameish(main.page.t, main.passage.h) ? main.page.t : main.page.t + (main.passage.h ? ": " + main.passage.h : ""))}</h4>
+        <p>${esc(main.passage.t)}…</p>
+        <p class="zh-faq-cite"><a href="${main.page.u}">Read the page${'\u00a0'}→</a></p>
+        ${others ? `<p class="zh-faq-cite">Also relevant: ${others}</p>` : ""}
+        ${handoffs(question)}`;
+    });
+  }
+
   /* ---------------- landing page: "Build with agent" ----------------
      One prompt, three ways to use it: copy it, or open it straight in Claude Code, Codex or Cursor
      through their deep links. The prompt points the agent at this site's /agents.md. */
@@ -845,7 +971,7 @@
     render();
   }
 
-  const boot = () => { mountWizard(); mountHeroChat(); mountSpotlights(); mountAgentButton(); };
+  const boot = () => { mountWizard(); mountHeroChat(); mountSpotlights(); mountAgentButton(); mountFaq(); };
   boot();
   new MutationObserver(boot).observe(document.documentElement, { childList: true, subtree: true });
 })();
