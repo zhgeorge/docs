@@ -117,6 +117,8 @@
 .zh-wiz .agentbtn .btn:hover:not(:disabled) { transform: none; box-shadow: none; }
 .zh-wiz .agent-main { border-radius: 8px 0 0 8px; }
 .zh-wiz .agent-more { border-radius: 0 8px 8px 0; margin-left: -1.5px; padding: 6px 8px; }
+.zh-wiz .agent-more svg { transition: transform .2s cubic-bezier(.4, 0, .2, 1); }
+.zh-wiz .agent-more[aria-expanded="true"] svg { transform: rotate(180deg); }
 /* same split button, same rule: hovering either half lights the whole outline */
 .zh-wiz .agentbtn:hover .btn { border-color: var(--w-hair-strong); }
 .zh-wiz .agentbtn:has(.agent-more[aria-expanded="true"]) .btn,

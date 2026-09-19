@@ -180,6 +180,9 @@
 .zh-landing .zh-agent .zh-btn:hover { transform: none; }
 .zh-landing .zh-agent-main { border-radius: 10px 0 0 10px; padding-right: 14px; }
 .zh-landing .zh-agent-more { border-radius: 0 10px 10px 0; padding: 11px 11px; margin-left: -1.5px; }
+/* the chevron points at the menu: down when closed, up while it is open */
+.zh-landing .zh-agent-more svg { transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1); }
+.zh-landing .zh-agent-more[aria-expanded="true"] svg { transform: rotate(180deg); }
 /* the two halves read as one button: hovering either lights the whole outline */
 .zh-landing .zh-agent:hover .zh-btn { border-color: var(--zh-muted); }
 .zh-landing .zh-agent:has(.zh-agent-more[aria-expanded="true"]) .zh-btn,
