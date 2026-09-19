@@ -114,10 +114,13 @@
 /* "Copy as Markdown" split button: copy the guide, or open it in an agent (mirrors the landing hero) */
 .zh-wiz .agentbtn { position: relative; display: inline-flex; align-items: stretch; }
 .zh-wiz .agentbtn .btn { display: inline-flex; align-items: center; gap: 8px; }
-.zh-wiz .agentbtn .btn:hover:not(:disabled) { transform: none; box-shadow: none; border-color: var(--w-hair-strong); }
+.zh-wiz .agentbtn .btn:hover:not(:disabled) { transform: none; box-shadow: none; }
 .zh-wiz .agent-main { border-radius: 8px 0 0 8px; }
 .zh-wiz .agent-more { border-radius: 0 8px 8px 0; margin-left: -1.5px; padding: 6px 8px; }
-.zh-wiz .agent-more[aria-expanded="true"], .zh-wiz .agentbtn.is-copied .agent-main { border-color: var(--w-green); }
+/* same split button, same rule: hovering either half lights the whole outline */
+.zh-wiz .agentbtn:hover .btn { border-color: var(--w-hair-strong); }
+.zh-wiz .agentbtn:has(.agent-more[aria-expanded="true"]) .btn,
+.zh-wiz .agentbtn.is-copied .btn { border-color: var(--w-green); }
 .zh-wiz .agentbtn.is-copied .agent-label { color: var(--w-green); }
 .zh-wiz .agent-main svg { color: var(--w-muted); flex: 0 0 auto; }
 .zh-wiz .agent-icons { display: inline-flex; align-items: center; gap: 5px; padding-left: 8px; border-left: 1px solid var(--w-hair); }

@@ -180,7 +180,10 @@
 .zh-landing .zh-agent .zh-btn:hover { transform: none; }
 .zh-landing .zh-agent-main { border-radius: 10px 0 0 10px; padding-right: 14px; }
 .zh-landing .zh-agent-more { border-radius: 0 10px 10px 0; padding: 11px 11px; margin-left: -1.5px; }
-.zh-landing .zh-agent-more[aria-expanded="true"], .zh-landing .zh-agent.is-copied .zh-agent-main { border-color: var(--zh-green); }
+/* the two halves read as one button: hovering either lights the whole outline */
+.zh-landing .zh-agent:hover .zh-btn { border-color: var(--zh-muted); }
+.zh-landing .zh-agent:has(.zh-agent-more[aria-expanded="true"]) .zh-btn,
+.zh-landing .zh-agent.is-copied .zh-btn { border-color: var(--zh-green); }
 .zh-landing .zh-agent-copy { color: var(--zh-muted); flex: 0 0 auto; }
 .zh-landing .zh-agent-icons { display: inline-flex; align-items: center; gap: 6px; padding-left: 3px; border-left: 1px solid var(--zh-hairline); margin-left: 1px; }
 .zh-landing .zh-agent-icons img { width: 17px; height: 17px; display: block; }
