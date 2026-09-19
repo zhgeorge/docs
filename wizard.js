@@ -647,6 +647,26 @@
     if (!reduced && "IntersectionObserver" in window) new IntersectionObserver((es) => es.forEach(e => { if (e.isIntersecting) { if (!raf) raf = requestAnimationFrame(frame); } else if (raf) { cancelAnimationFrame(raf); raf = null; } })).observe(canvas);
   }
 
+  /* The landing page belongs to no tab, but Mintlify still marks the first one current.
+     The underline and weight are dropped in CSS; the colour is copied from a sibling tab so it
+     matches exactly in either theme. Runs on every boot, so a theme switch refreshes it. */
+  let themeWatch = false;
+  function resetTabState() {
+    if (!document.querySelector(".zh-landing")) return;
+    const tabs = [...document.querySelectorAll(".nav-tabs-item")];
+    const current = tabs.find(t => t.hasAttribute("aria-current"));
+    const sibling = tabs.find(t => !t.hasAttribute("aria-current"));
+    if (current && sibling) {
+      current.style.removeProperty("color");
+      current.style.color = getComputedStyle(sibling).color;
+    }
+    if (!themeWatch) {                     // the copied colour is per theme, and switching
+      themeWatch = true;                   // themes only changes an attribute, which the
+      new MutationObserver(resetTabState)  // boot observer does not watch
+        .observe(document.documentElement, { attributes: true, attributeFilter: ["class", "data-theme"] });
+    }
+  }
+
   /* ---------------- landing page: FAQ ----------------
      Five rows expand in place. The last one takes a question and answers it from the docs:
      scripts/build_faq_index.py ships a passage per heading as /faq-index.txt, fetched the first
@@ -971,7 +991,7 @@
     render();
   }
 
-  const boot = () => { mountWizard(); mountHeroChat(); mountSpotlights(); mountAgentButton(); mountFaq(); };
+  const boot = () => { mountWizard(); mountHeroChat(); mountSpotlights(); mountAgentButton(); mountFaq(); resetTabState(); };
   boot();
   new MutationObserver(boot).observe(document.documentElement, { childList: true, subtree: true });
 })();
