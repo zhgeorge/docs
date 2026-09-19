@@ -714,7 +714,7 @@
     // once the reader starts answering it stays open. Tapping the cover flips it on touch screens.
     box.innerHTML = `<div class="zh-flip">
       <div class="zh-face zh-front"><canvas class="zh-cover"></canvas>
-        <div class="zh-cover-copy"><p class="zh-cover-kicker">Setup wizard</p><p class="zh-cover-title">Tell us what you're building. We'll write the guide.</p><p class="zh-cover-hint">Hover to start <span aria-hidden="true">→</span></p></div>
+        <div class="zh-cover-copy"><p class="zh-cover-kicker">Setup wizard</p><p class="zh-cover-title">Get a customized guide based on what you're building</p><p class="zh-cover-hint">Hover to start <span aria-hidden="true">→</span></p></div>
       </div>
       <div class="zh-face zh-back"></div>
     </div>`;
