@@ -636,8 +636,7 @@
             "hidden": true,
             "pages": [
               "setup-wizard",
-              "agents",
-              "legal"
+              "agents"
             ]
           }
         ]
@@ -707,6 +706,21 @@
             "group": "Releases",
             "pages": [
               "changelog"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Status",
+        "href": "https://status.zerohash.com/"
+      },
+      {
+        "tab": "Legal",
+        "groups": [
+          {
+            "group": "Legal",
+            "pages": [
+              "legal"
             ]
           }
         ]

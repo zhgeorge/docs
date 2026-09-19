@@ -621,6 +621,12 @@
   .zh-landing .zh-trust-sep::before { margin: 0 8px; }
 }
 
+/* The homepage sits under no tab, so Mintlify marking Documentation as the current one is
+   misleading. Reset it to the resting treatment while the landing page is what is rendered. */
+body:has(.zh-landing) .nav-tabs-item[aria-current] { color: var(--zh-muted); text-shadow: none; }
+body:has(.zh-landing) .nav-tabs-item[aria-current] > div { display: none; }
+body:has(.zh-landing) .nav-tabs-item[aria-current]:hover { color: var(--zh-ink); }
+
 /* ---------- FAQ ---------- */
 
 .zh-landing .zh-faq { padding-top: 76px; }
