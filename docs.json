@@ -611,6 +611,21 @@
         ]
       },
       {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Using the API",
+            "pages": [
+              "api-reference/authentication"
+            ]
+          },
+          {
+            "group": "Endpoints",
+            "openapi": "api-reference/openapi.json"
+          }
+        ]
+      },
+      {
         "tab": "Changelog",
         "groups": [
           {
@@ -626,6 +641,11 @@
   "background": {
     "color": {
       "dark": "#1C1B1C"
+    }
+  },
+  "api": {
+    "playground": {
+      "display": "simple"
     }
   }
 }

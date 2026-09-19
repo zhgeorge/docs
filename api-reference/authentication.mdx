@@ -1,0 +1,249 @@
+---
+title: "Authentication"
+description: "Sign every zerohash API request with HMAC-SHA256 over four headers"
+---
+
+Every endpoint except `GET /time` is authenticated. You send four headers on each request: your public key, your passphrase, a Unix timestamp, and a signature you compute from that timestamp, the request, and your private key. zerohash recomputes the signature and rejects the request if it does not match.
+
+<Info>
+  Keys are issued per environment from the client portal, and your IP address must be allowlisted before any call succeeds. See [IP allowlisting](#ip-allowlisting) below and [Get Platform Access](/docs/get-platform-access).
+</Info>
+
+## Request headers
+
+| Header | Value |
+| --- | --- |
+| `X-SCX-API-KEY` | Your public key |
+| `X-SCX-SIGNED` | The signature for this request, computed below |
+| `X-SCX-TIMESTAMP` | Unix time in **seconds** |
+| `X-SCX-PASSPHRASE` | The passphrase set when the key was created |
+
+Send `Content-Type: application/json` as well on requests with a body.
+
+```json Sample headers
+{
+  "X-SCX-API-KEY": "h2yFu1uijCDEqkbdop4GAF",
+  "X-SCX-SIGNED": "PFMlg+bMFVjjAiGPLR/zJCStmiiOIeyz5NIOZEmpfH0=",
+  "X-SCX-TIMESTAMP": 1550175822,
+  "X-SCX-PASSPHRASE": "passphrase"
+}
+```
+
+## Build the signature
+
+<Steps>
+  <Step title="Concatenate four values into one string">
+    In this order, with no separators and no whitespace: **timestamp** + **method** + **route** + **body**.
+
+    - The **timestamp** is Unix time in seconds, and it must be the same value you send in `X-SCX-TIMESTAMP`.
+    - The **method** is upper case: `GET`, `POST`, `PATCH`, `DELETE`.
+    - The **route** includes the query string, exactly as sent.
+    - The **body** is the JSON you send, byte for byte. For a request with no body, use the literal `{}`.
+
+    ```text GET, with query parameters
+    1714445421GET/accounts?account_owner=00SCXM&account_group=BBLGTW{}
+    ```
+
+    ```text POST, with a body
+    1714445704POST/convert_withdraw/execute{"quote_id":"3fc51610-3dd9-409f-b531-38f78de8ca8a"}
+    ```
+  </Step>
+
+  <Step title="Base64-decode your private key">
+    The private key is a base64 string. Decode it to raw bytes and use those bytes as the HMAC key. Signing with the base64 text itself is the most common cause of a rejected signature.
+  </Step>
+
+  <Step title="HMAC-SHA256 the string, then base64 the digest">
+    The resulting base64 string is the value of `X-SCX-SIGNED`.
+  </Step>
+</Steps>
+
+### Check your implementation
+
+These inputs produce exactly this signature. If your code returns something else, compare it against the four parts of the message above before looking anywhere else.
+
+| Input | Value |
+| --- | --- |
+| Timestamp | `1714445421` |
+| Method | `GET` |
+| Route | `/accounts?account_owner=00SCXM&account_group=BBLGTW` |
+| Body | `{}` |
+| Private key | `2mC4ZvVd4goRkuJm+rjr9byUiaUW1b6tVN4xy9QXNSE=` |
+| **Signature** | `nvY/lGZoaom8x6eHeMWlzF4NnGvGA3YPtrbCmyUSplo=` |
+
+## Signing code
+
+Read the credentials from environment variables. Never commit them, print them, or paste them into a ticket.
+
+```bash Environment
+export ZH_BASE_URL="https://api.cert.zerohash.com"
+export ZH_API_KEY="..."        # public key
+export ZH_PRIVATE_KEY="..."    # base64 string, used only to sign
+export ZH_PASSPHRASE="..."
+```
+
+<CodeGroup>
+
+```python Python
+import base64, hashlib, hmac, json, os, time
+import urllib.request
+
+def zh_request(method, route, body=None):
+    payload = json.dumps(body, separators=(",", ":")) if body is not None else "{}"
+    ts = str(int(time.time()))
+    message = ts + method.upper() + route + payload
+    key = base64.b64decode(os.environ["ZH_PRIVATE_KEY"])
+    signature = base64.b64encode(
+        hmac.new(key, message.encode(), hashlib.sha256).digest()
+    ).decode()
+
+    req = urllib.request.Request(
+        os.environ["ZH_BASE_URL"] + route,
+        data=payload.encode() if body is not None else None,
+        method=method.upper(),
+        headers={
+            "X-SCX-API-KEY": os.environ["ZH_API_KEY"],
+            "X-SCX-SIGNED": signature,
+            "X-SCX-TIMESTAMP": ts,
+            "X-SCX-PASSPHRASE": os.environ["ZH_PASSPHRASE"],
+            "Content-Type": "application/json",
+        },
+    )
+    with urllib.request.urlopen(req) as resp:
+        return json.load(resp)
+
+print(zh_request("GET", "/accounts"))
+```
+
+```javascript Node
+const crypto = require("crypto");
+
+async function zhRequest(method, route, body) {
+  const payload = body === undefined ? "{}" : JSON.stringify(body);
+  const ts = String(Math.floor(Date.now() / 1000));
+  const message = ts + method.toUpperCase() + route + payload;
+  const key = Buffer.from(process.env.ZH_PRIVATE_KEY, "base64");
+  const signature = crypto.createHmac("sha256", key).update(message).digest("base64");
+
+  const res = await fetch(process.env.ZH_BASE_URL + route, {
+    method: method.toUpperCase(),
+    headers: {
+      "X-SCX-API-KEY": process.env.ZH_API_KEY,
+      "X-SCX-SIGNED": signature,
+      "X-SCX-TIMESTAMP": ts,
+      "X-SCX-PASSPHRASE": process.env.ZH_PASSPHRASE,
+      "Content-Type": "application/json",
+    },
+    body: body === undefined ? undefined : payload,
+  });
+  if (!res.ok) throw new Error(`${method} ${route} failed: ${res.status} ${await res.text()}`);
+  return res.json();
+}
+
+zhRequest("GET", "/accounts").then(console.log);
+```
+
+```bash curl
+#!/usr/bin/env bash
+set -euo pipefail
+
+METHOD=GET
+ROUTE='/accounts'
+BODY='{}'
+TS=$(date +%s)
+
+HEXKEY=$(printf '%s' "$ZH_PRIVATE_KEY" | base64 -d | xxd -p -c 256)
+SIG=$(printf '%s' "${TS}${METHOD}${ROUTE}${BODY}" \
+  | openssl dgst -sha256 -mac HMAC -macopt "hexkey:$HEXKEY" -binary \
+  | base64)
+
+curl --request "$METHOD" \
+  --url "${ZH_BASE_URL}${ROUTE}" \
+  --header "X-SCX-API-KEY: $ZH_API_KEY" \
+  --header "X-SCX-SIGNED: $SIG" \
+  --header "X-SCX-TIMESTAMP: $TS" \
+  --header "X-SCX-PASSPHRASE: $ZH_PASSPHRASE" \
+  --header 'Content-Type: application/json'
+```
+
+</CodeGroup>
+
+## Environments
+
+Keys, IP allowlists and data are separate per environment. Build against Cert, which uses mock balances and no real funds.
+
+| Environment | API base URL | Client portal |
+| --- | --- | --- |
+| US Cert | `https://api.cert.zerohash.com` | [portal.cert.zerohash.com](https://portal.cert.zerohash.com) |
+| EU Cert | `https://api.cert.zerohash.eu` | [portal.cert.zerohash.eu](https://portal.cert.zerohash.eu) |
+| US Prod | `https://api.zerohash.com` | [portal.zerohash.com](https://portal.zerohash.com) |
+| EU Prod | `https://api.zerohash.eu` | [portal.zerohash.eu](https://portal.zerohash.eu) |
+
+`GET /time` is the only unauthenticated endpoint. Use it to check connectivity, and to check your clock against the server's before you debug a signature.
+
+```bash Connectivity check
+curl --request GET --url https://api.cert.zerohash.com/time
+```
+
+## IP allowlisting
+
+zerohash allowlists IP addresses at two levels.
+
+<AccordionGroup>
+  <Accordion title="Environment level, required" defaultOpen>
+    Cert and Prod each keep their own allowlist, managed by zerohash. Before any call succeeds in an environment, you send zerohash the static IP addresses your platform will call from, and they are approved per environment.
+
+    Testing from Cert means connecting through a corporate VPN with a static IP. Dynamic and residential addresses are not supported, because the allowlist needs fixed addresses.
+
+    To submit addresses, contact your zerohash solutions engineer or your shared Slack channel.
+  </Accordion>
+
+  <Accordion title="API key level, optional">
+    A single key can also be restricted to specific addresses, which is useful when separate services or teams hold separate keys. This one is self-serve: set it when you create or edit a key in the client portal.
+  </Accordion>
+</AccordionGroup>
+
+## When a request is rejected
+
+<AccordionGroup>
+  <Accordion title="401 with a signature you believe is correct">
+    Work through these in order, since all three fail the same way.
+
+    1. The key is still awaiting approval. A new key starts in **Created** status and needs two approvals in the portal before it works. See [Generate API Keys](/docs/generate-api-keys).
+    2. The calling IP is not allowlisted for this environment.
+    3. Your clock has drifted. Compare it with `GET /time`.
+  </Accordion>
+
+  <Accordion title="401 on every request">
+    The message being signed is almost certainly wrong. The usual causes:
+
+    - Milliseconds instead of seconds in the timestamp, or a timestamp that differs from the header.
+    - The query string dropped from the route.
+    - A body that differs from what was sent, even by whitespace. Serialize once, sign that string, send that string.
+    - The private key used as text instead of base64-decoded bytes.
+  </Accordion>
+
+  <Accordion title="401 on GET /time">
+    `GET /time` needs no authentication, so a 401 there means the base URL is wrong or the platform is not provisioned in that environment. Check the table above.
+  </Accordion>
+</AccordionGroup>
+
+## Next
+
+<CardGroup cols={2}>
+  <Card title="Browse endpoints" icon="code" href="/api-reference/public/get-server-time">
+    Every endpoint, request and response, generated from the OpenAPI document.
+  </Card>
+
+  <Card title="Get platform access" icon="key" href="/docs/get-platform-access">
+    How Cert and Prod platforms, users and API keys are created.
+  </Card>
+
+  <Card title="Setup wizard" icon="wand-sparkles" href="/setup-wizard">
+    Answer a few questions and get a build guide with code for your products.
+  </Card>
+
+  <Card title="Get help" icon="life-buoy" href="https://zerohash.com/contact">
+    Signature still rejected? Your solutions engineer can check the key and the allowlist.
+  </Card>
+</CardGroup>
