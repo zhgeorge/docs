@@ -32,6 +32,19 @@
       "display": "simple"
     }
   },
+  "contextual": {
+    "options": [
+      "copy",
+      "view",
+      "claude",
+      "chatgpt",
+      "perplexity",
+      "mcp",
+      "cursor",
+      "vscode",
+      "download-spec"
+    ]
+  },
   "navigation": {
     "tabs": [
       {

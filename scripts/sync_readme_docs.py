@@ -592,6 +592,10 @@ def build_changelog(posts: list[dict]) -> str:
            # dates) while keeping Mintlify's prose typography for the entry bodies —
            # custom mode loses it: headings fall to weight 400 and body text to gray.
            'mode: "wide"',
+           # the contextual menu is for the Documentation, API Reference and Recipes tabs;
+           # copying 50 releases as Markdown is not a useful action.
+           "contextual:",
+           "  options: []",
            "---", "",
            '<div className="zh-cl-page" />', ""]
 
