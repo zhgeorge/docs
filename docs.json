@@ -45,6 +45,11 @@
       "download-spec"
     ]
   },
+  "integrations": {
+    "telemetry": {
+      "enabled": true
+    }
+  },
   "navigation": {
     "tabs": [
       {
