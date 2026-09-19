@@ -618,7 +618,8 @@
             "hidden": true,
             "pages": [
               "setup-wizard",
-              "agents"
+              "agents",
+              "legal"
             ]
           }
         ]
