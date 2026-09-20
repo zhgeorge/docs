@@ -1,0 +1,13 @@
+/* Sidebar navigation tweaks. Mintlify injects every root stylesheet on every page, so these
+   rules are deliberately unscoped and target Mintlify's own sidebar markup. */
+
+/* Top-level groups read as section headings, so they lose the expand chevron. Nested groups
+   keep theirs, since there the chevron is the only hint that more sits underneath.
+   Depth is expressed by the second rule being a nested-only, and therefore more specific,
+   match: a sidebar-group inside a sidebar-group. */
+#sidebar-content ul.sidebar-group > li > button[aria-expanded] > div:last-child {
+  display: none;
+}
+#sidebar-content ul.sidebar-group li ul.sidebar-group > li > button[aria-expanded] > div:last-child {
+  display: flex;
+}
