@@ -559,7 +559,11 @@
 /* ---------- build paths ---------- */
 
 .zh-landing .zh-paths-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
-.zh-landing .zh-paths-action { padding-top: 34px; }
+/* the gap under the copy matches the gap between the label and the heading */
+.zh-landing .zh-paths .zh-section-head + .zh-paths-grid { margin-top: 14px; }
+/* the button centres on the copy beside it */
+.zh-landing .zh-paths .zh-section-head { align-items: center; }
+.zh-landing .zh-paths-action { display: flex; align-items: center; }
 
 .zh-landing .zh-path {
   display: flex;
@@ -573,7 +577,18 @@
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 .zh-landing .zh-path:hover { border-color: var(--zh-hairline-strong); box-shadow: 0 1px 2px rgba(20, 35, 25, 0.04), 0 14px 32px -20px rgba(20, 35, 25, 0.22); }
+.zh-landing .zh-path-icon {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 38px; height: 38px; border-radius: 10px;
+  background: var(--zh-green-tint); color: var(--zh-green); margin-bottom: 4px;
+}
 .zh-landing .zh-path h3 { margin: 0; font-size: 17px; font-weight: 600; letter-spacing: -0.01em; color: var(--zh-ink); }
+.zh-landing .zh-path-list { list-style: none; margin: 2px 0 0; padding: 0; display: grid; gap: 10px; }
+.zh-landing .zh-path-list li { position: relative; padding-left: 25px; font-size: 14.5px; line-height: 1.5; color: var(--zh-muted); }
+.zh-landing .zh-path-list li::before {
+  content: ""; position: absolute; left: 5px; top: 6px; width: 5px; height: 9px;
+  border: solid var(--zh-green); border-width: 0 2px 2px 0; transform: rotate(45deg);
+}
 .zh-landing .zh-path p { margin: 0; font-size: 14.5px; line-height: 1.55; color: var(--zh-muted); }
 .zh-landing .zh-path-more {
   margin-top: auto; padding-top: 4px; display: inline-flex; align-items: center; gap: 6px;
