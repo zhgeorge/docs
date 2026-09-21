@@ -572,12 +572,12 @@
 
   function agentButton(phases) {
     const box = el(`<div class="agentbtn">
-      <button type="button" class="btn small agent-main" title="Copy this guide as Markdown"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg><span class="agent-label">Copy as Markdown</span><span class="agent-icons" aria-hidden="true"><img src="/images/agents/claude.png" alt=""><img src="/images/agents/codex.svg" alt=""><img src="/images/agents/cursor.png" alt=""></span></button>
+      <button type="button" class="btn small agent-main" title="Copy this guide as Markdown"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg><span class="agent-label">Copy as Markdown</span><span class="agent-icons" aria-hidden="true"><img src="/images/agents/claude.png" alt="" width="15" height="15"><img src="/images/agents/codex.svg" alt="" width="15" height="15"><img src="/images/agents/cursor.png" alt="" width="15" height="15"></span></button>
       <button type="button" class="btn small agent-more" aria-haspopup="menu" aria-expanded="false" aria-label="Open this guide in an agent"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>
       <div class="agent-menu" role="menu" hidden>
-        <a role="menuitem" class="agent-item" data-agent="claude" href="/agents"><img src="/images/agents/claude.png" alt=""><span>Open in Claude Code</span><i>↗</i></a>
-        <a role="menuitem" class="agent-item" data-agent="codex" href="/agents"><img src="/images/agents/codex.svg" alt=""><span>Open in Codex</span><i>↗</i></a>
-        <a role="menuitem" class="agent-item" data-agent="cursor" href="/agents"><img src="/images/agents/cursor.png" alt=""><span>Open in Cursor</span><i>↗</i></a>
+        <a role="menuitem" class="agent-item" data-agent="claude" href="/agents"><img src="/images/agents/claude.png" alt="" width="17" height="17"><span>Open in Claude Code</span><i>↗</i></a>
+        <a role="menuitem" class="agent-item" data-agent="codex" href="/agents"><img src="/images/agents/codex.svg" alt="" width="17" height="17"><span>Open in Codex</span><i>↗</i></a>
+        <a role="menuitem" class="agent-item" data-agent="cursor" href="/agents"><img src="/images/agents/cursor.png" alt="" width="17" height="17"><span>Open in Cursor</span><i>↗</i></a>
         <div class="agent-sep"></div>
         <a role="menuitem" class="agent-item agent-view" href="/agents" target="_blank" rel="noopener"><span>View agents.md</span><i>↗</i></a>
       </div>
@@ -811,8 +811,8 @@
       const prompt = `Answer this using ${location.host}/llms.txt and the zerohash docs it lists as your only source: ${question}`;
       const q = encodeURIComponent(prompt);
       return `<div class="zh-faq-more"><span>Want it written up?</span>
-        <a href="https://claude.ai/new?q=${q}" target="_blank" rel="noopener"><img src="/images/agents/claude.png" alt="" />Claude</a>
-        <a href="https://chatgpt.com/?q=${q}" target="_blank" rel="noopener"><img src="/images/agents/codex.svg" alt="" />ChatGPT</a>
+        <a href="https://claude.ai/new?q=${q}" target="_blank" rel="noopener"><img src="/images/agents/claude.png" alt="" width="15" height="15" />Claude</a>
+        <a href="https://chatgpt.com/?q=${q}" target="_blank" rel="noopener"><img src="/images/agents/codex.svg" alt="" width="15" height="15" />ChatGPT</a>
         <a href="https://www.perplexity.ai/search?q=${q}" target="_blank" rel="noopener">Perplexity</a></div>`;
     };
 
