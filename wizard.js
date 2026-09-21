@@ -87,16 +87,16 @@
   }
 
   const PRODUCTS = [
-    { id: "fund", name: "Account Funding", tag: "Move money in", short: "Customers add money to their account by sending stablecoins or crypto.", plain: "Show a customer an address, they send USDC (or another asset) to it, and their balance updates within minutes — as dollars if you want. A funding method that sits next to cards, wires and ACH.", src: "fund-overview" },
-    { id: "trade", name: "Buy / Sell", tag: "Trade", short: "Let customers buy and sell crypto at prices from top market makers.", plain: "You ask zerohash for a firm price, show it to the customer, and confirm. zerohash handles liquidity, custody and compliance behind the scenes.", src: "buysell" },
-    { id: "payouts", name: "Payouts", tag: "Move money out", short: "Pay people in stablecoins or crypto, straight to their wallet, any time.", plain: "Contractors, sellers and creators get paid in minutes instead of days — across borders, without bank wires.", src: "payouts" },
-    { id: "payins", name: "Payins", tag: "Get paid", short: "Accept stablecoin and crypto payments at checkout.", plain: "A shopper pays from their wallet; you get a locked-in dollar amount and a notification when the money lands.", src: "payins-api-integration-guide" },
-    { id: "bank", name: "Bank Rails (ACH + RTP)", tag: "Move money in & out", short: "Connect customers' U.S. bank accounts to move dollars in and out.", plain: "Pull dollars in by ACH to buy crypto, and send dollars out by ACH, RTP or FedNow when customers cash out. Bank linking is handled through Plaid.", src: "fiat" },
-    { id: "va", name: "Virtual Accounts", tag: "Move money in", short: "Give each customer their own account and routing number.", plain: "Customers (or their employers) push dollars to it like any bank account. When money arrives, zerohash holds it or converts it to a stablecoin.", src: "virtual-accounts" },
-    { id: "ramps", name: "On & Off Ramps", tag: "Convert", short: "Turn dollars into crypto sent to a wallet, or crypto into dollars.", plain: "The simplest conversion product: a quote, a confirmation, and the asset moves. Three endpoints in total.", src: "on-off-ramps" },
+    { id: "fund", name: "Account Funding", tag: "Move money in", short: "Customers add money by sending crypto.", plain: "Show a customer an address, they send USDC (or another asset) to it, and their balance updates within minutes — as dollars if you want. A funding method that sits next to cards, wires and ACH.", src: "fund-overview" },
+    { id: "trade", name: "Buy / Sell", tag: "Trade", short: "Let customers buy and sell crypto.", plain: "You ask zerohash for a firm price, show it to the customer, and confirm. zerohash handles liquidity, custody and compliance behind the scenes.", src: "buysell" },
+    { id: "payouts", name: "Payouts", tag: "Move money out", short: "Pay people in stablecoins or crypto.", plain: "Contractors, sellers and creators get paid in minutes instead of days — across borders, without bank wires.", src: "payouts" },
+    { id: "payins", name: "Payins", tag: "Get paid", short: "Accept crypto payments at checkout.", plain: "A shopper pays from their wallet; you get a locked-in dollar amount and a notification when the money lands.", src: "payins-api-integration-guide" },
+    { id: "bank", name: "Bank Rails (ACH + RTP)", tag: "Move money in & out", short: "Move dollars in and out by bank transfer.", plain: "Pull dollars in by ACH to buy crypto, and send dollars out by ACH, RTP or FedNow when customers cash out. Bank linking is handled through Plaid.", src: "fiat" },
+    { id: "va", name: "Virtual Accounts", tag: "Move money in", short: "Give each customer an account number.", plain: "Customers (or their employers) push dollars to it like any bank account. When money arrives, zerohash holds it or converts it to a stablecoin.", src: "virtual-accounts" },
+    { id: "ramps", name: "On & Off Ramps", tag: "Convert", short: "Turn dollars into crypto, and back.", plain: "The simplest conversion product: a quote, a confirmation, and the asset moves. Three endpoints in total.", src: "on-off-ramps" },
     { id: "staking", name: "Staking", tag: "Earn", short: "Let customers earn rewards on their ETH.", plain: "Customers lock up ETH to help run the network and earn rewards. zerohash runs the validators; you set the fee you keep.", src: "staking" },
-    { id: "saas", name: "Settlements as a Service", tag: "Settle", short: "Settle trades you've matched elsewhere, safely.", plain: "You agree the trade (on your venue or over the phone); zerohash moves the money and the crypto only once both sides have delivered.", src: "settlements-as-a-service" },
-    { id: "token", name: "Tokenization Engine", tag: "Issue", short: "Issue your own tokens on Ethereum-compatible chains or Solana.", plain: "Mint, move and redeem a stablecoin, security or NFT, with compliance controls built in and gas fees handled for you.", src: "tokenization-engine" },
+    { id: "saas", name: "Settlements as a Service", tag: "Settle", short: "Settle trades you matched elsewhere.", plain: "You agree the trade (on your venue or over the phone); zerohash moves the money and the crypto only once both sides have delivered.", src: "settlements-as-a-service" },
+    { id: "token", name: "Tokenization Engine", tag: "Issue", short: "Issue your own tokens on EVM or Solana.", plain: "Mint, move and redeem a stablecoin, security or NFT, with compliance controls built in and gas fees handled for you.", src: "tokenization-engine" },
   ];
   const PRODUCT_IDS = PRODUCTS.map(p => p.id);
 
@@ -193,6 +193,7 @@
   const $ = (sel) => ROOT.querySelector(sel);
 
   /* ---------------- render ---------------- */
+  let lastStep = -1;
   function render() {
     const steps = stepList();
     if (S.step >= steps.length) S.step = steps.length - 1;
@@ -204,7 +205,20 @@
     else if (st.id.startsWith("p:")) main.append(viewProduct(st.id.slice(2)));
     else main.append(viewGuide());
     main.append(viewNav(steps));
-    save(); window.scrollTo({ top: 0 });
+    save();
+    // Moving between steps starts you at the top; answering a question leaves you where you are.
+    if (S.step !== lastStep) window.scrollTo({ top: 0 });
+    lastStep = S.step;
+  }
+
+  /* An answer changes the rail and the nav button, not the question you are looking at, so only
+     those are rebuilt. The control repaints its own selected state. */
+  function refreshChrome() {
+    const steps = stepList();
+    renderRail(steps);
+    const main = $(".main"), nav = main.querySelector(".navbar");
+    if (nav) main.replaceChild(viewNav(steps), nav);
+    save();
   }
   function renderRail(steps) {
     const ol = $(".steps"); ol.innerHTML = "";
@@ -228,27 +242,36 @@
   /* shared controls */
   function singleCards(opts, current, onPick) {
     const box = el(`<div class="cards"></div>`);
+    const paint = (val) => box.querySelectorAll(".card").forEach(c => { const on = c.dataset.v === val; c.classList.toggle("on", on); c.setAttribute("aria-checked", on); });
     for (const [val, t, d] of opts) {
-      const c = el(`<button type="button" class="card single ${current === val ? "on" : ""}" role="radio" aria-checked="${current === val}"><div class="t">${esc(t)}</div>${d ? `<div class="d">${esc(d)}</div>` : ""}</button>`);
-      c.onclick = () => onPick(val); box.append(c);
+      const c = el(`<button type="button" class="card single" role="radio" aria-checked="false" data-v="${esc(val)}"><div class="t">${esc(t)}</div>${d ? `<div class="d">${esc(d)}</div>` : ""}</button>`);
+      c.onclick = () => { paint(val); onPick(val); }; box.append(c);
     }
+    paint(current);
     return box;
   }
   function multiCards(opts, selected, onChange) {
     const box = el(`<div class="cards"></div>`);
+    let sel = selected.slice();
+    const paint = () => box.querySelectorAll(".card").forEach(c => { const on = sel.includes(c.dataset.v); c.classList.toggle("on", on); c.setAttribute("aria-checked", on); });
     for (const [val, t, d] of opts) {
-      const on = selected.includes(val);
-      const c = el(`<button type="button" class="card multi ${on ? "on" : ""}" role="checkbox" aria-checked="${on}"><span class="check" aria-hidden="true"></span><div class="t">${esc(t)}</div>${d ? `<div class="d">${esc(d)}</div>` : ""}</button>`);
-      c.onclick = () => onChange(on ? selected.filter(x => x !== val) : [...selected, val]); box.append(c);
+      const c = el(`<button type="button" class="card multi" role="checkbox" aria-checked="false" data-v="${esc(val)}"><span class="check" aria-hidden="true"></span><div class="t">${esc(t)}</div>${d ? `<div class="d">${esc(d)}</div>` : ""}</button>`);
+      c.onclick = () => { sel = sel.includes(val) ? sel.filter(x => x !== val) : [...sel, val]; paint(); onChange(sel.slice()); }; box.append(c);
     }
+    paint();
     return box;
   }
   function chipGroups(q, selected, onChange) {
     const wrap = el(`<div></div>`);
-    const all = optItems(q), allOn = all.every(v => selected.includes(v));
+    const all = optItems(q);
+    let sel = selected.slice(), sa = null;
+    const paint = () => {
+      wrap.querySelectorAll(".chip[data-v]").forEach(ch => { const on = sel.includes(ch.dataset.v); ch.classList.toggle("on", on); ch.setAttribute("aria-pressed", on); });
+      if (sa) { const on = all.every(v => sel.includes(v)); sa.classList.toggle("on", on); sa.setAttribute("aria-pressed", on); sa.textContent = on ? "Clear all" : "Select all"; }
+    };
     if (q.selectAll) {
-      const sa = el(`<button type="button" class="chip select-all ${allOn ? "on" : ""}" aria-pressed="${allOn}">${allOn ? "Clear all" : "Select all"}</button>`);
-      sa.onclick = () => onChange(allOn ? [] : all.slice());
+      sa = el(`<button type="button" class="chip select-all" aria-pressed="false">Select all</button>`);
+      sa.onclick = () => { sel = all.every(v => sel.includes(v)) ? [] : all.slice(); paint(); onChange(sel.slice()); };
       const saGroup = el(`<div class="chip-group"><div class="chips"></div></div>`);
       saGroup.querySelector(".chips").append(sa);
       wrap.append(saGroup);
@@ -256,13 +279,13 @@
     for (const g of q.groups) {
       const grp = el(`<div class="chip-group"><p class="g">${esc(g.g)}</p><div class="chips"></div></div>`);
       for (const [sym, label] of g.items) {
-        const on = selected.includes(sym);
-        const ch = el(`<button type="button" class="chip ${on ? "on" : ""}" aria-pressed="${on}">${esc(label)}${label !== sym ? `<span class="sym">${esc(sym)}</span>` : ""}</button>`);
-        ch.onclick = () => onChange(on ? selected.filter(x => x !== sym) : [...selected, sym]);
+        const ch = el(`<button type="button" class="chip" aria-pressed="false" data-v="${esc(sym)}">${esc(label)}${label !== sym ? `<span class="sym">${esc(sym)}</span>` : ""}</button>`);
+        ch.onclick = () => { sel = sel.includes(sym) ? sel.filter(x => x !== sym) : [...sel, sym]; paint(); onChange(sel.slice()); };
         grp.querySelector(".chips").append(ch);
       }
       wrap.append(grp);
     }
+    paint();
     return wrap;
   }
 
@@ -272,7 +295,12 @@
     for (const p of PRODUCTS) {
       const on = S.products.includes(p.id);
       const c = el(`<button type="button" class="card multi product ${on ? "on" : ""}" role="checkbox" aria-checked="${on}"><span class="check" aria-hidden="true"></span>${productIcon(p.id, "ico")}<div class="body"><div class="t">${esc(p.name)}</div><div class="d">${esc(p.short)}</div></div></button>`);
-      c.onclick = () => { S.products = on ? S.products.filter(x => x !== p.id) : [...S.products, p.id]; render(); };
+      c.onclick = () => {
+        const picked = !S.products.includes(p.id);
+        S.products = picked ? [...S.products, p.id] : S.products.filter(x => x !== p.id);
+        c.classList.toggle("on", picked); c.setAttribute("aria-checked", picked);
+        refreshChrome();
+      };
       box.append(c);
     }
     return v;
@@ -288,9 +316,9 @@
       <div class="q"><p class="h2">Who do you expect to verify your customer's identity?</p><p class="q-help">Every customer must be identity-checked before they can transact. Most platforms let zerohash do it.</p><div class="body"></div></div>
     </section>`);
     const bodies = v.querySelectorAll(".body");
-    bodies[0].replaceWith(singleCards([["us","United States","zerohash LLC"],["eu","European Union","zerohash europe B.V., licensed by the Dutch AFM"]], S.region, (val) => { S.region = val; render(); }));
-    bodies[1].replaceWith(multiCards([["individuals","People",""],["businesses","Businesses",""]], S.customers, (sel) => { S.customers = sel; render(); }));
-    bodies[2].replaceWith(singleCards([["sdk","zerohash","A ready-made verification screen you drop into your app. zerohash handles the checks and any manual review."],["api","Ourselves","You verify customers yourself and pass zerohash the results. Needs approval from zerohash."]], S.kyc, (val) => { S.kyc = val; render(); }));
+    bodies[0].replaceWith(singleCards([["us","United States","zerohash LLC"],["eu","European Union","zerohash europe B.V., licensed by the Dutch AFM"]], S.region, (val) => { S.region = val; refreshChrome(); }));
+    bodies[1].replaceWith(multiCards([["individuals","People",""],["businesses","Businesses",""]], S.customers, (sel) => { S.customers = sel; refreshChrome(); }));
+    bodies[2].replaceWith(singleCards([["sdk","zerohash","A ready-made verification screen you drop into your app. zerohash handles the checks and any manual review."],["api","Ourselves","You verify customers yourself and pass zerohash the results. Needs approval from zerohash."]], S.kyc, (val) => { S.kyc = val; refreshChrome(); }));
     return v;
   }
 
@@ -301,7 +329,8 @@
     for (const q of visibleQuestions(pid)) {
       const w = el(`<div class="q"><p class="h2">${esc(q.title)}</p>${q.plain ? `<p class="q-help">${q.plain}</p>` : ""}${q.help ? `<p class="q-help">${esc(q.help)}</p>` : ""}${q.type === "multi" ? `<p class="q-help">Pick as many as you like.</p>` : ""}<div class="body"></div></div>`);
       const body = w.querySelector(".body");
-      const set = (val) => { a[q.id] = val; render(); };
+      const sig = () => visibleQuestions(pid).map(x => x.id).join(",");
+      const set = (val) => { const before = sig(); a[q.id] = val; if (sig() !== before) render(); else refreshChrome(); };
       if (q.type === "single") body.replaceWith(singleCards(q.opts, a[q.id], set));
       else if (q.groups) body.replaceWith(chipGroups(q, a[q.id] || [], set));
       else {
@@ -922,6 +951,21 @@
       <div class="zh-chat-head"><span class="zh-chat-avatar"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/></svg></span><span class="zh-chat-title">Setup wizard</span><span class="zh-chat-step" aria-label="${label}"></span></div>
       <div class="zh-chat-progress"><span style="width:${pct}%"></span></div>`;
 
+    /* The card's frame is built once and then updated in place. Re-rendering the whole thing on
+       every answer replayed the entrance animation on every message, which looked like a reload. */
+    function shell(label, pct) {
+      let log = back.querySelector(".zh-chat-log");
+      if (!log) {
+        back.innerHTML = HEAD(label, pct) + `
+        <div class="zh-chat-log" role="log" aria-live="polite"></div>
+        <div class="zh-chat-composer"></div>`;
+        log = back.querySelector(".zh-chat-log");
+      }
+      back.querySelector(".zh-chat-step").setAttribute("aria-label", label);
+      back.querySelector(".zh-chat-progress > span").style.width = `${pct}%`;
+      return { log, composer: back.querySelector(".zh-chat-composer") };
+    }
+
     // The products question is a plain question with a card per product, not a chat exchange.
     function renderPicker(q, total, k) {
       back.innerHTML = HEAD(`Question ${k + 1} of ${total}`, Math.round((k / total) * 100)) + `
@@ -950,17 +994,38 @@
       box.classList.toggle("is-active", done.length > 0);
       if (done.length) box.classList.add("is-open");
       if (current && current.key === "products" && !typing) { renderPicker(current, total, k); return; }
-      back.innerHTML = HEAD(current ? `Question ${k + 1} of ${total}` : "Done", current ? Math.round((k / total) * 100) : 100) + `
-        <div class="zh-chat-log" role="log" aria-live="polite"></div>
-        <div class="zh-chat-composer"></div>`;
-      const log = back.querySelector(".zh-chat-log"), composer = back.querySelector(".zh-chat-composer");
-      const bot = (html, hint) => { const hints = (Array.isArray(hint) ? hint : [hint]).filter(Boolean); log.append(el(`<div class="zh-msg bot">${html}${hints.map(h => `<span class="hint">${h}</span>`).join("")}</div>`)); };
-      const user = (text) => log.append(el(`<div class="zh-msg user">${esc(text)}</div>`));
+      const { log, composer } = shell(current ? `Question ${k + 1} of ${total}` : "Done", current ? Math.round((k / total) * 100) : 100);
+      composer.innerHTML = "";
+      // A message carrying a data-key belongs to the transcript and stays between renders; the
+      // rest (the open question, the typing dots, the closing note) is rebuilt each time.
+      // The question just answered is already on screen, so that node is adopted into the
+      // transcript rather than dropped and animated straight back in.
+      const fresh = done.find(key => !log.querySelector(`[data-key="${key}"]`));
+      if (fresh) {
+        const q = qs.find(x => x.key === fresh), node = [...log.querySelectorAll(".zh-msg.bot.is-transient")].pop();
+        if (q && node && node.textContent.startsWith(q.title)) {
+          node.classList.remove("is-transient");
+          node.dataset.key = fresh;
+          node.innerHTML = esc(q.title);   // the hint only applies while the question is open
+        }
+      }
+      log.querySelectorAll(".is-transient").forEach(n => n.remove());
+      const add = (cls, html, key) => {
+        const n = el(`<div class="zh-msg ${cls}${key ? "" : " is-transient"}">${html}</div>`);
+        if (key) n.dataset.key = key;
+        log.append(n); return n;
+      };
+      const bot = (html, hint, key) => { const hints = (Array.isArray(hint) ? hint : [hint]).filter(Boolean); return add("bot", html + hints.map(h => `<span class="hint">${h}</span>`).join(""), key); };
+      const user = (text, key) => add("user", esc(text), key);
 
-      // transcript of what's been answered so far
+      // transcript of what's been answered so far: only what's new is appended, so nothing
+      // already on screen moves or replays its entrance animation
+      log.querySelectorAll("[data-key]").forEach(n => { if (!done.includes(n.dataset.key)) n.remove(); });
       for (const key of done) {
         const q = qs.find(x => x.key === key); if (!q) continue;
-        bot(esc(q.title)); user(labelOf(q.opts, q.get()));
+        const have = log.querySelectorAll(`[data-key="${key}"]`).length;
+        if (!have) bot(esc(q.title), null, key);
+        if (have < 2) user(labelOf(q.opts, q.get()), key);
       }
 
       if (!current) {
@@ -970,7 +1035,7 @@
         actions.querySelector(".zh-chat-back").onclick = () => { done.length = 0; H = JSON.parse(JSON.stringify(DEFAULT)); box.classList.remove("is-open", "is-active"); render(); };
         composer.append(actions);
       } else if (typing) {
-        log.append(el(`<div class="zh-msg bot typing" aria-label="Typing"><i></i><i></i><i></i></div>`));
+        add("bot typing", `<i></i><i></i><i></i>`).setAttribute("aria-label", "Typing");
       } else {
         bot(esc(current.title), [current.hint, current.kind === "multi" ? "Pick as many as you like." : ""]);
         const opts = el(`<div class="zh-chat-options"></div>`);

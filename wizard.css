@@ -115,8 +115,10 @@
 .zh-wiz .agentbtn { position: relative; display: inline-flex; align-items: stretch; }
 .zh-wiz .agentbtn .btn { display: inline-flex; align-items: center; gap: 8px; }
 .zh-wiz .agentbtn .btn:hover:not(:disabled) { transform: none; box-shadow: none; }
-.zh-wiz .agent-main { border-radius: 8px 0 0 8px; }
-.zh-wiz .agent-more { border-radius: 0 8px 8px 0; margin-left: -1.5px; padding: 6px 8px; }
+/* The halves have to out-specify .zh-wiz .btn.small, which otherwise rounds all four corners
+   of each and leaves them looking like two separate pills. */
+.zh-wiz .agentbtn .agent-main { border-radius: 8px 0 0 8px; padding-right: 10px; }
+.zh-wiz .agentbtn .agent-more { border-radius: 0 8px 8px 0; margin-left: -1.5px; padding: 6px 8px; }
 .zh-wiz .agent-more svg { transition: transform .2s cubic-bezier(.4, 0, .2, 1); }
 .zh-wiz .agent-more[aria-expanded="true"] svg { transform: rotate(180deg); }
 /* same split button, same rule: hovering either half lights the whole outline */

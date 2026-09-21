@@ -278,7 +278,7 @@
 .zh-landing .zh-pick-hint { margin: 3px 0 12px; font-size: 12.5px; color: var(--zh-muted); }
 .zh-landing .zh-pick-list { flex: 1 1 auto; min-height: 0; overflow-y: auto; scrollbar-width: thin; display: flex; flex-direction: column; gap: 5px; padding-bottom: 4px; }
 .zh-landing .zh-pcard {
-  position: relative; display: grid; grid-template-columns: 26px 1fr; column-gap: 10px; align-items: start;
+  position: relative; display: grid; grid-template-columns: 26px 1fr; column-gap: 10px; align-items: center;
   text-align: left; cursor: pointer;
   padding: 9px 30px 10px 10px; border: 1px solid var(--zh-hairline); border-radius: 10px;
   background: var(--zh-card-bg); transition: border-color 0.12s ease, background 0.12s ease;
@@ -291,8 +291,10 @@
 .zh-landing .zh-pcard.on { border-color: var(--zh-green); background: var(--zh-green-tint); }
 .zh-landing .zh-pcard-t { display: block; font-size: 13.5px; font-weight: 600; line-height: 1.3; color: var(--zh-ink); }
 .zh-landing .zh-pcard.on .zh-pcard-t { color: var(--zh-green); }
-.zh-landing .zh-pcard-d { display: block; margin-top: 1px; font-size: 11.5px; line-height: 1.38; color: var(--zh-muted); }
-.zh-landing .zh-pcard-check { position: absolute; top: 11px; right: 12px; width: 11px; height: 11px; display: none; }
+/* one line per product: the copy is written to fit, and this keeps a long translation or a
+   narrow card from spilling onto a second row and unbalancing the list. */
+.zh-landing .zh-pcard-d { display: block; margin-top: 1px; font-size: 11.5px; line-height: 1.38; color: var(--zh-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.zh-landing .zh-pcard-check { position: absolute; top: 50%; margin-top: -6px; right: 12px; width: 11px; height: 11px; display: none; }
 .zh-landing .zh-pcard.on .zh-pcard-check { display: block; }
 .zh-landing .zh-pcard.on .zh-pcard-check::after { content: ""; position: absolute; left: 1px; top: 0; width: 5px; height: 9px; border: solid var(--zh-green); border-width: 0 2px 2px 0; transform: rotate(45deg); }
 
