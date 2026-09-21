@@ -667,6 +667,29 @@
     }
   }
 
+  /* ---------------- landing page: product filter ----------------
+     The chips are additive: with none pressed every card shows, and pressing one narrows to
+     that category. Categories match the Documentation tab's own sections. */
+  function mountProductFilter() {
+    const bar = document.getElementById("zh-prod-filter");
+    if (!bar || bar.dataset.mounted) return;
+    bar.dataset.mounted = "1";
+    const chips = [...bar.querySelectorAll(".zh-chip")];
+    const cards = [...document.querySelectorAll(".zh-products .zh-card[data-cat]")];
+    const apply = () => {
+      const on = chips.filter(c => c.getAttribute("aria-pressed") === "true").map(c => c.dataset.cat);
+      cards.forEach(card => card.classList.toggle("is-off", on.length > 0 && !on.includes(card.dataset.cat)));
+    };
+    chips.forEach(chip => {
+      chip.setAttribute("aria-pressed", "false");
+      chip.addEventListener("click", () => {
+        chip.setAttribute("aria-pressed", String(chip.getAttribute("aria-pressed") !== "true"));
+        apply();
+      });
+    });
+    apply();
+  }
+
   /* ---------------- landing page: FAQ ----------------
      Five rows expand in place. The last one takes a question and answers it from the docs:
      scripts/build_faq_index.py ships a passage per heading as /faq-index.txt, fetched the first
@@ -991,7 +1014,7 @@
     render();
   }
 
-  const boot = () => { mountWizard(); mountHeroChat(); mountSpotlights(); mountAgentButton(); mountFaq(); resetTabState(); };
+  const boot = () => { mountWizard(); mountHeroChat(); mountSpotlights(); mountAgentButton(); mountFaq(); mountProductFilter(); resetTabState(); };
   boot();
   new MutationObserver(boot).observe(document.documentElement, { childList: true, subtree: true });
 })();

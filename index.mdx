@@ -104,197 +104,77 @@ mode: "custom"
           <p className="zh-section-sub">Every capability is a set of endpoints on the same platform. Mix and match behind your own UX.</p>
         </div>
       </div>
+      <div className="zh-chips" id="zh-prod-filter" role="group" aria-label="Filter products">
+        <button type="button" className="zh-chip" data-cat="trade">Trade</button>
+        <button type="button" className="zh-chip" data-cat="transact">Transact</button>
+        <button type="button" className="zh-chip" data-cat="tokenize">Tokenize</button>
+        <button type="button" className="zh-chip" data-cat="value">Value Added</button>
+      </div>
       <div className="zh-grid">
-        <a className="zh-card" href="/docs/fund-overview">
+        <a className="zh-card" data-cat="transact" href="/docs/fund-overview">
           <span className="zh-card-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v12" /><path d="M7 10l5 5 5-5" /><path d="M4 20h16" /></svg></span>
-          <h3>Account Funding</h3>
+          <h3>Account Funding<span className="zh-go" aria-hidden="true">→</span></h3>
           <p>Customers add money to their account by sending stablecoins or crypto.</p>
-          <span className="zh-card-more">Explore funding<span className="zh-card-arrow">→</span></span>
         </a>
-        <a className="zh-card" href="/docs/buysell">
+        <a className="zh-card" data-cat="trade" href="/docs/buysell">
           <span className="zh-card-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M8 3L4 7l4 4" /><path d="M4 7h16" /><path d="M16 21l4-4-4-4" /><path d="M20 17H4" /></svg></span>
-          <h3>Buy / Sell Crypto</h3>
+          <h3>Buy / Sell Crypto<span className="zh-go" aria-hidden="true">→</span></h3>
           <p>Let customers buy and sell crypto at prices from top market makers.</p>
-          <span className="zh-card-more">Explore trading<span className="zh-card-arrow">→</span></span>
         </a>
-        <a className="zh-card" href="/docs/payouts">
+        <a className="zh-card" data-cat="transact" href="/docs/payouts">
           <span className="zh-card-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M7 17L17 7" /><path d="M8 7h9v9" /></svg></span>
-          <h3>Payouts</h3>
+          <h3>Payouts<span className="zh-go" aria-hidden="true">→</span></h3>
           <p>Pay people in stablecoins or crypto, straight to their wallet, any time.</p>
-          <span className="zh-card-more">Explore payouts<span className="zh-card-arrow">→</span></span>
         </a>
-        <a className="zh-card" href="/docs/payins">
+        <a className="zh-card" data-cat="transact" href="/docs/payins">
           <span className="zh-card-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M6 7h12l1 13H5L6 7z" /><path d="M9 7a3 3 0 0 1 6 0" /></svg></span>
-          <h3>Payins</h3>
+          <h3>Payins<span className="zh-go" aria-hidden="true">→</span></h3>
           <p>Accept stablecoin and crypto payments at checkout.</p>
-          <span className="zh-card-more">Explore payins<span className="zh-card-arrow">→</span></span>
         </a>
-        <a className="zh-card" href="/docs/fiat">
+        <a className="zh-card" data-cat="transact" href="/docs/fiat">
           <span className="zh-card-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 21h18" /><path d="M5 18v-8" /><path d="M9.5 18v-8" /><path d="M14.5 18v-8" /><path d="M19 18v-8" /><path d="M2 10l10-7 10 7" /></svg></span>
-          <h3>Bank Rails</h3>
+          <h3>Bank Rails<span className="zh-go" aria-hidden="true">→</span></h3>
           <p>Connect customers' U.S. bank accounts to move dollars in and out.</p>
-          <span className="zh-card-more">Explore bank rails<span className="zh-card-arrow">→</span></span>
         </a>
-        <a className="zh-card" href="/docs/virtual-accounts">
+        <a className="zh-card" data-cat="transact" href="/docs/virtual-accounts">
           <span className="zh-card-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="5" width="18" height="14" rx="2" /><path d="M3 10h18" /><path d="M7 15h4" /></svg></span>
-          <h3>Virtual Accounts</h3>
+          <h3>Virtual Accounts<span className="zh-go" aria-hidden="true">→</span></h3>
           <p>Give each customer their own account and routing number.</p>
-          <span className="zh-card-more">Explore virtual accounts<span className="zh-card-arrow">→</span></span>
         </a>
-        <a className="zh-card" href="/docs/on-off-ramps">
+        <a className="zh-card" data-cat="transact" href="/docs/on-off-ramps">
           <span className="zh-card-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M7 20V6" /><path d="M3 10l4-4 4 4" /><path d="M17 4v14" /><path d="M21 14l-4 4-4-4" /></svg></span>
-          <h3>On & Off Ramps</h3>
+          <h3>On & Off Ramps<span className="zh-go" aria-hidden="true">→</span></h3>
           <p>Turn dollars into crypto sent to a wallet, or crypto into dollars.</p>
-          <span className="zh-card-more">Explore ramps<span className="zh-card-arrow">→</span></span>
         </a>
-        <a className="zh-card" href="/docs/staking">
+        <a className="zh-card" data-cat="trade" href="/docs/staking">
           <span className="zh-card-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v4" /><path d="M12 18v4" /><path d="M4.93 4.93l2.83 2.83" /><path d="M16.24 16.24l2.83 2.83" /><path d="M2 12h4" /><path d="M18 12h4" /><path d="M4.93 19.07l2.83-2.83" /><path d="M16.24 7.76l2.83-2.83" /></svg></span>
-          <h3>Staking</h3>
+          <h3>Staking<span className="zh-go" aria-hidden="true">→</span></h3>
           <p>Let customers earn rewards on their ETH.</p>
-          <span className="zh-card-more">Explore staking<span className="zh-card-arrow">→</span></span>
         </a>
-        <a className="zh-card" href="/docs/settlements-as-a-service">
+        <a className="zh-card" data-cat="trade" href="/docs/settlements-as-a-service">
           <span className="zh-card-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg></span>
-          <h3>Settlements as a Service</h3>
+          <h3>Settlements as a Service<span className="zh-go" aria-hidden="true">→</span></h3>
           <p>Settle trades you have matched elsewhere, safely.</p>
-          <span className="zh-card-more">Explore settlement<span className="zh-card-arrow">→</span></span>
         </a>
-        <a className="zh-card" href="/docs/tokenization-engine">
+        <a className="zh-card" data-cat="tokenize" href="/docs/tokenization-engine">
           <span className="zh-card-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2l8 4.5v9L12 20l-8-4.5v-9L12 2z" /><path d="M12 11l8-4.5" /><path d="M12 11v9" /><path d="M12 11L4 6.5" /></svg></span>
-          <h3>Tokenization Engine</h3>
+          <h3>Tokenization Engine<span className="zh-go" aria-hidden="true">→</span></h3>
           <p>Issue your own tokens on Ethereum-compatible chains or Solana.</p>
-          <span className="zh-card-more">Explore tokenization<span className="zh-card-arrow">→</span></span>
         </a>
-        <a className="zh-card" href="/docs/auth">
+        <a className="zh-card" data-cat="value" href="/docs/auth">
           <span className="zh-card-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M9 7h9a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H9" /><path d="M12 10l-3 3 3 3" /><path d="M4 5v14" /></svg></span>
-          <h3>AUTH</h3>
+          <h3>AUTH<span className="zh-go" aria-hidden="true">→</span></h3>
           <p>Customers connect an exchange or wallet and transfer from inside your app.</p>
-          <span className="zh-card-more">Explore AUTH<span className="zh-card-arrow">→</span></span>
         </a>
-        <a className="zh-card" href="/docs/crypto-tax-overview">
+        <a className="zh-card" data-cat="value" href="/docs/crypto-tax-overview">
           <span className="zh-card-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M6 3h9l4 4v14H6z" /><path d="M9 12h6" /><path d="M9 16h4" /></svg></span>
-          <h3>Crypto Taxes</h3>
+          <h3>Crypto Taxes<span className="zh-go" aria-hidden="true">→</span></h3>
           <p>Tax forms and reporting for your customers, handled as a service.</p>
-          <span className="zh-card-more">Explore taxes<span className="zh-card-arrow">→</span></span>
         </a>
       </div>
     </div>
   </section>
 
-  <section className="zh-section zh-plist">
-    <div className="zh-container">
-      <div className="zh-section-head">
-        <div>
-          <p className="zh-label">Products</p>
-          <h2 className="zh-h2">Build with any product, or all of them</h2>
-          <p className="zh-section-sub">Every capability is a set of endpoints on the same platform. Mix and match behind your own UX.</p>
-        </div>
-      </div>
-      <div className="zh-plist-grid">
-        <div className="zh-plist-col">
-          <p className="zh-plist-head">Trade</p>
-          <a className="zh-plist-item" href="/docs/buysell">
-            <span className="zh-plist-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M8 3L4 7l4 4" /><path d="M4 7h16" /><path d="M16 21l4-4-4-4" /><path d="M20 17H4" /></svg></span>
-            <span className="zh-plist-text">
-              <span className="zh-plist-title">Buy / Sell</span>
-              <span className="zh-plist-sub">Let customers buy and sell crypto at prices from top market makers.</span>
-            </span>
-          </a>
-          <a className="zh-plist-item" href="/docs/settlements-as-a-service">
-            <span className="zh-plist-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg></span>
-            <span className="zh-plist-text">
-              <span className="zh-plist-title">Settlements as a Service</span>
-              <span className="zh-plist-sub">Settle trades you have matched elsewhere, safely.</span>
-            </span>
-          </a>
-          <a className="zh-plist-item" href="/docs/staking">
-            <span className="zh-plist-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v4" /><path d="M12 18v4" /><path d="M4.93 4.93l2.83 2.83" /><path d="M16.24 16.24l2.83 2.83" /><path d="M2 12h4" /><path d="M18 12h4" /><path d="M4.93 19.07l2.83-2.83" /><path d="M16.24 7.76l2.83-2.83" /></svg></span>
-            <span className="zh-plist-text">
-              <span className="zh-plist-title">Staking</span>
-              <span className="zh-plist-sub">Let customers earn rewards on their ETH.</span>
-            </span>
-          </a>
-        </div>
-        <div className="zh-plist-col">
-          <p className="zh-plist-head">Transact</p>
-          <a className="zh-plist-item" href="/docs/fund-overview">
-            <span className="zh-plist-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v12" /><path d="M7 10l5 5 5-5" /><path d="M4 20h16" /></svg></span>
-            <span className="zh-plist-text">
-              <span className="zh-plist-title">Account Funding</span>
-              <span className="zh-plist-sub">Customers add money to their account by sending stablecoins or crypto.</span>
-            </span>
-          </a>
-          <a className="zh-plist-item" href="/docs/payouts">
-            <span className="zh-plist-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M7 17L17 7" /><path d="M8 7h9v9" /></svg></span>
-            <span className="zh-plist-text">
-              <span className="zh-plist-title">Payouts</span>
-              <span className="zh-plist-sub">Pay people in stablecoins or crypto, straight to their wallet, any time.</span>
-            </span>
-          </a>
-          <a className="zh-plist-item" href="/docs/payins">
-            <span className="zh-plist-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M6 7h12l1 13H5L6 7z" /><path d="M9 7a3 3 0 0 1 6 0" /></svg></span>
-            <span className="zh-plist-text">
-              <span className="zh-plist-title">Payins</span>
-              <span className="zh-plist-sub">Accept stablecoin and crypto payments at checkout.</span>
-            </span>
-          </a>
-          <a className="zh-plist-item" href="/docs/fiat">
-            <span className="zh-plist-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 21h18" /><path d="M5 18v-8" /><path d="M9.5 18v-8" /><path d="M14.5 18v-8" /><path d="M19 18v-8" /><path d="M2 10l10-7 10 7" /></svg></span>
-            <span className="zh-plist-text">
-              <span className="zh-plist-title">Bank Rails (ACH + RTP)</span>
-              <span className="zh-plist-sub">Connect customers' U.S. bank accounts to move dollars in and out.</span>
-            </span>
-          </a>
-          <a className="zh-plist-item" href="/docs/virtual-accounts">
-            <span className="zh-plist-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="5" width="18" height="14" rx="2" /><path d="M3 10h18" /><path d="M7 15h4" /></svg></span>
-            <span className="zh-plist-text">
-              <span className="zh-plist-title">Virtual Accounts</span>
-              <span className="zh-plist-sub">Give each customer their own account and routing number.</span>
-            </span>
-          </a>
-          <a className="zh-plist-item" href="/docs/on-off-ramps">
-            <span className="zh-plist-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M7 20V6" /><path d="M3 10l4-4 4 4" /><path d="M17 4v14" /><path d="M21 14l-4 4-4-4" /></svg></span>
-            <span className="zh-plist-text">
-              <span className="zh-plist-title">On & Off Ramps</span>
-              <span className="zh-plist-sub">Turn dollars into crypto sent to a wallet, or crypto into dollars.</span>
-            </span>
-          </a>
-        </div>
-        <div className="zh-plist-col">
-          <p className="zh-plist-head">Value Added</p>
-          <a className="zh-plist-item" href="/docs/auth">
-            <span className="zh-plist-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M9 7h9a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H9" /><path d="M12 10l-3 3 3 3" /><path d="M4 5v14" /></svg></span>
-            <span className="zh-plist-text">
-              <span className="zh-plist-title">AUTH</span>
-              <span className="zh-plist-sub">Customers connect an exchange or wallet and transfer from inside your app.</span>
-            </span>
-          </a>
-          <a className="zh-plist-item" href="/docs/crypto-tax-overview">
-            <span className="zh-plist-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M6 3h9l4 4v14H6z" /><path d="M9 12h6" /><path d="M9 16h4" /></svg></span>
-            <span className="zh-plist-text">
-              <span className="zh-plist-title">Tax</span>
-              <span className="zh-plist-sub">Tax forms and reporting for your customers, handled as a service.</span>
-            </span>
-          </a>
-          <p className="zh-plist-head zh-plist-head-mid">Tokenization</p>
-          <a className="zh-plist-item" href="/docs/tokenization-engine">
-            <span className="zh-plist-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2l8 4.5v9L12 20l-8-4.5v-9L12 2z" /><path d="M12 11l8-4.5" /><path d="M12 11v9" /><path d="M12 11L4 6.5" /></svg></span>
-            <span className="zh-plist-text">
-              <span className="zh-plist-title">Tokenization Engine</span>
-              <span className="zh-plist-sub">Issue your own tokens on Ethereum-compatible chains or Solana.</span>
-            </span>
-          </a>
-          <a className="zh-plist-item" href="/docs/tokenization-payment-rails">
-            <span className="zh-plist-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M5 4v16" /><path d="M19 4v16" /><path d="M5 9h14" /><path d="M5 15h14" /></svg></span>
-            <span className="zh-plist-text">
-              <span className="zh-plist-title">Tokenization Payment Rails</span>
-              <span className="zh-plist-sub">Real-time, stablecoin-native funding for tokenized finance.</span>
-            </span>
-          </a>
-        </div>
-      </div>
-    </div>
-  </section>
 
   <section className="zh-section zh-paths">
     <div className="zh-container">
@@ -311,23 +191,21 @@ mode: "custom"
       <div className="zh-paths-grid">
         <a className="zh-path" href="/docs/sdk-index">
           <span className="zh-path-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2.5" /><path d="M3 8.5h18" /><path d="M8 13h8" /><path d="M8 16.5h5" /></svg></span>
-          <h3>Conversion-optimized SDKs</h3>
+          <h3>Conversion-optimized SDKs<span className="zh-go" aria-hidden="true">→</span></h3>
           <ul className="zh-path-list">
             <li>Drop-in screens with designs optimized on all platforms.</li>
             <li>Compliance, regulatory, and legal disclosures and agreements all handled.</li>
             <li>Faster rollout to market and automatic coverage of latest chains and assets.</li>
           </ul>
-          <span className="zh-path-more">Start with the SDKs<span className="zh-card-arrow">→</span></span>
         </a>
         <a className="zh-path" href="/api-reference/authentication">
           <span className="zh-path-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M7 8l-4 4 4 4" /><path d="M17 8l4 4-4 4" /><path d="M14 5l-4 14" /></svg></span>
-          <h3>API only</h3>
+          <h3>API only<span className="zh-go" aria-hidden="true">→</span></h3>
           <ul className="zh-path-list">
             <li>Sign each request and call the REST API endpoints yourself.</li>
             <li>180 endpoints across every product, with full schemas in the reference.</li>
             <li>Every screen is yours, with webhooks for anything that happens later.</li>
           </ul>
-          <span className="zh-path-more">Start with authentication<span className="zh-card-arrow">→</span></span>
         </a>
       </div>
     </div>
