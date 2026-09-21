@@ -213,21 +213,6 @@
 .zh-landing .zh-agent-view { padding-left: 38px; color: var(--zh-muted); }
 .zh-landing .zh-agent-sep { height: 1px; margin: 5px 4px; background: var(--zh-hairline); }
 
-.zh-landing .zh-trust {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 11.5px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--zh-muted);
-  margin: 26px 0 0;
-}
-
-.zh-landing .zh-trust-sep::before {
-  content: "·";
-  margin: 0 14px;
-  color: var(--zh-hairline-strong);
-}
-
 /* ---------- hero chat card (the setup wizard, one question at a time) ---------- */
 
 .zh-landing .zh-hero-chat {
@@ -675,7 +660,6 @@
 @media (max-width: 640px) {
   .zh-landing .zh-hero { padding: 60px 0 48px; }
   .zh-landing .zh-section { padding: 60px 0 16px; }
-  .zh-landing .zh-trust-sep::before { margin: 0 8px; }
 }
 
 /* The homepage sits under no tab, so Mintlify marking Documentation as the current one is
