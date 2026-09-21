@@ -668,26 +668,24 @@
   }
 
   /* ---------------- landing page: product filter ----------------
-     The chips are additive: with none pressed every card shows, and pressing one narrows to
-     that category. Categories match the Documentation tab's own sections. */
+     One category at a time: picking a chip releases the others, and picking the pressed chip
+     again clears the filter so every card shows. Categories match the docs' own sections. */
   function mountProductFilter() {
     const bar = document.getElementById("zh-prod-filter");
     if (!bar || bar.dataset.mounted) return;
     bar.dataset.mounted = "1";
     const chips = [...bar.querySelectorAll(".zh-chip")];
     const cards = [...document.querySelectorAll(".zh-products .zh-card[data-cat]")];
-    const apply = () => {
-      const on = chips.filter(c => c.getAttribute("aria-pressed") === "true").map(c => c.dataset.cat);
-      cards.forEach(card => card.classList.toggle("is-off", on.length > 0 && !on.includes(card.dataset.cat)));
+    const select = (cat) => {
+      chips.forEach(c => c.setAttribute("aria-pressed", String(c.dataset.cat === cat)));
+      cards.forEach(card => card.classList.toggle("is-off", Boolean(cat) && card.dataset.cat !== cat));
     };
     chips.forEach(chip => {
-      chip.setAttribute("aria-pressed", "false");
       chip.addEventListener("click", () => {
-        chip.setAttribute("aria-pressed", String(chip.getAttribute("aria-pressed") !== "true"));
-        apply();
+        select(chip.getAttribute("aria-pressed") === "true" ? null : chip.dataset.cat);
       });
     });
-    apply();
+    select(null);
   }
 
   /* ---------------- landing page: FAQ ----------------
