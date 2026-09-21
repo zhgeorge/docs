@@ -11,7 +11,7 @@
   --zh-green-bright: #3ecf8e;
   --zh-green-tint: rgba(14, 159, 110, 0.09);
   --zh-glow: rgba(62, 207, 142, 0.14);
-  --zh-green-deep: #0b3d2b;
+  --zh-green-fill: #0b7a54;   /* the header's Get Access button */
   --zh-btn-bg: #161615;
   --zh-btn-fg: #ffffff;
   font-size: 16px;
@@ -29,7 +29,7 @@
   --zh-green: #3ecf8e;
   --zh-green-tint: rgba(62, 207, 142, 0.1);
   --zh-glow: rgba(62, 207, 142, 0.08);
-  --zh-green-deep: #0f4a34;
+  --zh-green-fill: #0b7a54;   /* Mintlify keeps primary-dark in both themes */
   --zh-btn-bg: #ededea;
   --zh-btn-fg: #111211;
 }
@@ -494,13 +494,13 @@
 
 /* the whole card is the link: it fills deep green and the title grows an arrow */
 .zh-landing .zh-card:hover {
-  background: var(--zh-green-deep);
-  border-color: var(--zh-green-deep);
+  background: var(--zh-green-fill);
+  border-color: var(--zh-green-fill);
   box-shadow: 0 14px 36px -14px rgba(11, 61, 43, 0.35);
   transform: translateY(-2px);
 }
 .zh-landing .zh-card:hover h3 { color: #ffffff; }
-.zh-landing .zh-card:hover p { color: rgba(255, 255, 255, 0.72); }
+.zh-landing .zh-card:hover p { color: rgba(255, 255, 255, 0.88); }
 .zh-landing .zh-card:hover .zh-card-icon { background: rgba(255, 255, 255, 0.14); color: #ffffff; }
 
 .zh-landing .zh-go {
@@ -569,8 +569,8 @@
 .zh-landing .zh-chip:hover svg { color: var(--zh-green); }
 .zh-landing .zh-chip[aria-pressed="true"] svg { color: #ffffff; }
 .zh-landing .zh-chip[aria-pressed="true"] {
-  background: var(--zh-green-deep);
-  border-color: var(--zh-green-deep);
+  background: var(--zh-green-fill);
+  border-color: var(--zh-green-fill);
   color: #ffffff;
 }
 .zh-landing .zh-chips + .zh-grid { margin-top: 26px; }
@@ -614,14 +614,14 @@
 }
 .zh-landing .zh-path { transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease; }
 .zh-landing .zh-path:hover {
-  background: var(--zh-green-deep);
-  border-color: var(--zh-green-deep);
+  background: var(--zh-green-fill);
+  border-color: var(--zh-green-fill);
   box-shadow: 0 14px 32px -16px rgba(11, 61, 43, 0.35);
   transform: translateY(-2px);
 }
 .zh-landing .zh-path:hover h3 { color: #ffffff; }
 .zh-landing .zh-path:hover p,
-.zh-landing .zh-path:hover .zh-path-list li { color: rgba(255, 255, 255, 0.72); }
+.zh-landing .zh-path:hover .zh-path-list li { color: rgba(255, 255, 255, 0.88); }
 .zh-landing .zh-path:hover .zh-path-list li::before { border-color: #ffffff; }
 .zh-landing .zh-path:hover .zh-path-icon { background: rgba(255, 255, 255, 0.14); color: #ffffff; }
 .zh-landing .zh-path-icon {
