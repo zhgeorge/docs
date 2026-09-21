@@ -105,10 +105,9 @@ mode: "custom"
         </div>
       </div>
       <div className="zh-chips" id="zh-prod-filter" role="group" aria-label="Filter products">
-        <button type="button" className="zh-chip" data-cat="trade">Trade</button>
-        <button type="button" className="zh-chip" data-cat="transact">Transact</button>
-        <button type="button" className="zh-chip" data-cat="tokenize">Tokenize</button>
-        <button type="button" className="zh-chip" data-cat="value">Value Added</button>
+        <button type="button" className="zh-chip" data-cat="trade"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 3L4 7l4 4" /><path d="M4 7h16" /><path d="M16 21l4-4-4-4" /><path d="M20 17H4" /></svg>Trade</button>
+        <button type="button" className="zh-chip" data-cat="transact"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v12" /><path d="M7 10l5 5 5-5" /><path d="M4 20h16" /></svg>Transact</button>
+        <button type="button" className="zh-chip" data-cat="tokenize"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2l8 4.5v9L12 20l-8-4.5v-9L12 2z" /><path d="M12 11l8-4.5" /><path d="M12 11v9" /><path d="M12 11L4 6.5" /></svg>Tokenize</button>
       </div>
       <div className="zh-grid">
         <a className="zh-card" data-cat="transact" href="/docs/fund-overview">
@@ -120,6 +119,11 @@ mode: "custom"
           <span className="zh-card-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M8 3L4 7l4 4" /><path d="M4 7h16" /><path d="M16 21l4-4-4-4" /><path d="M20 17H4" /></svg></span>
           <h3>Buy / Sell Crypto<span className="zh-go" aria-hidden="true">→</span></h3>
           <p>Let customers buy and sell crypto at prices from top market makers.</p>
+        </a>
+        <a className="zh-card" data-cat="transact" href="/docs/auth">
+          <span className="zh-card-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M9 7h9a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H9" /><path d="M12 10l-3 3 3 3" /><path d="M4 5v14" /></svg></span>
+          <h3>AUTH<span className="zh-go" aria-hidden="true">→</span></h3>
+          <p>Customers connect an exchange or wallet and transfer from inside your app.</p>
         </a>
         <a className="zh-card" data-cat="transact" href="/docs/payouts">
           <span className="zh-card-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M7 17L17 7" /><path d="M8 7h9v9" /></svg></span>
@@ -161,12 +165,7 @@ mode: "custom"
           <h3>Tokenization Engine<span className="zh-go" aria-hidden="true">→</span></h3>
           <p>Issue your own tokens on Ethereum-compatible chains or Solana.</p>
         </a>
-        <a className="zh-card" data-cat="value" href="/docs/auth">
-          <span className="zh-card-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M9 7h9a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H9" /><path d="M12 10l-3 3 3 3" /><path d="M4 5v14" /></svg></span>
-          <h3>AUTH<span className="zh-go" aria-hidden="true">→</span></h3>
-          <p>Customers connect an exchange or wallet and transfer from inside your app.</p>
-        </a>
-        <a className="zh-card" data-cat="value" href="/docs/crypto-tax-overview">
+        <a className="zh-card" data-cat="transact" href="/docs/crypto-tax-overview">
           <span className="zh-card-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M6 3h9l4 4v14H6z" /><path d="M9 12h6" /><path d="M9 16h4" /></svg></span>
           <h3>Crypto Taxes<span className="zh-go" aria-hidden="true">→</span></h3>
           <p>Tax forms and reporting for your customers, handled as a service.</p>

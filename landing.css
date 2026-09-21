@@ -551,6 +551,9 @@
 
 .zh-landing .zh-chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 26px 0 0; }
 .zh-landing .zh-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
   border: 1px solid var(--zh-hairline-strong);
   background: var(--zh-card-bg);
   color: var(--zh-ink);
@@ -562,6 +565,9 @@
   transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
 }
 .zh-landing .zh-chip:hover { border-color: var(--zh-green); color: var(--zh-green); }
+.zh-landing .zh-chip svg { flex: 0 0 auto; color: var(--zh-muted); }
+.zh-landing .zh-chip:hover svg { color: var(--zh-green); }
+.zh-landing .zh-chip[aria-pressed="true"] svg { color: #ffffff; }
 .zh-landing .zh-chip[aria-pressed="true"] {
   background: var(--zh-green-deep);
   border-color: var(--zh-green-deep);
