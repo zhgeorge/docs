@@ -427,6 +427,11 @@
   .zh-landing .zh-hero-chat { height: 420px; max-width: 480px; }
 }
 
+/* On a phone the card is too narrow for one line, so the copy wraps rather than truncates. */
+@media (max-width: 560px) {
+  .zh-landing .zh-pcard-d { white-space: normal; }
+}
+
 /* ---------- products ---------- */
 
 .zh-landing .zh-section { padding: 84px 0 24px; }
