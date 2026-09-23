@@ -172,6 +172,24 @@
   function load() { try { const raw = localStorage.getItem(KEY); if (raw) return Object.assign({}, DEFAULT, JSON.parse(raw)); } catch (e) {} return JSON.parse(JSON.stringify(DEFAULT)); }
   function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }
   const ans = (pid) => S.answers[pid] || (S.answers[pid] = {});
+
+  /* A shareable link to this guide. The answers live in this browser, so the link carries them:
+     without them the recipient would land on whatever guide their own browser remembers. */
+  function shareLink() {
+    const state = { region: S.region, customers: S.customers, kyc: S.kyc, products: S.products, answers: S.answers };
+    const packed = btoa(unescape(encodeURIComponent(JSON.stringify(state)))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+    return `${location.origin}/setup-wizard?g=${packed}`;
+  }
+  function readLink() {
+    const raw = new URLSearchParams(location.search).get("g");
+    if (!raw) return null;
+    try {
+      const json = decodeURIComponent(escape(atob(raw.replace(/-/g, "+").replace(/_/g, "/")))); 
+      const st = JSON.parse(json);
+      if (!Array.isArray(st.products) || !st.products.length) return null;
+      return Object.assign({}, DEFAULT, st);
+    } catch (e) { return null; }
+  }
   // Nothing is preselected, so fall back to US only when generating the guide.
   const regionId = () => S.region || "us";
   const REG = () => REGIONS[regionId()];
@@ -584,7 +602,7 @@
 
   function agentButton(phases) {
     const box = el(`<div class="agentbtn">
-      <button type="button" class="btn small agent-main" title="Copy this guide as Markdown"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg><span class="agent-label">Copy</span><span class="agent-icons" aria-hidden="true"><img src="/images/agents/claude.png" alt="" width="15" height="15"><img src="/images/agents/codex.svg" alt="" width="15" height="15"><img src="/images/agents/cursor.png" alt="" width="15" height="15"></span></button>
+      <button type="button" class="btn small agent-main" title="Copy a link to this guide"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg><span class="agent-label">Copy link</span><span class="agent-icons" aria-hidden="true"><img src="/images/agents/claude.png" alt="" width="15" height="15"><img src="/images/agents/codex.svg" alt="" width="15" height="15"><img src="/images/agents/cursor.png" alt="" width="15" height="15"></span></button>
       <button type="button" class="btn small agent-more" aria-haspopup="menu" aria-expanded="false" aria-label="Open this guide in an agent"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>
       <div class="agent-menu" role="menu" hidden>
         <a role="menuitem" class="agent-item" data-agent="claude" href="/agents"><img src="/images/agents/claude.png" alt="" width="17" height="17"><span>Open in Claude Code</span><i>↗</i></a>
@@ -597,7 +615,7 @@
     box.querySelectorAll("[data-agent]").forEach(a => { a.href = links[a.dataset.agent]; });
     const main = box.querySelector(".agent-main"), more = box.querySelector(".agent-more"), menu = box.querySelector(".agent-menu");
     const open = (on) => { menu.hidden = !on; more.setAttribute("aria-expanded", String(on)); };
-    main.onclick = () => { copy(toMarkdown(phases), "Guide copied as Markdown"); box.classList.add("is-copied"); setTimeout(() => box.classList.remove("is-copied"), 1600); };
+    main.onclick = () => { copy(shareLink(), "Link copied"); box.classList.add("is-copied"); setTimeout(() => box.classList.remove("is-copied"), 1600); };
     more.onclick = (e) => { e.stopPropagation(); open(menu.hidden); };
     menu.onclick = () => open(false);
     document.addEventListener("click", (e) => { if (!box.contains(e.target)) open(false); });
@@ -655,21 +673,13 @@
   }
   const strip = (h) => h.replace(/<br\s*\/?>/g, "\n").replace(/<li>/g, "\n- ").replace(/<[^>]+>/g, "").replace(/&quot;/g, '"').replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/\n{3,}/g, "\n\n").trim();
 
-  function toMarkdown(phases) {
-    let md = `# zerohash setup guide\n\nRegion: ${REG().name} · Sandbox: ${host()}\nProducts: ${S.products.map(p => PRODUCTS.find(x => x.id === p).name).join(", ")}\n\n`;
-    for (const ph of phases) {
-      md += `## ${ph.eyebrow}: ${ph.title}\n\n${ph.intro ? strip(ph.intro) + "\n\n" : ""}`;
-      ph.steps.forEach((st, i) => { md += `### ${i + 1}. ${st.title}\n\n${strip(st.html || "")}\n\n`; (st.code || []).forEach(c => { md += `**${c.label}**\n\n\`\`\`${c.lang}\n${c.text}\n\`\`\`\n\n`; }); if (st.links && st.links.length) md += st.links.map(([l, u]) => `- [${l}](${u.startsWith("http") ? u : location.origin + u})`).join("\n") + "\n\n"; });
-      if (ph.config && ph.config.length) md += `Your zerohash contact sets this up with you: ${sentence(ph.config)}.\n\n`;
-    }
-    return md;
-  }
-
   /* ---------------- mounting ---------------- */
   function mountWizard() {
     const root = document.getElementById("zh-wizard-root");
     if (!root || root.dataset.mounted) return;
     root.dataset.mounted = "1"; ROOT = root;
+    const shared = readLink();
+    if (shared) { S = shared; S.step = stepList().length - 1; save(); }   // a shared link opens on the guide itself
     const pre = new URLSearchParams(location.search).get("products");
     if (pre) { const ids = pre.split(",").map(s => s.trim()).filter(id => PRODUCT_IDS.includes(id)); if (ids.length) { S.products = ids; S.step = 1; } }  // products already chosen on the landing page: start at "About you"
     root.innerHTML = `<nav class="rail" aria-label="Wizard steps"><p class="rail-title">Your setup</p><ol class="steps"></ol><p class="rail-note">Everything here comes from these docs, and each section links to its source page. Your choices are saved in this browser.</p></nav><main class="main"></main><div class="toast" role="status" aria-live="polite"></div>`;
