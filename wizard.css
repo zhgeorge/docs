@@ -154,8 +154,22 @@
 .zh-wiz .summary .pill b { font-weight: 600; color: var(--w-green); font-family: ui-monospace, Menlo, monospace; font-size: 12px; }
 .zh-wiz .phase { margin: 0 0 44px; padding-top: 28px; border-top: 1px solid var(--w-hair); }
 .zh-wiz .phase:first-of-type { border-top: 0; padding-top: 0; }
-.zh-wiz .phase-eyebrow { font-family: ui-monospace, Menlo, monospace; font-size: 11.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--w-muted); margin: 0 0 8px; }
-.zh-wiz .phase .h2 { font-size: 22px; margin-bottom: 8px; }
+/* The phase header is the fold control: the eyebrow and title sit left, the chevron right. */
+.zh-wiz .phase-head {
+  display: grid; grid-template-columns: minmax(0, 1fr) 26px; align-items: center;
+  width: 100%; padding: 0; border: 0; background: none; text-align: left;
+}
+.zh-wiz .phase-eyebrow { display: block; font-family: ui-monospace, Menlo, monospace; font-size: 11.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--w-muted); margin: 0 0 8px; }
+.zh-wiz .phase .h2 { display: block; font-size: 22px; margin-bottom: 8px; }
+.zh-wiz .phase-head:hover .h2 { color: var(--w-green); }
+.zh-wiz .phase-chev {
+  display: grid; place-items: center; width: 26px; height: 26px; border-radius: 8px;
+  color: var(--w-muted); transition: transform .2s cubic-bezier(.4, 0, .2, 1), background .12s, color .12s;
+}
+.zh-wiz .phase-head:hover .phase-chev { background: var(--w-surface-2); color: var(--w-ink); }
+.zh-wiz .phase.is-open .phase-chev { transform: rotate(180deg); }
+/* folded, a phase keeps its title and intro and drops the margin the steps carried */
+.zh-wiz .phase:not(.is-open) .intro { margin-bottom: 0; }
 .zh-wiz .phase .intro { color: var(--w-muted); max-width: 68ch; margin: 0 0 20px; font-size: 15px; }
 .zh-wiz .gstep { display: grid; grid-template-columns: 34px minmax(0,1fr); gap: 14px; margin: 0 0 22px; }
 .zh-wiz .gstep .n { width: 30px; height: 30px; border-radius: 50%; background: var(--w-tint); color: var(--w-green); font-family: ui-monospace, Menlo, monospace; font-size: 12.5px; display: grid; place-items: center; font-weight: 500; margin-top: 2px; }

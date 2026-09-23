@@ -605,6 +605,10 @@
     return box;
   }
 
+  /* Which phases are unfolded. It outlives a render because changing a phase's assets rebuilds
+     the whole guide, and that shouldn't collapse what the reader had open. */
+  const OPEN_PHASES = new Set([0]);
+
   function viewGuide() {
     const phases = buildGuide(), R = REG();
     const v = el(`<section>
@@ -615,17 +619,36 @@
     const sum = v.querySelector(".summary");
     [["Region", R.name], ["Sandbox", host().replace("https://", "")], ["Verification", S.kyc === "sdk" ? "by zerohash" : "your own"], ...S.products.map(p => ["Product", PRODUCTS.find(x => x.id === p).name])].forEach(([k, val]) => sum.append(el(`<span class="pill">${esc(k)} <b>${esc(val)}</b></span>`)));
     const box = v.querySelector(".phases");
-    phases.forEach((ph) => {
-      const sec = el(`<section class="phase"><p class="phase-eyebrow">${esc(ph.eyebrow)}</p><p class="h2">${esc(ph.title)}</p>${ph.intro ? `<p class="intro">${ph.intro}</p>` : ""}</section>`);
-      if (ph.pid) { const panel = assetPanel(ph.pid); if (panel) sec.append(panel); }
+    phases.forEach((ph, pi) => {
+      // The title and the intro stay visible when a phase is folded away; the steps, the assets
+      // and the setup note are what collapses. Phase 1 is open to start with (see OPEN_PHASES).
+      const open = OPEN_PHASES.has(pi);
+      const sec = el(`<section class="phase${open ? " is-open" : ""}">
+        <button type="button" class="phase-head" aria-expanded="${open}" aria-controls="zh-phase-${pi}">
+          <span class="phase-eyebrow">${esc(ph.eyebrow)}</span>
+          <span class="h2">${esc(ph.title)}</span>
+          <span class="phase-chev" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span>
+        </button>
+        ${ph.intro ? `<p class="intro">${ph.intro}</p>` : ""}
+        <div class="phase-body" id="zh-phase-${pi}"${open ? "" : " hidden"}></div>
+      </section>`);
+      const body = sec.querySelector(".phase-body"), head = sec.querySelector(".phase-head");
+      head.onclick = () => {
+        const now = !sec.classList.contains("is-open");
+        sec.classList.toggle("is-open", now);
+        head.setAttribute("aria-expanded", String(now));
+        body.hidden = !now;
+        if (now) OPEN_PHASES.add(pi); else OPEN_PHASES.delete(pi);
+      };
+      if (ph.pid) { const panel = assetPanel(ph.pid); if (panel) body.append(panel); }
       ph.steps.forEach((st, i) => {
         const g = el(`<div class="gstep"><div class="n">${i + 1}</div><div><p class="h3">${esc(st.title)}</p>${st.html || ""}</div></div>`);
-        const body = g.children[1];
-        (st.code || []).forEach(c => body.append(codeBlock(c)));
-        if (st.links && st.links.length) body.append(el(`<p class="links">${st.links.map(([l, u]) => `<a href="${u}"${u.startsWith("http") ? ' target="_blank" rel="noopener"' : ""}>${esc(l)} ↗</a>`).join("")}</p>`));
-        sec.append(g);
+        const inner = g.children[1];
+        (st.code || []).forEach(c => inner.append(codeBlock(c)));
+        if (st.links && st.links.length) inner.append(el(`<p class="links">${st.links.map(([l, u]) => `<a href="${u}"${u.startsWith("http") ? ' target="_blank" rel="noopener"' : ""}>${esc(l)} ↗</a>`).join("")}</p>`));
+        body.append(g);
       });
-      if (ph.config && ph.config.length) sec.append(el(`<p class="setup-note">Your zerohash contact sets this up with you: ${esc(sentence(ph.config))}.</p>`));
+      if (ph.config && ph.config.length) body.append(el(`<p class="setup-note">Your zerohash contact sets this up with you: ${esc(sentence(ph.config))}.</p>`));
       box.append(sec);
     });
     return v;
