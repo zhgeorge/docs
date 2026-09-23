@@ -514,8 +514,12 @@
   pointer-events: none;
   transition: opacity 0.28s ease;
 }
+/* The sheet covers the 1px border too. An absolute box is laid out against the padding box, so
+   inset: -1px lands it exactly on the card's outer edge, where the inherited 14px radius traces
+   the same curve. At inset: 0 the card's white background showed through the border ring and, at
+   the corners, as an arc between the two radii. */
 .zh-landing .zh-card::before, .zh-landing .zh-path::before {
-  inset: 0;
+  inset: -1px;
   background: linear-gradient(115deg, #00381d 0%, #0a6b4a 30%, #0b7a54 48%, #064e36 72%, #00381d 100%);
   background-size: 230% 230%;
   background-position: 0% 50%;
