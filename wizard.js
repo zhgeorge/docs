@@ -523,11 +523,17 @@
     for (const f of fields) {
       const row = el(`<div class="afield"><p class="alabel">${esc(f.label)}</p><div class="chips"></div></div>`);
       const chips = row.querySelector(".chips");
+      // A network reads as its name; an asset reads as its ticker, which is what the code uses,
+      // with the full name on hover for anyone who doesn't recognise it.
+      const isNetwork = ["networks", "network", "chains"].includes(f.key);
       const onCount = f.kind === "single" ? 1 : f.options.filter(([v]) => (a[f.key] || []).includes(v)).length;
       for (const [val, label] of f.options) {
         const on = f.kind === "single" ? a[f.key] === val : (a[f.key] || []).includes(val);
         const last = on && onCount === 1;
-        const c = el(`<button type="button" class="chip ${on ? "on" : ""} ${last ? "locked" : ""}" aria-pressed="${on}"${last ? ' title="Keep at least one"' : ""}>${esc(label)}${label !== val ? `<span class="sym">${esc(val)}</span>` : ""}</button>`);
+        const text = isNetwork ? label : val;
+        const named = text !== label;
+        const tip = [named ? label : "", last ? "keep at least one" : ""].filter(Boolean).join(" \u00b7 ");
+        const c = el(`<button type="button" class="chip ${on ? "on" : ""} ${last ? "locked" : ""}" aria-pressed="${on}"${tip ? ` title="${esc(tip)}"` : ""}${named ? ` aria-label="${esc(label)}"` : ""}>${esc(text)}</button>`);
         c.onclick = () => {
           if (last) return;
           if (f.kind === "single") { if (a[f.key] === val) return; a[f.key] = val; }
