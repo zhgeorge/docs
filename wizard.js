@@ -826,11 +826,24 @@
         <a href="https://www.perplexity.ai/search?q=${q}" target="_blank" rel="noopener">Perplexity</a></div>`;
     };
 
+    /* Mintlify's assistant answers from the whole corpus and cites its sources, so the question
+       goes to it through the documented ?assistant=<question> deep link. Its panel belongs to the
+       page chrome, which this page has none of (mode: custom), so the link opens it on the docs
+       entry page. A local preview has no assistant, and there the passage index below answers. */
+    const ASSISTANT_PAGE = "/docs/getting-started";
+    const hasAssistant = () => [...document.querySelectorAll("button[aria-label]")]
+      .some(b => /assistant/i.test(b.getAttribute("aria-label")));
+
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
       const question = input.value.trim();
       if (question.length < 3) return;
       answer.hidden = false;
+      if (hasAssistant()) {
+        answer.innerHTML = `<p class="zh-faq-qline">Asking the zerohash assistant…</p>`;
+        window.location.href = `${ASSISTANT_PAGE}?assistant=${encodeURIComponent(question)}`;
+        return;
+      }
       answer.innerHTML = `<p class="zh-faq-qline">Looking through the docs…</p>`;
       if (!FAQ_INDEX) {
         try { FAQ_INDEX = await fetch("/faq-index.txt").then(r => r.json()); }
