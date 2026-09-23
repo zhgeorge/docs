@@ -425,6 +425,8 @@
 
 @media (prefers-reduced-motion: reduce) {
   .zh-landing .zh-hero-chat, .zh-landing .zh-msg, .zh-landing .zh-opt, .zh-landing .zh-chat-progress > span, .zh-landing .zh-flip, .zh-landing .zh-pcard, .zh-landing .zh-logo-track { transition: none; animation: none; }
+  .zh-landing .zh-card::before, .zh-landing .zh-card::after,
+  .zh-landing .zh-path::before, .zh-landing .zh-path::after { animation: none; }
 }
 
 @media (max-width: 1000px) {
@@ -491,14 +493,60 @@
 
 /* the whole card is the link: it fills deep green and the title grows an arrow */
 .zh-landing .zh-card:hover {
-  background: var(--zh-green-fill);
   border-color: var(--zh-green-fill);
   box-shadow: 0 14px 36px -14px rgba(11, 61, 43, 0.35);
   transform: translateY(-2px);
 }
 .zh-landing .zh-card:hover h3 { color: #ffffff; }
-.zh-landing .zh-card:hover p { color: rgba(255, 255, 255, 0.88); }
-.zh-landing .zh-card:hover .zh-card-icon { background: rgba(255, 255, 255, 0.14); color: #ffffff; }
+.zh-landing .zh-card:hover p { color: #ffffff; }   /* full white: the gradient's lightest point leaves 4.6:1 */
+.zh-landing .zh-card:hover .zh-card-icon { background: rgba(255, 255, 255, 0.16); color: #ffffff; }
+
+/* ---- the hover fill, for both the product cards and the build paths ----
+   The fill is its own layer so it can move: an evergreen gradient sheet slides across the card
+   while a soft mint highlight drifts over it, both only while the card is hovered. The lightest
+   point of the two together stays dark enough for white body text to clear 4.5:1. */
+.zh-landing .zh-card::before, .zh-landing .zh-card::after,
+.zh-landing .zh-path::before, .zh-landing .zh-path::after {
+  content: "";
+  position: absolute;
+  border-radius: inherit;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.28s ease;
+}
+.zh-landing .zh-card::before, .zh-landing .zh-path::before {
+  inset: 0;
+  background: linear-gradient(115deg, #00381d 0%, #0a6b4a 30%, #0b7a54 48%, #064e36 72%, #00381d 100%);
+  background-size: 230% 230%;
+  background-position: 0% 50%;
+}
+/* the highlight is wider than the card so it can drift without showing an edge */
+.zh-landing .zh-card::after, .zh-landing .zh-path::after {
+  inset: -35%;
+  border-radius: 50%;
+  background: radial-gradient(42% 46% at 34% 30%, rgba(204, 255, 208, 0.085), rgba(204, 255, 208, 0) 70%);
+}
+.zh-landing .zh-card:hover::before, .zh-landing .zh-card:focus-visible::before,
+.zh-landing .zh-path:hover::before, .zh-landing .zh-path:focus-visible::before {
+  opacity: 1;
+  animation: zh-fill-flow 7s ease-in-out infinite alternate;
+}
+.zh-landing .zh-card:hover::after, .zh-landing .zh-card:focus-visible::after,
+.zh-landing .zh-path:hover::after, .zh-landing .zh-path:focus-visible::after {
+  opacity: 1;
+  animation: zh-fill-drift 9s ease-in-out infinite alternate;
+}
+/* the fill is absolutely positioned, so the content has to be lifted over it */
+.zh-landing .zh-card > *, .zh-landing .zh-path > * { position: relative; z-index: 1; }
+
+@keyframes zh-fill-flow {
+  from { background-position: 0% 50%; }
+  to { background-position: 100% 50%; }
+}
+@keyframes zh-fill-drift {
+  from { transform: translate3d(-5%, -4%, 0) scale(1); }
+  to { transform: translate3d(7%, 5%, 0) scale(1.18); }
+}
 
 .zh-landing .zh-go {
   display: inline-block;
@@ -611,16 +659,15 @@
 }
 .zh-landing .zh-path { transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease; }
 .zh-landing .zh-path:hover {
-  background: var(--zh-green-fill);
   border-color: var(--zh-green-fill);
   box-shadow: 0 14px 32px -16px rgba(11, 61, 43, 0.35);
   transform: translateY(-2px);
 }
 .zh-landing .zh-path:hover h3 { color: #ffffff; }
 .zh-landing .zh-path:hover p,
-.zh-landing .zh-path:hover .zh-path-list li { color: rgba(255, 255, 255, 0.88); }
+.zh-landing .zh-path:hover .zh-path-list li { color: #ffffff; }
 .zh-landing .zh-path:hover .zh-path-list li::before { border-color: #ffffff; }
-.zh-landing .zh-path:hover .zh-path-icon { background: rgba(255, 255, 255, 0.14); color: #ffffff; }
+.zh-landing .zh-path:hover .zh-path-icon { background: rgba(255, 255, 255, 0.16); color: #ffffff; }
 .zh-landing .zh-path-icon {
   display: inline-flex; align-items: center; justify-content: center;
   width: 38px; height: 38px; border-radius: 10px;
