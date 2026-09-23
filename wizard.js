@@ -7,6 +7,12 @@
 
   const DOCS = "/docs/";
   const REF = "https://docs.zerohash.com/reference/";
+  /* A prompt handed to an agent has to name a host the agent can actually fetch, so these use the
+     published docs origin rather than location.origin, which is localhost in a local preview. */
+  const DOCS_ORIGIN = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname)
+    ? "https://zerohash-79681385.mintlify.site"
+    : location.origin;
+
   const REGIONS = {
     us: { name: "United States", entity: "zerohash LLC", cert: "https://api.cert.zerohash.com", prod: "https://api.zerohash.com", sdk: "https://web-sdk.zerohash.com", portalCert: "https://portal.cert.zerohash.com", portalProd: "https://portal.zerohash.com" },
     eu: { name: "European Union", entity: "zerohash europe B.V.", cert: "https://api.cert.zerohash.eu", prod: "https://api.zerohash.eu", sdk: "https://web-sdk.zerohash.eu", portalCert: "https://portal.cert.zerohash.eu", portalProd: "https://portal.zerohash.eu" },
@@ -565,7 +571,7 @@
   /* A deep link carries a short brief, not the whole guide: the schemes below are URLs, and a
      full guide is far too long for one. The agent reads /agents.md for the grounding it needs. */
   function agentPrompt(phases) {
-    const host = location.host;
+    const host = DOCS_ORIGIN;
     // the guide talks to the reader ("you build the screens"); the brief is the reader talking
     const ours = (t) => t.replace(/\byourself\b/gi, "ourselves").replace(/\bYou\b/g, "We").replace(/\byou\b/g, "we").replace(/\byour\b/gi, "our");
     const lines = phases.filter(ph => ph.pid).map(ph => `- ${ph.title}: ${ours(strip(ph.intro || "").replace(/\s+/g, " "))}`);
@@ -587,8 +593,7 @@
         <a role="menuitem" class="agent-item agent-view" href="/agents" target="_blank" rel="noopener"><span>View agents.md</span><i>↗</i></a>
       </div>
     </div>`);
-    const enc = encodeURIComponent(agentPrompt(phases));
-    const links = { claude: `claude-cli://open?q=${enc}`, codex: `codex://new?prompt=${enc}`, cursor: `cursor://anysphere.cursor-deeplink/prompt?text=${enc}` };
+    const links = agentLinks(agentPrompt(phases));
     box.querySelectorAll("[data-agent]").forEach(a => { a.href = links[a.dataset.agent]; });
     const main = box.querySelector(".agent-main"), more = box.querySelector(".agent-more"), menu = box.querySelector(".agent-menu");
     const open = (on) => { menu.hidden = !on; more.setAttribute("aria-expanded", String(on)); };
@@ -813,7 +818,7 @@
     row.append(answer);
 
     const handoffs = (question) => {
-      const prompt = `Answer this using ${location.host}/llms.txt and the zerohash docs it lists as your only source: ${question}`;
+      const prompt = `Answer this using ${DOCS_ORIGIN}/llms.txt and the zerohash docs it lists as your only source: ${question}`;
       const q = encodeURIComponent(prompt);
       return `<div class="zh-faq-more"><span>Want it written up?</span>
         <a href="https://claude.ai/new?q=${q}" target="_blank" rel="noopener"><img src="/images/agents/claude.png" alt="" width="15" height="15" />Claude</a>
@@ -851,14 +856,23 @@
   /* ---------------- landing page: "Build with agent" ----------------
      One prompt, three ways to use it: copy it, or open it straight in Claude Code, Codex or Cursor
      through their deep links. The prompt points the agent at this site's /agents.md. */
+  /* claude-cli://open?q= and codex://new?prompt= are each product's documented deep link, and
+     Cursor's web form hands off to the app without needing the scheme registered. */
+  const agentPrompt0 = () => `Use curl to read ${DOCS_ORIGIN}/agents.md and perform the setup to get started with zerohash`;
+  const agentLinks = (prompt) => {
+    const enc = encodeURIComponent(prompt);
+    return { claude: `claude-cli://open?q=${enc}`, codex: `codex://new?prompt=${enc}`, cursor: `https://cursor.com/link/prompt?text=${enc}` };
+  };
+
   function mountAgentButton() {
     const box = document.getElementById("zh-agent");
-    if (!box || box.dataset.mounted) return;
-    box.dataset.mounted = "1";
-    const prompt = `Use curl to read ${location.host}/agents.md and perform the setup to get started with zerohash`;
-    const enc = encodeURIComponent(prompt);
-    const links = { claude: `claude-cli://open?q=${enc}`, codex: `codex://new?prompt=${enc}`, cursor: `cursor://anysphere.cursor-deeplink/prompt?text=${enc}` };
+    if (!box) return;
+    const prompt = agentPrompt0(), links = agentLinks(prompt);
+    // Mintlify's React owns this markup and resets an href it did not render, so the hrefs are
+    // refreshed on every boot and exist mainly for the status bar and middle-click.
     box.querySelectorAll("[data-agent]").forEach(a => { a.href = links[a.dataset.agent]; });
+    if (box.dataset.mounted) return;
+    box.dataset.mounted = "1";
     const main = box.querySelector(".zh-agent-main"), more = box.querySelector(".zh-agent-more"), menu = box.querySelector(".zh-agent-menu"), label = box.querySelector(".zh-agent-label");
     let t = null;
     const open = (on) => { menu.hidden = !on; more.setAttribute("aria-expanded", String(on)); };
@@ -871,7 +885,13 @@
     more.addEventListener("click", (e) => { e.stopPropagation(); open(menu.hidden); });
     document.addEventListener("click", (e) => { if (!box.contains(e.target)) open(false); });
     document.addEventListener("keydown", (e) => { if (e.key === "Escape") open(false); });
-    menu.addEventListener("click", () => open(false));
+    // Mintlify's router intercepts clicks on these anchors and never leaves the page, so the
+    // deep link is followed here instead of relying on the href.
+    menu.addEventListener("click", (e) => {
+      const item = e.target.closest("[data-agent]");
+      if (item) { e.preventDefault(); window.location.href = agentLinks(agentPrompt0())[item.dataset.agent]; }
+      open(false);
+    });
   }
 
   /* ---------------- landing page: backgrounds that follow the cursor ----------------
