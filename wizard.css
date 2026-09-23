@@ -154,15 +154,22 @@
 .zh-wiz .summary .pill b { font-weight: 600; color: var(--w-green); font-family: ui-monospace, Menlo, monospace; font-size: 12px; }
 .zh-wiz .phase { margin: 0 0 44px; padding-top: 28px; border-top: 1px solid var(--w-hair); }
 .zh-wiz .phase:first-of-type { border-top: 0; padding-top: 0; }
-/* The phase header is the fold control: the eyebrow and title sit left, the chevron right. */
+/* The phase header is the fold control: the eyebrow sits above the title, both on the left,
+   with the chevron pinned to the far right across the two rows. The areas are named because
+   otherwise the three children flow into the grid in source order and the title lands in the
+   chevron's column. */
 .zh-wiz .phase-head {
-  display: grid; grid-template-columns: minmax(0, 1fr) 26px; align-items: center;
-  width: 100%; padding: 0; border: 0; background: none; text-align: left;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 26px;
+  grid-template-areas: "eyebrow chev" "title chev";
+  align-items: center; column-gap: 14px; row-gap: 6px;
+  width: 100%; margin: 0 0 8px; padding: 0; border: 0; background: none; text-align: left;
 }
-.zh-wiz .phase-eyebrow { display: block; font-family: ui-monospace, Menlo, monospace; font-size: 11.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--w-muted); margin: 0 0 8px; }
-.zh-wiz .phase .h2 { display: block; font-size: 22px; margin-bottom: 8px; }
+.zh-wiz .phase-eyebrow { grid-area: eyebrow; display: block; font-family: ui-monospace, Menlo, monospace; font-size: 11.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--w-muted); margin: 0; }
+.zh-wiz .phase-head .h2 { grid-area: title; display: block; font-size: 22px; margin: 0; }
 .zh-wiz .phase-head:hover .h2 { color: var(--w-green); }
 .zh-wiz .phase-chev {
+  grid-area: chev; justify-self: end;
   display: grid; place-items: center; width: 26px; height: 26px; border-radius: 8px;
   color: var(--w-muted); transition: transform .2s cubic-bezier(.4, 0, .2, 1), background .12s, color .12s;
 }
