@@ -578,7 +578,6 @@
         <a role="menuitem" class="agent-item" data-agent="claude" href="/agents"><img src="/images/agents/claude.png" alt="" width="17" height="17"><span>Open in Claude Code</span><i>↗</i></a>
         <a role="menuitem" class="agent-item" data-agent="codex" href="/agents"><img src="/images/agents/codex.svg" alt="" width="17" height="17"><span>Open in Codex</span><i>↗</i></a>
         <a role="menuitem" class="agent-item" data-agent="cursor" href="/agents"><img src="/images/agents/cursor.png" alt="" width="17" height="17"><span>Open in Cursor</span><i>↗</i></a>
-        <div class="agent-sep"></div>
         <a role="menuitem" class="agent-item agent-view" href="/agents" target="_blank" rel="noopener"><span>View agents.md</span><i>↗</i></a>
       </div>
     </div>`);

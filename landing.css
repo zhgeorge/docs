@@ -201,8 +201,14 @@
   animation: zh-msg-in 0.16s ease both;
 }
 .zh-landing .zh-agent-item {
+  position: relative;
   display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 8px;
   font-size: 14px; font-weight: 500; color: var(--zh-ink); text-decoration: none;
+}
+/* A full-width hairline between the agent options: a real border would curl at both ends
+   against the item's radius. The View agents.md row carries none. */
+.zh-landing .zh-agent-item[data-agent] + .zh-agent-item[data-agent]::before {
+  content: ""; position: absolute; left: 0; right: 0; top: 0; height: 1px; background: var(--zh-hairline);
 }
 .zh-landing .zh-agent-item:hover { background: var(--zh-surface-2, #f0f1ec); }
 .dark .zh-landing .zh-agent-item:hover { background: #1b1d1b; }
@@ -211,7 +217,6 @@
 .dark .zh-landing .zh-agent img[src*="codex"], .dark .zh-landing .zh-agent img[src*="cursor"] { filter: invert(1); }
 .zh-landing .zh-agent-item i { margin-left: auto; font-style: normal; color: var(--zh-muted); font-size: 13px; }
 .zh-landing .zh-agent-view { padding-left: 38px; color: var(--zh-muted); }
-.zh-landing .zh-agent-sep { height: 1px; margin: 5px 4px; background: var(--zh-hairline); }
 
 /* ---------- hero chat card (the setup wizard, one question at a time) ---------- */
 
