@@ -646,9 +646,6 @@
 .zh-landing .zh-paths-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
 /* the gap under the copy matches the gap between the label and the heading */
 .zh-landing .zh-paths .zh-section-head + .zh-paths-grid { margin-top: 14px; }
-/* the button centres on the copy beside it */
-.zh-landing .zh-paths .zh-section-head { align-items: center; }
-.zh-landing .zh-paths-action { display: flex; align-items: center; }
 
 .zh-landing .zh-path {
   display: flex;
