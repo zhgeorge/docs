@@ -205,9 +205,9 @@
   display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 8px;
   font-size: 14px; font-weight: 500; color: var(--zh-ink); text-decoration: none;
 }
-/* A full-width hairline between the agent options: a real border would curl at both ends
-   against the item's radius. The View agents.md row carries none. */
-.zh-landing .zh-agent-item[data-agent] + .zh-agent-item[data-agent]::before {
+/* A full-width hairline between two items: a real border would curl at both ends against the
+   item's radius, and the menu ends cleanly at the top and bottom. */
+.zh-landing .zh-agent-item + .zh-agent-item::before {
   content: ""; position: absolute; left: 0; right: 0; top: 0; height: 1px; background: var(--zh-hairline);
 }
 .zh-landing .zh-agent-item:hover { background: var(--zh-surface-2, #f0f1ec); }
