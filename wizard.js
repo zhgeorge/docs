@@ -92,17 +92,20 @@
     return parts.join(", plus ");
   }
 
+  /* `job` is what the reader wants to do, and it is all the first question shows: someone who has
+     never heard of zerohash picks by outcome. `name` is the product, which the rail, the guide's
+     phase titles and the summary pills use once the choice is made. */
   const PRODUCTS = [
-    { id: "fund", name: "Account Funding", tag: "Move money in", short: "Customers add money by sending crypto.", plain: "Show a customer an address, they send USDC (or another asset) to it, and their balance updates within minutes, as dollars if you want. A funding method that sits next to cards, wires and ACH.", src: "fund-overview" },
-    { id: "trade", name: "Buy / Sell Crypto", tag: "Trade", short: "Let customers buy and sell crypto.", plain: "You ask zerohash for a firm price, show it to the customer, and confirm. zerohash handles liquidity, custody and compliance behind the scenes.", src: "buysell" },
-    { id: "payouts", name: "Payouts", tag: "Move money out", short: "Pay people in stablecoins or crypto.", plain: "Contractors, sellers and creators get paid in minutes instead of days, across borders, without bank wires.", src: "payouts" },
-    { id: "payins", name: "Payins", tag: "Get paid", short: "Accept crypto payments at checkout.", plain: "A shopper pays from their wallet; you get a locked-in dollar amount and a notification when the money lands.", src: "payins-api-integration-guide" },
-    { id: "bank", name: "Bank Rails", tag: "Move money in & out", short: "Move dollars in and out by bank transfer.", plain: "Pull dollars in by ACH to buy crypto, and send dollars out by ACH, RTP or FedNow when customers cash out. Bank linking is handled through Plaid.", src: "fiat" },
-    { id: "va", name: "Virtual Accounts", tag: "Move money in", short: "Give each customer an account number.", plain: "Customers (or their employers) push dollars to it like any bank account. When money arrives, zerohash holds it or converts it to a stablecoin.", src: "virtual-accounts" },
-    { id: "ramps", name: "On & Off Ramps", tag: "Convert", short: "Turn dollars into crypto, and back.", plain: "The simplest conversion product: a quote, a confirmation, and the asset moves. Three endpoints in total.", src: "on-off-ramps" },
-    { id: "staking", name: "Staking", tag: "Earn", short: "Let customers earn rewards on their ETH.", plain: "Customers lock up ETH to help run the network and earn rewards. zerohash runs the validators; you set the fee you keep.", src: "staking" },
-    { id: "saas", name: "Settlements as a Service", tag: "Settle", short: "Settle trades you matched elsewhere.", plain: "You agree the trade (on your venue or over the phone); zerohash moves the money and the crypto only once both sides have delivered.", src: "settlements-as-a-service" },
-    { id: "token", name: "Tokenization Engine", tag: "Issue", short: "Issue your own tokens on EVM or Solana.", plain: "Mint, move and redeem a stablecoin, security or NFT, with compliance controls built in and gas fees handled for you.", src: "tokenization-engine" },
+    { id: "fund", name: "Account Funding", tag: "Move money in", job: "Let customers deposit crypto", short: "It can land in their balance as dollars.", plain: "Show a customer an address, they send USDC (or another asset) to it, and their balance updates within minutes, as dollars if you want. A funding method that sits next to cards, wires and ACH.", src: "fund-overview" },
+    { id: "trade", name: "Buy / Sell Crypto", tag: "Trade", job: "Let customers buy and sell crypto", short: "At prices from top market makers.", plain: "You ask zerohash for a firm price, show it to the customer, and confirm. zerohash handles liquidity, custody and compliance behind the scenes.", src: "buysell" },
+    { id: "payouts", name: "Payouts", tag: "Move money out", job: "Pay people in crypto or stablecoins", short: "Straight to their wallet, any time.", plain: "Contractors, sellers and creators get paid in minutes instead of days, across borders, without bank wires.", src: "payouts" },
+    { id: "payins", name: "Payins", tag: "Get paid", job: "Accept crypto payments at checkout", short: "Shoppers pay from their own wallet.", plain: "A shopper pays from their wallet; you get a locked-in dollar amount and a notification when the money lands.", src: "payins-api-integration-guide" },
+    { id: "bank", name: "Bank Rails", tag: "Move money in & out", job: "Connect customers' bank accounts", short: "Dollars in and out by ACH, RTP or wire.", plain: "Pull dollars in by ACH to buy crypto, and send dollars out by ACH, RTP or FedNow when customers cash out. Bank linking is handled through Plaid.", src: "fiat" },
+    { id: "va", name: "Virtual Accounts", tag: "Move money in", job: "Give customers an account number", short: "Anyone can push dollars straight to it.", plain: "Customers (or their employers) push dollars to it like any bank account. When money arrives, zerohash holds it or converts it to a stablecoin.", src: "virtual-accounts" },
+    { id: "ramps", name: "On & Off Ramps", tag: "Convert", job: "Turn dollars into crypto, and back", short: "A quote, a confirmation, and it moves.", plain: "The simplest conversion product: a quote, a confirmation, and the asset moves. Three endpoints in total.", src: "on-off-ramps" },
+    { id: "staking", name: "Staking", tag: "Earn", job: "Let customers earn rewards on ETH", short: "zerohash runs the validators.", plain: "Customers lock up ETH to help run the network and earn rewards. zerohash runs the validators; you set the fee you keep.", src: "staking" },
+    { id: "saas", name: "Settlements as a Service", tag: "Settle", job: "Settle trades you matched elsewhere", short: "Nothing moves until both sides deliver.", plain: "You agree the trade (on your venue or over the phone); zerohash moves the money and the crypto only once both sides have delivered.", src: "settlements-as-a-service" },
+    { id: "token", name: "Tokenization Engine", tag: "Issue", job: "Issue your own token", short: "On Ethereum-compatible chains or Solana.", plain: "Mint, move and redeem a stablecoin, security or NFT, with compliance controls built in and gas fees handled for you.", src: "tokenization-engine" },
   ];
   const PRODUCT_IDS = PRODUCTS.map(p => p.id);
 
@@ -314,11 +317,11 @@
   }
 
   function viewProducts() {
-    const v = el(`<section><p class="eyebrow">Step 1 · Products</p><p class="h1">Select one or multiple products you want to integrate</p><p class="lede">zerohash is the regulated plumbing behind crypto and stablecoin features: custody, compliance, liquidity and settlement. You pick what you want to offer your customers; this guide shows you what to build, in plain language, with the code ready when you need it.</p><div class="cards" style="grid-template-columns:repeat(auto-fill,minmax(280px,1fr))"></div></section>`);
+    const v = el(`<section><p class="eyebrow">Step 1 · Products</p><p class="h1">What do you want to build?</p><p class="lede">zerohash is the regulated plumbing behind crypto and stablecoin features: custody, compliance, liquidity and settlement. You pick what you want to offer your customers; this guide shows you what to build, in plain language, with the code ready when you need it.</p><div class="cards" style="grid-template-columns:repeat(auto-fill,minmax(280px,1fr))"></div></section>`);
     const box = v.querySelector(".cards");
     for (const p of PRODUCTS) {
       const on = S.products.includes(p.id);
-      const c = el(`<button type="button" class="card multi product ${on ? "on" : ""}" role="checkbox" aria-checked="${on}"><span class="check" aria-hidden="true"></span>${productIcon(p.id, "ico")}<div class="body"><div class="t">${esc(p.name)}</div><div class="d">${esc(p.short)}</div></div></button>`);
+      const c = el(`<button type="button" class="card multi product ${on ? "on" : ""}" role="checkbox" aria-checked="${on}"><span class="check" aria-hidden="true"></span>${productIcon(p.id, "ico")}<div class="body"><div class="t">${esc(p.job)}</div><div class="d">${esc(p.short)}</div></div></button>`);
       c.onclick = () => {
         const picked = !S.products.includes(p.id);
         S.products = picked ? [...S.products, p.id] : S.products.filter(x => x !== p.id);
@@ -992,7 +995,7 @@
     // The ordered questions, recomputed each render because later ones depend on earlier answers.
     function queue() {
       const qs = [
-        { key: "products", kind: "multi", title: "Which products are you interested in?", opts: PRODUCTS.map(p => [p.id, p.name]), get: () => H.products, set: v => { H.products = v; } },
+        { key: "products", kind: "multi", title: "What do you want to build?", opts: PRODUCTS.map(p => [p.id, p.name]), get: () => H.products, set: v => { H.products = v; } },
         { key: "region", kind: "single", title: "Where is your platform based?", opts: [["us", "United States"], ["eu", "European Union"]], get: () => H.region, set: v => { H.region = v; } },
         { key: "customers", kind: "multi", title: "Who are your customers?", opts: [["individuals", "People"], ["businesses", "Businesses"]], get: () => H.customers, set: v => { H.customers = v; } },
         { key: "kyc", kind: "single", title: "Who do you expect to verify your customer's identity?", hint: "Most platforms let zerohash do it with a ready-made screen.", opts: [["sdk", "zerohash"], ["api", "Ourselves"]], get: () => H.kyc, set: v => { H.kyc = v; } },
@@ -1031,7 +1034,7 @@
     function renderPicker(q, total, k) {
       back.innerHTML = HEAD(`Question ${k + 1} of ${total}`, Math.round((k / total) * 100)) + `
         <div class="zh-pick">
-          <p class="zh-pick-q">Which products are you interested in?</p>
+          <p class="zh-pick-q">What do you want to build?</p>
           <p class="zh-pick-hint">Pick as many as you like.</p>
           <div class="zh-pick-list" role="group" aria-label="Products"></div>
         </div>
@@ -1042,7 +1045,7 @@
       const go = actions.querySelector(".zh-btn");
       const paint = () => { listEl.querySelectorAll(".zh-pcard").forEach(c => { const on = sel.includes(c.dataset.v); c.classList.toggle("on", on); c.setAttribute("aria-checked", on); }); go.disabled = sel.length === 0; };
       for (const prod of PRODUCTS) {
-        const c = el(`<button type="button" class="zh-pcard" role="checkbox" aria-checked="false" data-v="${esc(prod.id)}"><span class="zh-pcard-check" aria-hidden="true"></span>${productIcon(prod.id, "zh-pcard-ico")}<span class="zh-pcard-txt"><span class="zh-pcard-t">${esc(prod.name)}</span><span class="zh-pcard-d">${esc(prod.short)}</span></span></button>`);
+        const c = el(`<button type="button" class="zh-pcard" role="checkbox" aria-checked="false" data-v="${esc(prod.id)}"><span class="zh-pcard-check" aria-hidden="true"></span>${productIcon(prod.id, "zh-pcard-ico")}<span class="zh-pcard-txt"><span class="zh-pcard-t">${esc(prod.job)}</span><span class="zh-pcard-d">${esc(prod.short)}</span></span></button>`);
         c.onclick = () => { sel = sel.includes(prod.id) ? sel.filter(x => x !== prod.id) : [...sel, prod.id]; paint(); };
         listEl.append(c);
       }
