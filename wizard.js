@@ -317,7 +317,7 @@
   }
 
   function viewProducts() {
-    const v = el(`<section><p class="eyebrow">Step 1 · Products</p><p class="h1">What do you want to build?</p><p class="lede">zerohash is the regulated plumbing behind crypto and stablecoin features: custody, compliance, liquidity and settlement. You pick what you want to offer your customers; this guide shows you what to build, in plain language, with the code ready when you need it.</p><div class="cards" style="grid-template-columns:repeat(auto-fill,minmax(280px,1fr))"></div></section>`);
+    const v = el(`<section><p class="eyebrow">Step 1 · Products</p><p class="h1">What do you want to do?</p><p class="lede">zerohash is the regulated plumbing behind crypto and stablecoin features: custody, compliance, liquidity and settlement. You pick what you want to offer your customers; this guide shows you what to build, in plain language, with the code ready when you need it.</p><div class="cards" style="grid-template-columns:repeat(auto-fill,minmax(280px,1fr))"></div></section>`);
     const box = v.querySelector(".cards");
     for (const p of PRODUCTS) {
       const on = S.products.includes(p.id);
@@ -995,7 +995,7 @@
     // The ordered questions, recomputed each render because later ones depend on earlier answers.
     function queue() {
       const qs = [
-        { key: "products", kind: "multi", title: "What do you want to build?", opts: PRODUCTS.map(p => [p.id, p.name]), get: () => H.products, set: v => { H.products = v; } },
+        { key: "products", kind: "multi", title: "What do you want to do?", opts: PRODUCTS.map(p => [p.id, p.name]), get: () => H.products, set: v => { H.products = v; } },
         { key: "region", kind: "single", title: "Where is your platform based?", opts: [["us", "United States"], ["eu", "European Union"]], get: () => H.region, set: v => { H.region = v; } },
         { key: "customers", kind: "multi", title: "Who are your customers?", opts: [["individuals", "People"], ["businesses", "Businesses"]], get: () => H.customers, set: v => { H.customers = v; } },
         { key: "kyc", kind: "single", title: "Who do you expect to verify your customer's identity?", hint: "Most platforms let zerohash do it with a ready-made screen.", opts: [["sdk", "zerohash"], ["api", "Ourselves"]], get: () => H.kyc, set: v => { H.kyc = v; } },
@@ -1034,7 +1034,7 @@
     function renderPicker(q, total, k) {
       back.innerHTML = HEAD(`Question ${k + 1} of ${total}`, Math.round((k / total) * 100)) + `
         <div class="zh-pick">
-          <p class="zh-pick-q">What do you want to build?</p>
+          <p class="zh-pick-q">What do you want to do?</p>
           <p class="zh-pick-hint">Pick as many as you like.</p>
           <div class="zh-pick-list" role="group" aria-label="Products"></div>
         </div>
