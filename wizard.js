@@ -96,18 +96,32 @@
      never heard of zerohash picks by outcome. `name` is the product, which the rail, the guide's
      phase titles and the summary pills use once the choice is made. */
   const PRODUCTS = [
-    { id: "fund", name: "Account Funding", tag: "Move money in", job: "Let customers deposit crypto", short: "It can land in their balance as dollars.", plain: "Show a customer an address, they send USDC (or another asset) to it, and their balance updates within minutes, as dollars if you want. A funding method that sits next to cards, wires and ACH.", src: "fund-overview" },
-    { id: "trade", name: "Buy / Sell Crypto", tag: "Trade", job: "Let customers buy and sell crypto", short: "At prices from top market makers.", plain: "You ask zerohash for a firm price, show it to the customer, and confirm. zerohash handles liquidity, custody and compliance behind the scenes.", src: "buysell" },
-    { id: "payouts", name: "Payouts", tag: "Move money out", job: "Pay people in crypto or stablecoins", short: "Straight to their wallet, any time.", plain: "Contractors, sellers and creators get paid in minutes instead of days, across borders, without bank wires.", src: "payouts" },
+    { id: "fund", name: "Account Funding", tag: "Move money in", job: "Let customers deposit crypto", short: "It can land in their balance as dollars or crypto.", plain: "Show a customer an address, they send USDC (or another asset) to it, and their balance updates within minutes, as dollars if you want. A funding method that sits next to cards, wires and ACH.", src: "fund-overview" },
+    { id: "trade", name: "Buy / Sell Crypto", tag: "Trade", job: "Let customers buy and sell crypto", short: "We take care of settlement and liquidity.", plain: "You ask zerohash for a firm price, show it to the customer, and confirm. zerohash handles liquidity, custody and compliance behind the scenes.", src: "buysell" },
+    { id: "payouts", name: "Payouts", tag: "Move money out", job: "Pay out in stablecoins or crypto", short: "Straight to their wallet, any time.", plain: "Contractors, sellers and creators get paid in minutes instead of days, across borders, without bank wires.", src: "payouts" },
     { id: "payins", name: "Payins", tag: "Get paid", job: "Accept crypto payments at checkout", short: "Shoppers pay from their own wallet.", plain: "A shopper pays from their wallet; you get a locked-in dollar amount and a notification when the money lands.", src: "payins-api-integration-guide" },
-    { id: "bank", name: "Bank Rails", tag: "Move money in & out", job: "Connect customers' bank accounts", short: "Dollars in and out by ACH, RTP or wire.", plain: "Pull dollars in by ACH to buy crypto, and send dollars out by ACH, RTP or FedNow when customers cash out. Bank linking is handled through Plaid.", src: "fiat" },
-    { id: "va", name: "Virtual Accounts", tag: "Move money in", job: "Give customers an account number", short: "Anyone can push dollars straight to it.", plain: "Customers (or their employers) push dollars to it like any bank account. When money arrives, zerohash holds it or converts it to a stablecoin.", src: "virtual-accounts" },
+    { id: "bank", name: "Bank Rails", tag: "Move money in & out", job: "Connect to bank accounts", short: "Dollars in and out along with virtual accounts.", plain: "Pull dollars in by ACH to buy crypto, and send dollars out by ACH, RTP or FedNow when customers cash out. Bank linking is handled through Plaid.", src: "fiat" },
+    { id: "va", name: "Virtual Accounts", tag: "Move money in", addon: true, job: "Give customers an account number", short: "Anyone can push dollars straight to it.", plain: "Customers (or their employers) push dollars to it like any bank account. When money arrives, zerohash holds it or converts it to a stablecoin.", src: "virtual-accounts" },
     { id: "ramps", name: "On & Off Ramps", tag: "Convert", job: "Turn dollars into crypto, and back", short: "A quote, a confirmation, and it moves.", plain: "The simplest conversion product: a quote, a confirmation, and the asset moves. Three endpoints in total.", src: "on-off-ramps" },
-    { id: "staking", name: "Staking", tag: "Earn", job: "Let customers earn rewards on ETH", short: "zerohash runs the validators.", plain: "Customers lock up ETH to help run the network and earn rewards. zerohash runs the validators; you set the fee you keep.", src: "staking" },
-    { id: "saas", name: "Settlements as a Service", tag: "Settle", job: "Settle trades you matched elsewhere", short: "Nothing moves until both sides deliver.", plain: "You agree the trade (on your venue or over the phone); zerohash moves the money and the crypto only once both sides have delivered.", src: "settlements-as-a-service" },
-    { id: "token", name: "Tokenization Engine", tag: "Issue", job: "Issue your own token", short: "On Ethereum-compatible chains or Solana.", plain: "Mint, move and redeem a stablecoin, security or NFT, with compliance controls built in and gas fees handled for you.", src: "tokenization-engine" },
+    { id: "staking", name: "Staking", tag: "Earn", job: "Let customers earn rewards on crypto", short: "Enable your users to stake their ETH or SOL.", plain: "Customers lock up ETH to help run the network and earn rewards. zerohash runs the validators; you set the fee you keep.", src: "staking" },
+    { id: "saas", name: "Settlements as a Service", tag: "Settle", addon: true, job: "Settle trades you matched elsewhere", short: "Nothing moves until both sides deliver.", plain: "You agree the trade (on your venue or over the phone); zerohash moves the money and the crypto only once both sides have delivered.", src: "settlements-as-a-service" },
+    { id: "token", name: "Tokenization Engine", tag: "Issue", job: "Tokenize assets at scale", short: "On Ethereum-compatible chains or Solana.", plain: "Mint, move and redeem a stablecoin, security or NFT, with compliance controls built in and gas fees handled for you.", src: "tokenization-engine" },
   ];
   const PRODUCT_IDS = PRODUCTS.map(p => p.id);
+  const OFFERED = PRODUCTS.filter(p => !p.addon);          // what the first question asks about
+
+  /* Two products ride along inside another flow rather than standing on their own: virtual
+     accounts are an add-on to bank rails, and settling trades you matched elsewhere is an add-on
+     to buy/sell. The host flow asks the question; a yes adds the product to the list the rail and
+     the guide work from, so it brings its own step and its own phase with it. */
+  const ADDONS = { bank: { q: "va", pid: "va" }, trade: { q: "saas", pid: "saas" } };
+  function withAddons(picked, answers) {
+    const out = picked.slice();
+    for (const [hostId, cfg] of Object.entries(ADDONS)) {
+      if (picked.includes(hostId) && (answers[hostId] || {})[cfg.q] === "yes" && !out.includes(cfg.pid)) out.push(cfg.pid);
+    }
+    return PRODUCT_IDS.filter(id => out.includes(id));
+  }
 
   /* one line icon per product */
   const ICON_PATHS = {
@@ -135,6 +149,8 @@
         opts: [["on","Yes, add AUTH","Connect exchanges and wallets in-app."],["off","No, stick to manual transfers","Customers send from any wallet to the address you show."]], src: "auth" },
     ],
     trade: [
+      { id: "saas", type: "single", title: "Do you also settle trades you matched elsewhere?", plain: "This is <b>settlements as a service</b>: you agree the trade on your own venue, and zerohash moves the money and the crypto only once both sides have delivered.",
+        opts: [["yes","Yes, add settlement","Trades you match yourself settle through zerohash."],["no","No, price every trade with zerohash","zerohash quotes and fills everything."]], src: "settlements-as-a-service" },
       { id: "model", type: "multi", title: "How should trades be priced?", plain: "Start with a quote if you're unsure. It's the simpler integration and the right fit for most consumer apps.",
         opts: [["rfq","Firm quote (RFQ)","Ask for a price, show it, confirm within 30 seconds. Two API calls."],["clob","Order book (CLOB)","Place limit and market orders into a live order book. For trading platforms and high volume."]], src: "buysell" },
     ],
@@ -148,6 +164,8 @@
     bank: [
       { id: "model", type: "single", title: "How fast should bank deposits be usable?", plain: "Bank transfers (ACH) take 1–3 business days to settle. Faster options mean you front the money from a float balance you keep with zerohash.",
         opts: [["prefunded","When the transfer settles","Simplest; no float needed."],["ondemand","Immediately, for a purchase","The customer's buy happens as soon as the debit is approved."],["instant","Immediately, as a balance","Dollars appear in their balance right away."]], src: "funding-models" },
+      { id: "va", type: "single", title: "Should each customer get their own account number?", plain: "This is <b>virtual accounts</b>: each customer gets an account and routing number, so anyone can push dollars straight to them. When money lands, zerohash holds it or converts it to a stablecoin.",
+        opts: [["yes","Yes, add virtual accounts","Each customer gets an account and routing number of their own."],["no","No, bank transfers only","Money moves through the accounts you already have."]], src: "virtual-accounts" },
       { id: "rails", type: "multi", title: "Which ways should money move?", selectAll: true, opts: [["ach","ACH","In and out. 1–3 business days. Low cost."],["rtp","RTP / FedNow","Out only. Arrives in seconds, 24/7."],["wire","Wire","In and out, same day. For larger amounts."]], src: "fiat" },
     ],
     va: [
@@ -201,10 +219,11 @@
 
   function stepList() {
     const list = [{ id: "products", label: "Products", meta: S.products.length ? `${S.products.length} selected` : "Pick one or more" }, { id: "basics", label: "About you", meta: "Region, customers, verification" }];
-    for (const pid of PRODUCT_IDS.filter(id => S.products.includes(id))) list.push({ id: "p:" + pid, label: PRODUCTS.find(p => p.id === pid).name, meta: "A few choices" });
+    for (const pid of activeProducts()) list.push({ id: "p:" + pid, label: PRODUCTS.find(p => p.id === pid).name, meta: "A few choices" });
     list.push({ id: "guide", label: "Your guide", meta: "Steps and code" });
     return list;
   }
+  const activeProducts = () => withAddons(S.products, S.answers);
   const visibleQuestions = (pid) => { const a = ans(pid); return QUESTIONS[pid].filter(q => !q.when || q.when(a)); };
   const productComplete = (pid) => { const a = ans(pid); return visibleQuestions(pid).every(q => q.type === "multi" ? (a[q.id] && a[q.id].length) : a[q.id] !== undefined); };
   function stepComplete(i) { const st = stepList()[i]; if (!st) return false; if (st.id === "basics") return !!S.region && !!S.kyc && S.customers.length > 0; if (st.id === "products") return S.products.length > 0; if (st.id.startsWith("p:")) return productComplete(st.id.slice(2)); return false; }
@@ -319,7 +338,7 @@
   function viewProducts() {
     const v = el(`<section><p class="eyebrow">Step 1 · Products</p><p class="h1">What do you want to do?</p><p class="lede">zerohash is the regulated plumbing behind crypto and stablecoin features: custody, compliance, liquidity and settlement. You pick what you want to offer your customers; this guide shows you what to build, in plain language, with the code ready when you need it.</p><div class="cards" style="grid-template-columns:repeat(auto-fill,minmax(280px,1fr))"></div></section>`);
     const box = v.querySelector(".cards");
-    for (const p of PRODUCTS) {
+    for (const p of OFFERED) {
       const on = S.products.includes(p.id);
       const c = el(`<button type="button" class="card multi product ${on ? "on" : ""}" role="checkbox" aria-checked="${on}"><span class="check" aria-hidden="true"></span>${productIcon(p.id, "ico")}<div class="body"><div class="t">${esc(p.job)}</div><div class="d">${esc(p.short)}</div></div></button>`);
       c.onclick = () => {
@@ -416,7 +435,7 @@
     phases.push(onb);
 
     let n = 3;
-    for (const pid of PRODUCT_IDS.filter(id => S.products.includes(id))) { const ph = PRODUCT_PHASE[pid](seedAssets(pid), { h, R, link, ref }); ph.eyebrow = `Phase ${n++}`; ph.pid = pid; phases.push(ph); }
+    for (const pid of activeProducts()) { const ph = PRODUCT_PHASE[pid](seedAssets(pid), { h, R, link, ref }); ph.eyebrow = `Phase ${n++}`; ph.pid = pid; phases.push(ph); }
     return phases;
   }
 
@@ -473,7 +492,7 @@
     },
     bank(a, { link, ref }) {
       const rails = a.rails || ["ach"], names = { ach: "ACH", rtp: "RTP/FedNow", wire: "wire" };
-      const ph = { title: "Bank Rails (ACH + RTP)", intro: `Move dollars by ${list(rails.map(r => names[r]), "and")}; bank deposits are usable ${a.model === "prefunded" ? "once they settle" : a.model === "instant" ? "immediately as a balance" : "immediately for a purchase"}.`, steps: [], config: [] };
+      const ph = { title: "Bank Rails", intro: `Move dollars by ${list(rails.map(r => names[r]), "and")}; bank deposits are usable ${a.model === "prefunded" ? "once they settle" : a.model === "instant" ? "immediately as a balance" : "immediately for a purchase"}.`, steps: [], config: [] };
       ph.steps.push({ title: "Link the customer's bank account", html: `<p>Customers connect their bank through Plaid inside a zerohash screen, with no Plaid contract needed on your side. (If you already use Plaid, you can pass zerohash a processor token instead.)</p>`, links: [link("bank-account-linking")] });
       ph.steps.push(a.model === "prefunded"
         ? { title: "Pull dollars in, then trade", html: `<p>Request the deposit with <span class="ep">POST /fund/deposit</span>; when it settles the customer has a dollar balance to buy with. Selling credits dollars they can withdraw to the same bank.</p>`, links: [link("funding-models", "Funding models")] }
@@ -638,7 +657,7 @@
       <div class="summary"></div><div class="phases"></div></section>`);
     v.querySelector(".guide-head").append(agentButton(phases));
     const sum = v.querySelector(".summary");
-    [["Region", R.name], ["Sandbox", host().replace("https://", "")], ["Verification", S.kyc === "sdk" ? "by zerohash" : "your own"], ...S.products.map(p => ["Product", PRODUCTS.find(x => x.id === p).name])].forEach(([k, val]) => sum.append(el(`<span class="pill">${esc(k)} <b>${esc(val)}</b></span>`)));
+    [["Region", R.name], ["Sandbox", host().replace("https://", "")], ["Verification", S.kyc === "sdk" ? "by zerohash" : "your own"], ...activeProducts().map(p => ["Product", PRODUCTS.find(x => x.id === p).name])].forEach(([k, val]) => sum.append(el(`<span class="pill">${esc(k)} <b>${esc(val)}</b></span>`)));
     const box = v.querySelector(".phases");
     phases.forEach((ph, pi) => {
       // The title and the intro stay visible when a phase is folded away; the steps, the assets
@@ -995,12 +1014,12 @@
     // The ordered questions, recomputed each render because later ones depend on earlier answers.
     function queue() {
       const qs = [
-        { key: "products", kind: "multi", title: "What do you want to do?", opts: PRODUCTS.map(p => [p.id, p.name]), get: () => H.products, set: v => { H.products = v; } },
+        { key: "products", kind: "multi", title: "What do you want to do?", opts: OFFERED.map(p => [p.id, p.name]), get: () => H.products, set: v => { H.products = v; } },
         { key: "region", kind: "single", title: "Where is your platform based?", opts: [["us", "United States"], ["eu", "European Union"]], get: () => H.region, set: v => { H.region = v; } },
         { key: "customers", kind: "multi", title: "Who are your customers?", opts: [["individuals", "People"], ["businesses", "Businesses"]], get: () => H.customers, set: v => { H.customers = v; } },
         { key: "kyc", kind: "single", title: "Who do you expect to verify your customer's identity?", hint: "Most platforms let zerohash do it with a ready-made screen.", opts: [["sdk", "zerohash"], ["api", "Ourselves"]], get: () => H.kyc, set: v => { H.kyc = v; } },
       ];
-      for (const pid of PRODUCT_IDS.filter(id => H.products.includes(id))) {
+      for (const pid of withAddons(H.products, H.answers)) {
         const p = PRODUCTS.find(x => x.id === pid), a = hAns(pid);
         for (const q of hVisible(pid)) {
           const opts = q.groups ? q.groups.flatMap(g => g.items.map(([v, l]) => [v, l])) : q.opts.map(([v, l]) => [v, l]);
@@ -1044,7 +1063,7 @@
       const actions = el(`<div class="zh-chat-actions"><span></span><button type="button" class="zh-btn zh-btn-primary">Continue →</button></div>`);
       const go = actions.querySelector(".zh-btn");
       const paint = () => { listEl.querySelectorAll(".zh-pcard").forEach(c => { const on = sel.includes(c.dataset.v); c.classList.toggle("on", on); c.setAttribute("aria-checked", on); }); go.disabled = sel.length === 0; };
-      for (const prod of PRODUCTS) {
+      for (const prod of OFFERED) {
         const c = el(`<button type="button" class="zh-pcard" role="checkbox" aria-checked="false" data-v="${esc(prod.id)}"><span class="zh-pcard-check" aria-hidden="true"></span>${productIcon(prod.id, "zh-pcard-ico")}<span class="zh-pcard-txt"><span class="zh-pcard-t">${esc(prod.job)}</span><span class="zh-pcard-d">${esc(prod.short)}</span></span></button>`);
         c.onclick = () => { sel = sel.includes(prod.id) ? sel.filter(x => x !== prod.id) : [...sel, prod.id]; paint(); };
         listEl.append(c);
@@ -1093,7 +1112,7 @@
       }
 
       if (!current) {
-        bot(`That's everything. Your guide is ready.`, `Directions and code for ${list(H.products.map(id => PRODUCTS.find(p => p.id === id).name), "and")}, in the order you'll do them.`);
+        bot(`That's everything. Your guide is ready.`, `Directions and code for ${list(withAddons(H.products, H.answers).map(id => PRODUCTS.find(p => p.id === id).name), "and")}, in the order you'll do them.`);
         const actions = el(`<div class="zh-chat-actions"><button type="button" class="zh-chat-back">Start over</button><a class="zh-btn zh-btn-primary" href="/setup-wizard">See my guide →</a></div>`);
         actions.querySelector("a").onclick = () => { S = JSON.parse(JSON.stringify(H)); S.step = stepList().length - 1; save(); };
         actions.querySelector(".zh-chat-back").onclick = () => { done.length = 0; H = JSON.parse(JSON.stringify(DEFAULT)); box.classList.remove("is-open", "is-active"); render(); };
