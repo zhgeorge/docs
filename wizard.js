@@ -141,7 +141,7 @@
   /* ---- the essential questions only ---- */
   const QUESTIONS = {
     fund: [
-      { id: "dir", type: "multi", title: "What do customers need to do?", opts: [["deposits","Add money (deposits)","Send stablecoins or crypto into their account."],["withdrawals","Take money out (withdrawals)","Send stablecoins or crypto to their own wallet or exchange."]], src: "fund-overview" },
+      { id: "dir", type: "multi", title: "What do customers need to do?", opts: [["deposits","Deposit money","Send stablecoins or crypto into their account."],["withdrawals","Withdraw money","Send stablecoins or crypto to their own wallet or exchange."]], src: "fund-overview" },
       { id: "convert", type: "single", title: "When money arrives, what should the customer see?", when: a => (a.dir || []).includes("deposits"), plain: "Most platforms choose dollars: the customer never has to think about crypto, and their balance is just a number in USD.",
         opts: [["usd","Dollars","zerohash converts the deposit to USD the moment it lands (1 USDC → $1, minus a small fee)."],["crypto","The asset itself","The deposit stays as the stablecoin or crypto they sent."]], src: "sdk-index" },
       { id: "style", type: "single", title: "How do you want to build the screens?", opts: [["sdk","Use zerohash's ready-made screens","Fastest. A drop-in flow that shows the address, QR code and receipts, in your colors."],["api","Build my own screens","You call the API and design every step yourself."]], src: "fund-overview" },
