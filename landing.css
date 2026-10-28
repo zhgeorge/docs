@@ -724,6 +724,12 @@
 .zh-landing .zh-path:hover p,
 .zh-landing .zh-path:hover .zh-path-list li { color: #ffffff; }
 .zh-landing .zh-path:hover .zh-path-list li::before { border-color: #ffffff; }
+.zh-landing .zh-path:hover .zh-path-icon { background: rgba(255, 255, 255, 0.16); color: #ffffff; }
+.zh-landing .zh-path-icon {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 38px; height: 38px; border-radius: 10px;
+  background: var(--zh-green-tint); color: var(--zh-green); margin-bottom: 4px;
+}
 .zh-landing .zh-path h3 { margin: 0; font-size: 17px; font-weight: 600; letter-spacing: -0.01em; color: var(--zh-ink); }
 .zh-landing .zh-path-list { list-style: none; margin: 2px 0 0; padding: 0; display: grid; gap: 10px; }
 .zh-landing .zh-path-list li { position: relative; padding-left: 25px; font-size: 14.5px; line-height: 1.5; color: var(--zh-muted); }

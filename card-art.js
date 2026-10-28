@@ -14,7 +14,7 @@
   window.__zhCardArtBooted = true;
 
   const W = 280, H = 96;
-  const WIDE = { sdk: 440, api: 440 };   // the build-path cards are twice a product card's width
+  const WIDE = { api: 440 };   // the build-path card is twice a product card's width
   const n = (v) => Math.round(v * 10) / 10;
   const path = (d, cls, extra = "") => `<path d="${d}" class="${cls}"${extra}/>`;
   const dot = (x, y, r = 1.6, cls = "dot") => `<circle cx="${n(x)}" cy="${n(y)}" r="${r}" class="${cls}"/>`;
@@ -209,35 +209,6 @@
       s += path("M120 72H230M120 75H230", "hi");
       s += path("M196 81H230", "hi v");
       s += `<g class="scan">${path("M50 24.5H230", "hi")}</g>`;
-      return s;
-    },
-
-    /* Build paths, SDKs: drop-in screens, a flow from onboarding to done that lights screen by screen. */
-    sdk() {
-      const xs = [47, 147, 247, 347], y = 8, w = 46, h = 80;
-      let s = "";
-      xs.slice(0, 3).forEach((x) => {
-        const a = x + w + 7, b = x + 100 - 7;
-        s += path(`M${a} 48H${b}`, "l1") + path(`M${a} 48H${b}`, "hi fl") + path(`M${b - 4} 44.5L${b} 48L${b - 4} 51.5`, "l2");
-      });
-      xs.forEach((x, i) => {
-        const cx = x + w / 2;
-        s += `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="7" class="l2"/>` + path(`M${x + 17} ${y + 6}H${x + 29}`, "l1");
-        s += `<rect x="${x + 8}" y="${y + 64}" width="${w - 16}" height="8" rx="2" class="l1"/>`;
-        if (i === 0) s += `<circle cx="${cx}" cy="${y + 22}" r="5" class="l1"/>` + path(`M${x + 8} ${y + 36}H${x + 38}M${x + 8} ${y + 42}H${x + 32}M${x + 8} ${y + 48}H${x + 36}`, "l1");
-        if (i === 1) {
-          s += `<rect x="${x + 11}" y="${y + 14}" width="24" height="24" rx="1.5" class="l1"/>`;
-          for (const [qx, qy] of [[x + 14, y + 17], [x + 27, y + 17], [x + 14, y + 30]]) s += `<rect x="${qx}" y="${qy}" width="5" height="5" rx=".5" class="l1"/>`;
-          s += dot(x + 29.5, y + 31.5, 1) + dot(x + 23, y + 26, 1) + path(`M${x + 9} ${y + 47}H${x + 37}`, "l1");
-        }
-        if (i === 2) s += path(`M${x + 10} ${y + 24}H${x + 36}`, "l2 v") + path(`M${x + 9} ${y + 36}H${x + 37}M${x + 9} ${y + 42}H${x + 30}M${x + 9} ${y + 52}H${x + 37}`, "l1");
-        if (i === 3) s += `<circle cx="${cx}" cy="${y + 30}" r="10" class="l1"/>` + path(`M${cx - 4.5} ${y + 30}L${cx - 1} ${y + 33.5}L${cx + 5} ${y + 26.5}`, "l2") + path(`M${x + 10} ${y + 50}H${x + 36}`, "l1");
-      });
-      // each screen lights in turn, the first one lit at rest
-      [-0.6, -3.6, -2.6, -1.6].forEach((d, i) => {
-        const x = xs[i];
-        s += `<g class="blink" style="animation-duration:4s;animation-delay:${d}s"><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="7" class="hi"/><rect x="${x + 8}" y="${y + 64}" width="${w - 16}" height="8" rx="2" class="hi"/></g>`;
-      });
       return s;
     },
 
