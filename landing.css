@@ -273,15 +273,11 @@
     radial-gradient(120% 70% at 28% 16%, rgba(62, 207, 142, 0.26), rgba(62, 207, 142, 0) 62%),
     linear-gradient(160deg, #0b5a3e 0%, #0b3d2b 58%, #00381d 100%);
 }
-/* the cover's bookshelf: the hovered product card's palette, white with a ZH Green accent, always
-   running (drawCover pauses it off-screen) */
+/* the cover's bookshelf: the hovered product card's palette, white with a ZH Green accent. drawCover
+   animates it frame by frame and pauses it off-screen. */
 .zh-landing .zh-cover-art { --play: running; --art-ink: #ffffff; --art-hi: #ccffd0; --art-o0: 0.13; --art-o1: 0.3; --art-o2: 0.55; }
 .zh-landing .zh-cover-art.is-paused { --play: paused; }
 .zh-landing .zh-cover-art svg { display: block; width: 100%; height: 100%; }
-/* a highlighted guide lights up, in place, for the first fifth of its cycle; drawCover's WINDOW is
-   that fifth, and it sets each book's duration and delay so the fifth lands mid-card */
-.zh-landing .zh-cover-art .glow { opacity: 0; animation: zh-book-glow 20s ease-in-out infinite; animation-play-state: var(--play); }
-@keyframes zh-book-glow { 0%, 21%, 100% { opacity: 0; } 4%, 16% { opacity: 1; } }
 .zh-landing .zh-cover { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 .zh-landing .zh-cover-copy { position: relative; margin-top: auto; padding: 22px 22px 20px; color: #ffffff; background: linear-gradient(180deg, rgba(11, 61, 43, 0) 0%, rgba(11, 61, 43, 0.55) 40%, rgba(11, 61, 43, 0.85) 100%); }
 .zh-landing .zh-cover-kicker { margin: 0 0 8px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: #ccffd0; }
