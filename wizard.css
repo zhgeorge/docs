@@ -144,6 +144,8 @@
   content: ""; position: absolute; left: 0; right: 0; top: 0; height: 1px; background: var(--w-hair);
 }
 .zh-wiz .agent-item img { width: 17px; height: 17px; }
+/* the Codex and Cursor marks are solid black: flip them for the dark theme, as the landing hero does */
+.dark .zh-wiz .agentbtn img[src*="codex"], .dark .zh-wiz .agentbtn img[src*="cursor"] { filter: invert(1); }
 .zh-wiz .agent-item i { margin-left: auto; font-style: normal; font-size: 12.5px; color: var(--w-muted); }
 .zh-wiz .agent-view { padding-left: 37px; color: var(--w-muted); }
 
