@@ -267,7 +267,19 @@
 .zh-landing .zh-hero-chat:hover .zh-face { box-shadow: 0 2px 4px rgba(20, 35, 25, 0.05), 0 24px 48px -20px rgba(20, 35, 25, 0.28); }
 .zh-landing .zh-hero-chat.is-active .zh-back, .zh-landing .zh-hero-chat:focus-within .zh-back { border-color: var(--zh-green); box-shadow: 0 0 0 3px var(--zh-green-tint), 0 24px 48px -20px rgba(20, 35, 25, 0.28); }
 .zh-landing .zh-back { transform: rotateY(180deg); }
-.zh-landing .zh-front { border-color: rgba(11, 61, 43, 0.6); cursor: pointer; }
+.zh-landing .zh-front {
+  border-color: rgba(11, 61, 43, 0.6); cursor: pointer;
+  background:
+    radial-gradient(120% 70% at 28% 16%, rgba(62, 207, 142, 0.26), rgba(62, 207, 142, 0) 62%),
+    linear-gradient(160deg, #0b5a3e 0%, #0b3d2b 58%, #00381d 100%);
+}
+/* the cover's drawing: the hovered product card's palette, white with a ZH Green accent, always
+   running (drawCover pauses it off-screen). The step ticks and the route ahead get a touch more
+   weight than on the cards, since here they sit on a darker field. */
+.zh-landing .zh-cover-art { --play: running; --art-ink: #ffffff; --art-hi: #ccffd0; --art-o0: 0.13; --art-o1: 0.3; --art-o2: 0.5; }
+.zh-landing .zh-cover-art.is-paused { --play: paused; }
+.zh-landing .zh-cover-art svg { display: block; width: 100%; height: 100%; }
+.zh-landing .zh-cover-art .halo { stroke-opacity: 0.4; }
 .zh-landing .zh-cover { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 .zh-landing .zh-cover-copy { position: relative; margin-top: auto; padding: 22px 22px 20px; color: #ffffff; background: linear-gradient(180deg, rgba(11, 61, 43, 0) 0%, rgba(11, 61, 43, 0.55) 40%, rgba(11, 61, 43, 0.85) 100%); }
 .zh-landing .zh-cover-kicker { margin: 0 0 8px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: #ccffd0; }
@@ -582,29 +594,29 @@
 .zh-landing .zh-card-art:empty { display: none; }
 .zh-landing .zh-card:hover .zh-card-art, .zh-landing .zh-card:focus-visible .zh-card-art { --play: running; }
 .zh-landing .zh-card-art svg { display: block; width: 100%; height: 100%; overflow: hidden; }
-.zh-landing .zh-card-art svg * { fill: none; vector-effect: non-scaling-stroke; stroke-width: 1; stroke-linecap: round; stroke-linejoin: round; }
-.zh-landing .zh-card-art .l0 { stroke: var(--art-ink); stroke-opacity: var(--art-o0); }
-.zh-landing .zh-card-art .l1 { stroke: var(--art-ink); stroke-opacity: var(--art-o1); }
-.zh-landing .zh-card-art .l2 { stroke: var(--art-ink); stroke-opacity: var(--art-o2); }
-.zh-landing .zh-card-art .hi { stroke: var(--art-hi); stroke-width: 1.25; }
-.zh-landing .zh-card-art .v { stroke-width: 2; }
-.zh-landing .zh-card-art .dot { fill: var(--art-ink); fill-opacity: var(--art-o2); stroke: none; }
-.zh-landing .zh-card-art .dothi { fill: var(--art-hi); stroke: none; }
-.zh-landing .zh-card-art .dsh { stroke-dasharray: 1.5 3.5; }
-.zh-landing .zh-card-art .hatch { fill: url(#zh-art-hatch); }
+.zh-landing :is(.zh-card-art, .zh-cover-art) svg * { fill: none; vector-effect: non-scaling-stroke; stroke-width: 1; stroke-linecap: round; stroke-linejoin: round; }
+.zh-landing :is(.zh-card-art, .zh-cover-art) .l0 { stroke: var(--art-ink); stroke-opacity: var(--art-o0); }
+.zh-landing :is(.zh-card-art, .zh-cover-art) .l1 { stroke: var(--art-ink); stroke-opacity: var(--art-o1); }
+.zh-landing :is(.zh-card-art, .zh-cover-art) .l2 { stroke: var(--art-ink); stroke-opacity: var(--art-o2); }
+.zh-landing :is(.zh-card-art, .zh-cover-art) .hi { stroke: var(--art-hi); stroke-width: 1.25; }
+.zh-landing :is(.zh-card-art, .zh-cover-art) .v { stroke-width: 2; }
+.zh-landing :is(.zh-card-art, .zh-cover-art) .dot { fill: var(--art-ink); fill-opacity: var(--art-o2); stroke: none; }
+.zh-landing :is(.zh-card-art, .zh-cover-art) .dothi { fill: var(--art-hi); stroke: none; }
+.zh-landing :is(.zh-card-art, .zh-cover-art) .dsh { stroke-dasharray: 1.5 3.5; }
+.zh-landing :is(.zh-card-art, .zh-cover-art) .hatch { fill: url(#zh-art-hatch); }
 
 /* motion: every loop returns to its first frame, and nothing runs until the card is hovered */
-.zh-landing .zh-card-art .fl, .zh-landing .zh-card-art .flr { stroke-dasharray: 2 4; animation: zh-art-flow 1s linear infinite; animation-play-state: var(--play); }
-.zh-landing .zh-card-art .flr { animation-direction: reverse; }
-.zh-landing .zh-card-art .sp { transform-box: view-box; animation: zh-art-spin 12s linear infinite; animation-play-state: var(--play); }
-.zh-landing .zh-card-art .sl { animation: zh-art-slide 1s linear infinite; animation-play-state: var(--play); }
-.zh-landing .zh-card-art .pulse { transform-box: view-box; animation: zh-art-pulse 1.6s ease-in-out infinite; animation-play-state: var(--play); }
-.zh-landing .zh-card-art .blink { opacity: 0; animation: zh-art-blink 3s ease-in-out infinite; animation-play-state: var(--play); }
+.zh-landing :is(.zh-card-art, .zh-cover-art) .fl, .zh-landing :is(.zh-card-art, .zh-cover-art) .flr { stroke-dasharray: 2 4; animation: zh-art-flow 1s linear infinite; animation-play-state: var(--play); }
+.zh-landing :is(.zh-card-art, .zh-cover-art) .flr { animation-direction: reverse; }
+.zh-landing :is(.zh-card-art, .zh-cover-art) .sp { transform-box: view-box; animation: zh-art-spin 12s linear infinite; animation-play-state: var(--play); }
+.zh-landing :is(.zh-card-art, .zh-cover-art) .sl { animation: zh-art-slide 1s linear infinite; animation-play-state: var(--play); }
+.zh-landing :is(.zh-card-art, .zh-cover-art) .pulse { transform-box: view-box; animation: zh-art-pulse 1.6s ease-in-out infinite; animation-play-state: var(--play); }
+.zh-landing :is(.zh-card-art, .zh-cover-art) .blink { opacity: 0; animation: zh-art-blink 3s ease-in-out infinite; animation-play-state: var(--play); }
 /* these three swing back and forth rather than fading out to jump back, so a card un-hovered
    mid-loop is never left holding an empty frame */
-.zh-landing .zh-card-art .meetL { animation: zh-art-meet-l 1.7s cubic-bezier(.45, 0, .2, 1) infinite alternate; animation-play-state: var(--play); }
-.zh-landing .zh-card-art .meetR { animation: zh-art-meet-r 1.7s cubic-bezier(.45, 0, .2, 1) infinite alternate; animation-play-state: var(--play); }
-.zh-landing .zh-card-art .scan { animation: zh-art-scan 1.6s ease-in-out infinite alternate; animation-play-state: var(--play); }
+.zh-landing :is(.zh-card-art, .zh-cover-art) .meetL { animation: zh-art-meet-l 1.7s cubic-bezier(.45, 0, .2, 1) infinite alternate; animation-play-state: var(--play); }
+.zh-landing :is(.zh-card-art, .zh-cover-art) .meetR { animation: zh-art-meet-r 1.7s cubic-bezier(.45, 0, .2, 1) infinite alternate; animation-play-state: var(--play); }
+.zh-landing :is(.zh-card-art, .zh-cover-art) .scan { animation: zh-art-scan 1.6s ease-in-out infinite alternate; animation-play-state: var(--play); }
 @keyframes zh-art-flow { to { stroke-dashoffset: -6; } }
 @keyframes zh-art-spin { to { transform: rotate(360deg); } }
 @keyframes zh-art-slide { to { transform: translateX(var(--dx)); } }
