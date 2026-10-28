@@ -756,28 +756,23 @@
       if (style === 7) { const dv = h * 0.58; band(dv); band(dv + 3); out.push(L(4, dv + 10, S - 4, dv + 10, d), L(5, dv + 15, S - 7, dv + 15, d)); }
       return out;
     }
-    // a front cover: a border, a title and an author line, and one of three illustrations of money on the move
+    // a front cover: a border, a title and an author line, and one of three illustrations: a token, a dollar bill, a diamond
     function cover(art, C, h, lit) {
       const o = lit ? "hi" : "l2", d = lit ? "hi" : "l1", dt = lit ? "dothi" : "dot", cx = C / 2, cy = h * 0.54;
       const out = [R(0, 0, C, h, o), R(5, 5, C - 10, h - 10, d), L(13, 17, C - 13, 17, `${o} v`), L(18, 23, C - 18, 23, d), L(C * 0.32, h - 15, C * 0.68, h - 15, d)];
-      // a quadratic curve sampled into points, so it maps through the projection like any edge
-      const quad = (a, c, b) => { const pts = []; for (let i = 0; i <= 10; i++) { const t = i / 10, m = 1 - t; pts.push([m * m * a[0] + 2 * m * t * c[0] + t * t * b[0], m * m * a[1] + 2 * m * t * c[1] + t * t * b[1]]); } return pts; };
-      const head = (tip, from, size = 4) => { const dx = tip[0] - from[0], dy = tip[1] - from[1], l = Math.hypot(dx, dy) || 1, ux = dx / l, uy = dy / l; return P([[tip[0] - ux * size - uy * size * 0.7, tip[1] - uy * size + ux * size * 0.7], tip, [tip[0] - ux * size + uy * size * 0.7, tip[1] - uy * size - ux * size * 0.7]], d, false); };
-      if (art === 0) {   // an exchange: two coins, value arcing across in both directions
-        const r = C * 0.12, lx = C * 0.28, rx = C * 0.72;
-        for (const x of [lx, rx]) out.push(E(x, cy, r, r, d), E(x, cy, r * 0.45, r * 0.45, d));
-        const up = quad([lx + r * 0.6, cy - r - 2], [cx, cy - r * 3.2], [rx - r * 0.6, cy - r - 2]);
-        const down = quad([rx - r * 0.6, cy + r + 2], [cx, cy + r * 3.2], [lx + r * 0.6, cy + r + 2]);
-        out.push(P(up, d, false), head(up[10], up[8]), P(down, d, false), head(down[10], down[8]));
-        out.push(E(cx, cy - r * 2.1, 1.4, 1.4, dt), E(cx, cy + r * 2.1, 1.4, 1.4, dt));
+      if (art === 0) {   // a token: a milled coin with a hexagon struck in the middle
+        const r = C * 0.27, ri = C * 0.2;
+        out.push(E(cx, cy, r, r, d), E(cx, cy, ri, ri, d));
+        for (let i = 0; i < 20; i++) { const a = (Math.PI * 2 * i) / 20; out.push(L(cx + Math.cos(a) * (ri + 2), cy + Math.sin(a) * (ri + 2), cx + Math.cos(a) * (r - 2), cy + Math.sin(a) * (r - 2), d)); }
+        const hex = []; for (let i = 0; i < 6; i++) { const a = (Math.PI / 3) * i - Math.PI / 2; hex.push([cx + C * 0.1 * Math.cos(a), cy + C * 0.1 * Math.sin(a)]); }
+        out.push(P(hex, d, true), E(cx, cy, 1.5, 1.5, dt));
       }
-      if (art === 1) {   // a chain: three linked blocks climbing, value carried block to block
-        const b = C * 0.17, blocks = [[C * 0.14, cy + 6], [cx - b / 2, cy - 6], [C * 0.86 - b, cy - 18]];
-        blocks.forEach(([x, y]) => out.push(R(x, y, b, b, d), R(x + b * 0.3, y + b * 0.3, b * 0.4, b * 0.4, d)));
-        for (let i = 0; i < 2; i++) { const [x1, y1] = blocks[i], [x2, y2] = blocks[i + 1]; out.push(L(x1 + b, y1 + b / 2, x2, y2 + b / 2, d)); }
-        const [lx, ly] = blocks[2], tip = [lx + b + 4, ly - 6];
-        out.push(L(lx + b, ly, tip[0], tip[1], d), head(tip, [lx + b, ly]));
-        out.push(L(C * 0.14, cy + 6 + b + 7, C * 0.86, cy + 6 + b + 7, d));
+      if (art === 1) {   // a dollar bill: a note with its border, medallion and corner marks, another behind it
+        const bw = C * 0.7, bh = bw * 0.48, bx = cx - bw / 2, by = cy - bh / 2;
+        out.push(P([[bx + 5, by - 1], [bx + 5, by - 5], [bx + bw + 5, by - 5], [bx + bw + 5, by + bh - 5], [bx + bw, by + bh - 5]], d, false));
+        out.push(R(bx, by, bw, bh, d), R(bx + 3, by + 3, bw - 6, bh - 6, d), E(cx, cy, bh * 0.26, bh * 0.32, d));
+        for (const [x, y] of [[bx + 8, by + 8], [bx + bw - 8, by + 8], [bx + 8, by + bh - 8], [bx + bw - 8, by + bh - 8]]) out.push(E(x, y, 2, 2, d));
+        out.push(L(bx + 14, cy - 2, cx - bh * 0.4, cy - 2, d), L(bx + 14, cy + 3, cx - bh * 0.5, cy + 3, d), L(cx + bh * 0.4, cy - 2, bx + bw - 14, cy - 2, d), L(cx + bh * 0.5, cy + 3, bx + bw - 14, cy + 3, d));
       }
       if (art === 2) { const r = C * 0.24; out.push(P([[cx, cy - r], [cx + r, cy], [cx, cy + r], [cx - r, cy]], d, true), P([[cx, cy - r / 2], [cx + r / 2, cy], [cx, cy + r / 2], [cx - r / 2, cy]], d, true)); [[0, -1], [1, 0], [0, 1], [-1, 0]].forEach(([a, b]) => out.push(L(cx + a * (r + 4), cy + b * (r + 4), cx + a * (r + 8), cy + b * (r + 8), d))); }
       return out;
