@@ -286,6 +286,7 @@
 .zh-landing .zh-cover-copy { position: relative; margin-top: auto; padding: 22px 22px 20px; color: #ffffff; background: linear-gradient(180deg, rgba(11, 61, 43, 0) 0%, rgba(11, 61, 43, 0.55) 40%, rgba(11, 61, 43, 0.85) 100%); }
 .zh-landing .zh-cover-kicker { margin: 0 0 8px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: #ccffd0; }
 .zh-landing .zh-cover-title { margin: 0 0 14px; font-size: 21px; line-height: 1.2; font-weight: 600; letter-spacing: -0.015em; max-width: 16ch; text-wrap: balance; }
+@media (min-width: 1001px) { .zh-landing .zh-cover-title { font-size: 24px; } }   /* desktop, where the hero sits side by side */
 .zh-landing .zh-cover-hint { margin: 0; font-size: 13px; color: rgba(255, 255, 255, 0.78); }
 .zh-landing .zh-cover-hint span { display: inline-block; transition: transform 0.2s ease; }
 .zh-landing .zh-hero-chat:hover .zh-cover-hint span { transform: translateX(3px); }

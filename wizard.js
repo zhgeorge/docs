@@ -769,8 +769,11 @@
       }
       if (hiInk) {              // the detail that only shows while the book is lit
         if (style !== 5 && style !== 6) out += `<rect x="${n(x + 2)}" y="${n(top + 2)}" width="${n(w - 4)}" height="${n(h - 4)}" rx="1" class="hi"/>`;
-        const ty = top + h * 0.52;
-        for (let k = 0; k < 5; k++) { const half = (w * (k % 2 ? 0.16 : 0.24)); out += line(cx - half, ty + k * 3.2, cx + half, ty + k * 3.2, "hi"); }
+        // title lettering, except on the folded spine, whose title already runs down it
+        if (style !== 4) {
+          const ty = top + h * 0.52;
+          for (let k = 0; k < 5; k++) { const half = (w * (k % 2 ? 0.16 : 0.24)); out += line(cx - half, ty + k * 3.2, cx + half, ty + k * 3.2, "hi"); }
+        }
         out += `<circle cx="${n(cx)}" cy="${n(y - 15)}" r="2.6" class="hi"/><circle cx="${n(cx)}" cy="${n(y - 15)}" r="1" class="dothi"/>`;
       }
       return out;
