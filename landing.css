@@ -585,15 +585,13 @@
 @property --art-o0 { syntax: "<number>"; inherits: true; initial-value: 0.14; }
 @property --art-o1 { syntax: "<number>"; inherits: true; initial-value: 0.3; }
 @property --art-o2 { syntax: "<number>"; inherits: true; initial-value: 0.52; }
-.zh-landing :is(.zh-card, .zh-path) { --art-ink: #191918; --art-hi: var(--zh-green); --art-o0: 0.14; --art-o1: 0.3; --art-o2: 0.52; }
-.dark .zh-landing :is(.zh-card, .zh-path) { --art-ink: #ededea; --art-hi: #3ecf8e; --art-o0: 0.16; --art-o1: 0.3; --art-o2: 0.5; }
-.zh-landing :is(.zh-card, .zh-path):is(:hover, :focus-visible) { --art-ink: #ffffff; --art-hi: #ccffd0; --art-o0: 0.22; --art-o1: 0.4; --art-o2: 0.64; }
+.zh-landing .zh-card { --art-ink: #191918; --art-hi: var(--zh-green); --art-o0: 0.14; --art-o1: 0.3; --art-o2: 0.52; }
+.dark .zh-landing .zh-card { --art-ink: #ededea; --art-hi: #3ecf8e; --art-o0: 0.16; --art-o1: 0.3; --art-o2: 0.5; }
+.zh-landing .zh-card:hover, .zh-landing .zh-card:focus-visible { --art-ink: #ffffff; --art-hi: #ccffd0; --art-o0: 0.22; --art-o1: 0.4; --art-o2: 0.64; }
 
 .zh-landing .zh-card-art { display: block; height: 96px; margin: -2px 0 18px; --play: paused; }
 .zh-landing .zh-card-art:empty { display: none; }
-.zh-landing :is(.zh-card, .zh-path):is(:hover, :focus-visible) .zh-card-art { --play: running; }
-/* in a build-path card the column's own gap already separates the drawing from the title */
-.zh-landing .zh-path .zh-card-art { margin: 0 0 4px; }
+.zh-landing .zh-card:hover .zh-card-art, .zh-landing .zh-card:focus-visible .zh-card-art { --play: running; }
 .zh-landing .zh-card-art svg { display: block; width: 100%; height: 100%; overflow: hidden; }
 .zh-landing :is(.zh-card-art, .zh-cover-art) svg * { fill: none; vector-effect: non-scaling-stroke; stroke-width: 1; stroke-linecap: round; stroke-linejoin: round; }
 .zh-landing :is(.zh-card-art, .zh-cover-art) .l0 { stroke: var(--art-ink); stroke-opacity: var(--art-o0); }
@@ -627,7 +625,7 @@
 /* both sides start delivered at the line, draw back, and arrive together again */
 @keyframes zh-art-meet-l { to { transform: translateX(-64px); } }
 @keyframes zh-art-meet-r { to { transform: translateX(64px); } }
-@keyframes zh-art-scan { to { transform: translateY(var(--dy, 36px)); } }
+@keyframes zh-art-scan { to { transform: translateY(36px); } }
 
 .zh-landing .zh-card h3 {
   font-size: 16.5px;
@@ -713,8 +711,7 @@
   text-decoration: none;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
-.zh-landing .zh-path { transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease,
-  --art-ink 0.28s ease, --art-hi 0.28s ease, --art-o0 0.28s ease, --art-o1 0.28s ease, --art-o2 0.28s ease; }
+.zh-landing .zh-path { transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease; }
 .zh-landing .zh-path:hover {
   border-color: var(--zh-green-fill);
   box-shadow: 0 14px 32px -16px rgba(11, 61, 43, 0.35);

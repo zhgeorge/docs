@@ -14,7 +14,6 @@
   window.__zhCardArtBooted = true;
 
   const W = 280, H = 96;
-  const WIDE = { api: 440 };   // the build-path card is twice a product card's width
   const n = (v) => Math.round(v * 10) / 10;
   const path = (d, cls, extra = "") => `<path d="${d}" class="${cls}"${extra}/>`;
   const dot = (x, y, r = 1.6, cls = "dot") => `<circle cx="${n(x)}" cy="${n(y)}" r="${r}" class="${cls}"/>`;
@@ -212,26 +211,6 @@
       return s;
     },
 
-    /* Build paths, API only: your code signs a request, the endpoints answer, and you handle the rest. */
-    api() {
-      let s = `<rect x="16" y="10" width="128" height="76" rx="6" class="l2"/>` + path("M16 22H144", "l1");
-      s += dot(24, 16, 1.4) + dot(30, 16, 1.4) + dot(36, 16, 1.4);
-      s += path("M26 34H62M34 42H96M34 58H84M26 66H30", "l1");
-      s += path("M34 50H112", "hi");   // the signed header
-      s += `<g class="blink" style="animation-duration:1.1s;animation-delay:-.2s">${path("M34 62.5V69.5", "hi")}</g>`;
-      // the request, carrying its signature, and the answer coming back
-      s += path("M150 36H284", "l1") + path("M150 36H284", "hi fl") + path("M280 32.5L284.5 36L280 39.5", "l2");
-      s += `<circle cx="212" cy="26" r="3.5" class="hi"/>` + path("M215.5 26H226M223 26V29.5", "hi");
-      s += path("M286 60H152", "l1") + path("M286 60H152", "l2 fl") + path("M156 56.5L151.5 60L156 63.5", "l2");
-      s += path("M214 68.5L217 71.5L223 65.5", "l2");
-      // the endpoints, read down by a highlight
-      s += `<rect x="292" y="8" width="132" height="80" rx="6" class="l2"/>`;
-      [[21, 70], [33, 52], [45, 84], [57, 60], [69, 74]].forEach(([yy, len]) => {
-        s += `<rect x="302" y="${yy - 3}" width="14" height="6" rx="2" class="l1"/>` + path(`M322 ${yy}H${322 + len}`, "l1");
-      });
-      s += `<g class="scan" style="--dy:48px;animation-duration:2.2s"><rect x="297" y="15" width="122" height="12" rx="3" class="hi"/></g>`;
-      return s;
-    },
   };
 
   function draw() {
@@ -239,8 +218,7 @@
       if (el.querySelector("svg")) return;
       const art = ART[el.dataset.art];
       if (!art) return;
-      const w = WIDE[el.dataset.art] || W;
-      el.innerHTML = `<svg viewBox="0 0 ${w} ${H}" preserveAspectRatio="xMidYMid meet" focusable="false">${art()}</svg>`;
+      el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" focusable="false">${art()}</svg>`;
     });
   }
   draw();
