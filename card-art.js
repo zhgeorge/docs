@@ -14,6 +14,7 @@
   window.__zhCardArtBooted = true;
 
   const W = 280, H = 96;
+  const WIDE = { sdk: 440, api: 440 };   // the build-path cards are twice a product card's width
   const n = (v) => Math.round(v * 10) / 10;
   const path = (d, cls, extra = "") => `<path d="${d}" class="${cls}"${extra}/>`;
   const dot = (x, y, r = 1.6, cls = "dot") => `<circle cx="${n(x)}" cy="${n(y)}" r="${r}" class="${cls}"/>`;
@@ -210,6 +211,56 @@
       s += `<g class="scan">${path("M50 24.5H230", "hi")}</g>`;
       return s;
     },
+
+    /* Build paths, SDKs: drop-in screens, a flow from onboarding to done that lights screen by screen. */
+    sdk() {
+      const xs = [47, 147, 247, 347], y = 8, w = 46, h = 80;
+      let s = "";
+      xs.slice(0, 3).forEach((x) => {
+        const a = x + w + 7, b = x + 100 - 7;
+        s += path(`M${a} 48H${b}`, "l1") + path(`M${a} 48H${b}`, "hi fl") + path(`M${b - 4} 44.5L${b} 48L${b - 4} 51.5`, "l2");
+      });
+      xs.forEach((x, i) => {
+        const cx = x + w / 2;
+        s += `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="7" class="l2"/>` + path(`M${x + 17} ${y + 6}H${x + 29}`, "l1");
+        s += `<rect x="${x + 8}" y="${y + 64}" width="${w - 16}" height="8" rx="2" class="l1"/>`;
+        if (i === 0) s += `<circle cx="${cx}" cy="${y + 22}" r="5" class="l1"/>` + path(`M${x + 8} ${y + 36}H${x + 38}M${x + 8} ${y + 42}H${x + 32}M${x + 8} ${y + 48}H${x + 36}`, "l1");
+        if (i === 1) {
+          s += `<rect x="${x + 11}" y="${y + 14}" width="24" height="24" rx="1.5" class="l1"/>`;
+          for (const [qx, qy] of [[x + 14, y + 17], [x + 27, y + 17], [x + 14, y + 30]]) s += `<rect x="${qx}" y="${qy}" width="5" height="5" rx=".5" class="l1"/>`;
+          s += dot(x + 29.5, y + 31.5, 1) + dot(x + 23, y + 26, 1) + path(`M${x + 9} ${y + 47}H${x + 37}`, "l1");
+        }
+        if (i === 2) s += path(`M${x + 10} ${y + 24}H${x + 36}`, "l2 v") + path(`M${x + 9} ${y + 36}H${x + 37}M${x + 9} ${y + 42}H${x + 30}M${x + 9} ${y + 52}H${x + 37}`, "l1");
+        if (i === 3) s += `<circle cx="${cx}" cy="${y + 30}" r="10" class="l1"/>` + path(`M${cx - 4.5} ${y + 30}L${cx - 1} ${y + 33.5}L${cx + 5} ${y + 26.5}`, "l2") + path(`M${x + 10} ${y + 50}H${x + 36}`, "l1");
+      });
+      // each screen lights in turn, the first one lit at rest
+      [-0.6, -3.6, -2.6, -1.6].forEach((d, i) => {
+        const x = xs[i];
+        s += `<g class="blink" style="animation-duration:4s;animation-delay:${d}s"><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="7" class="hi"/><rect x="${x + 8}" y="${y + 64}" width="${w - 16}" height="8" rx="2" class="hi"/></g>`;
+      });
+      return s;
+    },
+
+    /* Build paths, API only: your code signs a request, the endpoints answer, and you handle the rest. */
+    api() {
+      let s = `<rect x="16" y="10" width="128" height="76" rx="6" class="l2"/>` + path("M16 22H144", "l1");
+      s += dot(24, 16, 1.4) + dot(30, 16, 1.4) + dot(36, 16, 1.4);
+      s += path("M26 34H62M34 42H96M34 58H84M26 66H30", "l1");
+      s += path("M34 50H112", "hi");   // the signed header
+      s += `<g class="blink" style="animation-duration:1.1s;animation-delay:-.2s">${path("M34 62.5V69.5", "hi")}</g>`;
+      // the request, carrying its signature, and the answer coming back
+      s += path("M150 36H284", "l1") + path("M150 36H284", "hi fl") + path("M280 32.5L284.5 36L280 39.5", "l2");
+      s += `<circle cx="212" cy="26" r="3.5" class="hi"/>` + path("M215.5 26H226M223 26V29.5", "hi");
+      s += path("M286 60H152", "l1") + path("M286 60H152", "l2 fl") + path("M156 56.5L151.5 60L156 63.5", "l2");
+      s += path("M214 68.5L217 71.5L223 65.5", "l2");
+      // the endpoints, read down by a highlight
+      s += `<rect x="292" y="8" width="132" height="80" rx="6" class="l2"/>`;
+      [[21, 70], [33, 52], [45, 84], [57, 60], [69, 74]].forEach(([yy, len]) => {
+        s += `<rect x="302" y="${yy - 3}" width="14" height="6" rx="2" class="l1"/>` + path(`M322 ${yy}H${322 + len}`, "l1");
+      });
+      s += `<g class="scan" style="--dy:48px;animation-duration:2.2s"><rect x="297" y="15" width="122" height="12" rx="3" class="hi"/></g>`;
+      return s;
+    },
   };
 
   function draw() {
@@ -217,7 +268,8 @@
       if (el.querySelector("svg")) return;
       const art = ART[el.dataset.art];
       if (!art) return;
-      el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" focusable="false">${art()}</svg>`;
+      const w = WIDE[el.dataset.art] || W;
+      el.innerHTML = `<svg viewBox="0 0 ${w} ${H}" preserveAspectRatio="xMidYMid meet" focusable="false">${art()}</svg>`;
     });
   }
   draw();
