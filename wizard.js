@@ -149,7 +149,7 @@
         opts: [["on","Yes, add AUTH","Connect exchanges and wallets in-app."],["off","No, stick to manual transfers","Customers send from any wallet to the address you show."]], src: "auth" },
     ],
     trade: [
-      { id: "saas", type: "single", title: "Do you also settle trades you matched elsewhere?", plain: "This is <b>settlements as a service</b>: you agree the trade on your own venue, and zerohash moves the money and the crypto only once both sides have delivered.",
+      { id: "saas", type: "single", title: "Do you want to settle trades you matched elsewhere?", plain: "This is <b>settlements as a service</b>: you agree the trade on your own venue, and zerohash moves the money and the crypto only once both sides have delivered.",
         opts: [["yes","Yes, add settlement","Trades you match yourself settle through zerohash."],["no","No, skip it","zerohash quotes and fills everything."]], src: "settlements-as-a-service" },
       { id: "model", type: "multi", title: "How should trades be priced?", plain: "Start with a quote if you're unsure. It's the simpler integration and the right fit for most consumer apps.",
         opts: [["rfq","Firm quote (RFQ)","Ask for a price, show it, confirm within 30 seconds. Two API calls."],["clob","Order book (CLOB)","Place limit and market orders into a live order book. For trading platforms and high volume."]], src: "buysell" },
