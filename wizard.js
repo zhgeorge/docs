@@ -767,12 +767,11 @@
         const hex = []; for (let i = 0; i < 6; i++) { const a = (Math.PI / 3) * i - Math.PI / 2; hex.push([cx + C * 0.1 * Math.cos(a), cy + C * 0.1 * Math.sin(a)]); }
         out.push(P(hex, d, true), E(cx, cy, 1.5, 1.5, dt));
       }
-      if (art === 1) {   // a dollar bill: a note with its border, medallion and corner marks, another behind it
-        const bw = C * 0.7, bh = bw * 0.48, bx = cx - bw / 2, by = cy - bh / 2;
-        out.push(P([[bx + 5, by - 1], [bx + 5, by - 5], [bx + bw + 5, by - 5], [bx + bw + 5, by + bh - 5], [bx + bw, by + bh - 5]], d, false));
-        out.push(R(bx, by, bw, bh, d), R(bx + 3, by + 3, bw - 6, bh - 6, d), E(cx, cy, bh * 0.26, bh * 0.32, d));
+      if (art === 1) {   // a dollar bill: a note with its border, a round medallion and corner marks
+        const bw = C * 0.7, bh = bw * 0.48, my = h / 2, bx = cx - bw / 2, by = my - bh / 2, r = bh * 0.3;   // centred on the book
+        out.push(R(bx, by, bw, bh, d), R(bx + 3, by + 3, bw - 6, bh - 6, d), E(cx, my, r, r, d));
         for (const [x, y] of [[bx + 8, by + 8], [bx + bw - 8, by + 8], [bx + 8, by + bh - 8], [bx + bw - 8, by + bh - 8]]) out.push(E(x, y, 2, 2, d));
-        out.push(L(bx + 14, cy - 2, cx - bh * 0.4, cy - 2, d), L(bx + 14, cy + 3, cx - bh * 0.5, cy + 3, d), L(cx + bh * 0.4, cy - 2, bx + bw - 14, cy - 2, d), L(cx + bh * 0.5, cy + 3, bx + bw - 14, cy + 3, d));
+        out.push(L(bx + 14, my - 2, cx - r - 3, my - 2, d), L(bx + 14, my + 3, cx - r - 5, my + 3, d), L(cx + r + 3, my - 2, bx + bw - 14, my - 2, d), L(cx + r + 5, my + 3, bx + bw - 14, my + 3, d));
       }
       if (art === 2) { const r = C * 0.24; out.push(P([[cx, cy - r], [cx + r, cy], [cx, cy + r], [cx - r, cy]], d, true), P([[cx, cy - r / 2], [cx + r / 2, cy], [cx, cy + r / 2], [cx - r / 2, cy]], d, true)); [[0, -1], [1, 0], [0, 1], [-1, 0]].forEach(([a, b]) => out.push(L(cx + a * (r + 4), cy + b * (r + 4), cx + a * (r + 8), cy + b * (r + 8), d))); }
       return out;
