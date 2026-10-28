@@ -429,6 +429,7 @@
   .zh-landing .zh-hero-chat, .zh-landing .zh-msg, .zh-landing .zh-opt, .zh-landing .zh-chat-progress > span, .zh-landing .zh-flip, .zh-landing .zh-pcard, .zh-landing .zh-logo-track { transition: none; animation: none; }
   .zh-landing .zh-card::before, .zh-landing .zh-card::after,
   .zh-landing .zh-path::before, .zh-landing .zh-path::after { animation: none; }
+  .zh-landing .zh-card-art { --play: paused !important; }
 }
 
 @media (max-width: 1000px) {
@@ -490,7 +491,8 @@
   padding: 24px;
   text-decoration: none;
   color: var(--zh-ink);
-  transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease;
+  transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease,
+    --art-ink 0.28s ease, --art-hi 0.28s ease, --art-o0 0.28s ease, --art-o1 0.28s ease, --art-o2 0.28s ease;
 }
 
 /* the whole card is the link: it fills deep green and the title grows an arrow */
@@ -501,7 +503,6 @@
 }
 .zh-landing .zh-card:hover h3 { color: #ffffff; }
 .zh-landing .zh-card:hover p { color: #ffffff; }   /* full white: the gradient's lightest point leaves 4.6:1 */
-.zh-landing .zh-card:hover .zh-card-icon { background: rgba(255, 255, 255, 0.16); color: #ffffff; }
 
 /* ---- the hover fill, for both the product cards and the build paths ----
    The fill is its own layer so it can move: an evergreen gradient sheet slides across the card
@@ -564,17 +565,56 @@
 .zh-landing .zh-card:hover .zh-go,
 .zh-landing .zh-path:hover .zh-go { opacity: 1; transform: none; }
 
-.zh-landing .zh-card-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 38px;
-  height: 38px;
-  border-radius: 10px;
-  background: var(--zh-green-tint);
-  color: var(--zh-green);
-  margin-bottom: 16px;
-}
+/* ---- product card illustrations (drawn by card-art.js) ----
+   Strokes take their colour from two tokens and their weight from three opacities, all set on the
+   card and registered below so they cross-fade with the hover fill instead of snapping: ink at
+   rest in either theme, white over the evergreen gradient on hover. */
+@property --art-ink { syntax: "<color>"; inherits: true; initial-value: #191918; }
+@property --art-hi { syntax: "<color>"; inherits: true; initial-value: #0b7a54; }
+@property --art-o0 { syntax: "<number>"; inherits: true; initial-value: 0.14; }
+@property --art-o1 { syntax: "<number>"; inherits: true; initial-value: 0.3; }
+@property --art-o2 { syntax: "<number>"; inherits: true; initial-value: 0.52; }
+.zh-landing .zh-card { --art-ink: #191918; --art-hi: var(--zh-green); --art-o0: 0.14; --art-o1: 0.3; --art-o2: 0.52; }
+.dark .zh-landing .zh-card { --art-ink: #ededea; --art-hi: #3ecf8e; --art-o0: 0.16; --art-o1: 0.3; --art-o2: 0.5; }
+.zh-landing .zh-card:hover, .zh-landing .zh-card:focus-visible { --art-ink: #ffffff; --art-hi: #ccffd0; --art-o0: 0.22; --art-o1: 0.4; --art-o2: 0.64; }
+
+.zh-landing .zh-card-art { display: block; height: 96px; margin: -2px 0 18px; --play: paused; }
+.zh-landing .zh-card-art:empty { display: none; }
+.zh-landing .zh-card:hover .zh-card-art, .zh-landing .zh-card:focus-visible .zh-card-art { --play: running; }
+.zh-landing .zh-card-art svg { display: block; width: 100%; height: 100%; overflow: hidden; }
+.zh-landing .zh-card-art svg * { fill: none; vector-effect: non-scaling-stroke; stroke-width: 1; stroke-linecap: round; stroke-linejoin: round; }
+.zh-landing .zh-card-art .l0 { stroke: var(--art-ink); stroke-opacity: var(--art-o0); }
+.zh-landing .zh-card-art .l1 { stroke: var(--art-ink); stroke-opacity: var(--art-o1); }
+.zh-landing .zh-card-art .l2 { stroke: var(--art-ink); stroke-opacity: var(--art-o2); }
+.zh-landing .zh-card-art .hi { stroke: var(--art-hi); stroke-width: 1.25; }
+.zh-landing .zh-card-art .v { stroke-width: 2; }
+.zh-landing .zh-card-art .dot { fill: var(--art-ink); fill-opacity: var(--art-o2); stroke: none; }
+.zh-landing .zh-card-art .dothi { fill: var(--art-hi); stroke: none; }
+.zh-landing .zh-card-art .dsh { stroke-dasharray: 1.5 3.5; }
+.zh-landing .zh-card-art .hatch { fill: url(#zh-art-hatch); }
+
+/* motion: every loop returns to its first frame, and nothing runs until the card is hovered */
+.zh-landing .zh-card-art .fl, .zh-landing .zh-card-art .flr { stroke-dasharray: 2 4; animation: zh-art-flow 1s linear infinite; animation-play-state: var(--play); }
+.zh-landing .zh-card-art .flr { animation-direction: reverse; }
+.zh-landing .zh-card-art .sp { transform-box: view-box; animation: zh-art-spin 12s linear infinite; animation-play-state: var(--play); }
+.zh-landing .zh-card-art .sl { animation: zh-art-slide 1s linear infinite; animation-play-state: var(--play); }
+.zh-landing .zh-card-art .pulse { transform-box: view-box; animation: zh-art-pulse 1.6s ease-in-out infinite; animation-play-state: var(--play); }
+.zh-landing .zh-card-art .blink { opacity: 0; animation: zh-art-blink 3s ease-in-out infinite; animation-play-state: var(--play); }
+/* these three swing back and forth rather than fading out to jump back, so a card un-hovered
+   mid-loop is never left holding an empty frame */
+.zh-landing .zh-card-art .meetL { animation: zh-art-meet-l 1.7s cubic-bezier(.45, 0, .2, 1) infinite alternate; animation-play-state: var(--play); }
+.zh-landing .zh-card-art .meetR { animation: zh-art-meet-r 1.7s cubic-bezier(.45, 0, .2, 1) infinite alternate; animation-play-state: var(--play); }
+.zh-landing .zh-card-art .scan { animation: zh-art-scan 1.6s ease-in-out infinite alternate; animation-play-state: var(--play); }
+@keyframes zh-art-flow { to { stroke-dashoffset: -6; } }
+@keyframes zh-art-spin { to { transform: rotate(360deg); } }
+@keyframes zh-art-slide { to { transform: translateX(var(--dx)); } }
+@keyframes zh-art-pulse { 50% { transform: scale(0.7); } }
+/* one account number lights at a time; the first frame shows the first one lit */
+@keyframes zh-art-blink { 0%, 100% { opacity: 0; } 8%, 30% { opacity: 1; } 40% { opacity: 0; } }
+/* both sides start delivered at the line, draw back, and arrive together again */
+@keyframes zh-art-meet-l { to { transform: translateX(-64px); } }
+@keyframes zh-art-meet-r { to { transform: translateX(64px); } }
+@keyframes zh-art-scan { to { transform: translateY(36px); } }
 
 .zh-landing .zh-card h3 {
   font-size: 16.5px;
