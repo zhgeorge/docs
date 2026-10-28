@@ -601,8 +601,17 @@
 .zh-landing :is(.zh-card-art, .zh-cover-art) .l2 { stroke: var(--art-ink); stroke-opacity: var(--art-o2); }
 .zh-landing :is(.zh-card-art, .zh-cover-art) .hi { stroke: var(--art-hi); stroke-width: 1.25; }
 .zh-landing :is(.zh-card-art, .zh-cover-art) .v { stroke-width: 2; }
-.zh-landing :is(.zh-card-art, .zh-cover-art) .dot { fill: var(--art-ink); fill-opacity: var(--art-o2); stroke: none; }
-.zh-landing :is(.zh-card-art, .zh-cover-art) .dothi { fill: var(--art-hi); stroke: none; }
+/* Filled marks (dots, arrowheads, node centres) take literal colours rather than the art tokens:
+   a fill whose variable fails to resolve falls back to black, which some browsers did on hover.
+   On the cards they are ZH Evergreen, the brand's dark green, so nothing on them reads as black. */
+.zh-landing :is(.zh-card-art, .zh-cover-art) :is(.dot, .dothi) { stroke: none; transition: fill 0.28s ease, fill-opacity 0.28s ease; }
+.zh-landing .zh-card-art .dot { fill: #00381d; fill-opacity: 0.62; }
+.zh-landing .zh-card-art .dothi { fill: #0b7a54; }
+.dark .zh-landing .zh-card-art .dot { fill: #ededea; fill-opacity: 0.5; }
+.dark .zh-landing .zh-card-art .dothi { fill: #3ecf8e; }
+.zh-landing .zh-card:is(:hover, :focus-visible) .zh-card-art :is(.dot, .dothi) { fill: #00381d; fill-opacity: 1; }
+.zh-landing .zh-cover-art .dot { fill: #ffffff; fill-opacity: 0.55; }
+.zh-landing .zh-cover-art .dothi { fill: #ccffd0; }
 .zh-landing :is(.zh-card-art, .zh-cover-art) .dsh { stroke-dasharray: 1.5 3.5; }
 .zh-landing :is(.zh-card-art, .zh-cover-art) .hatch { fill: url(#zh-art-hatch); }
 
