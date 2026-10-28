@@ -144,13 +144,13 @@
       { id: "dir", type: "multi", title: "What do customers need to do?", opts: [["deposits","Deposit money","Send stablecoins or crypto into their account."],["withdrawals","Withdraw money","Send stablecoins or crypto to their own wallet or exchange."]], src: "fund-overview" },
       { id: "convert", type: "single", title: "When money arrives, what should the customer see?", when: a => (a.dir || []).includes("deposits"), plain: "Most platforms choose dollars: the customer never has to think about crypto, and their balance is just a number in USD.",
         opts: [["usd","Dollars","zerohash converts the deposit to USD the moment it lands (1 USDC → $1, minus a small fee)."],["crypto","The asset itself","The deposit stays as the stablecoin or crypto they sent."]], src: "sdk-index" },
-      { id: "style", type: "single", title: "How do you want to build the screens?", opts: [["sdk","Use zerohash's ready-made screens","Fastest. A drop-in flow that shows the address, QR code and receipts, in your colors."],["api","Build my own screens","You call the API and design every step yourself."]], src: "fund-overview" },
+      { id: "style", type: "single", title: "How do you want to build the screens?", opts: [["sdk","Use zerohash's screens","Fastest. A drop-in flow that shows the address, QR code and receipts, in your colors."],["api","Build my own","You call the API and design every step yourself."]], src: "fund-overview" },
       { id: "auth", type: "single", title: "Should customers be able to connect their exchange or wallet?", plain: "AUTH connections remove the error and friction of QR codes, networks, and addresses.",
         opts: [["on","Yes, add AUTH","Connect exchanges and wallets in-app."],["off","No, stick to manual transfers","Customers send from any wallet to the address you show."]], src: "auth" },
     ],
     trade: [
       { id: "saas", type: "single", title: "Do you also settle trades you matched elsewhere?", plain: "This is <b>settlements as a service</b>: you agree the trade on your own venue, and zerohash moves the money and the crypto only once both sides have delivered.",
-        opts: [["yes","Yes, add settlement","Trades you match yourself settle through zerohash."],["no","No, price every trade with zerohash","zerohash quotes and fills everything."]], src: "settlements-as-a-service" },
+        opts: [["yes","Yes, add settlement","Trades you match yourself settle through zerohash."],["no","No, skip it","zerohash quotes and fills everything."]], src: "settlements-as-a-service" },
       { id: "model", type: "multi", title: "How should trades be priced?", plain: "Start with a quote if you're unsure. It's the simpler integration and the right fit for most consumer apps.",
         opts: [["rfq","Firm quote (RFQ)","Ask for a price, show it, confirm within 30 seconds. Two API calls."],["clob","Order book (CLOB)","Place limit and market orders into a live order book. For trading platforms and high volume."]], src: "buysell" },
     ],
@@ -163,16 +163,16 @@
     ],
     bank: [
       { id: "model", type: "single", title: "How fast should bank deposits be usable?", plain: "Bank transfers (ACH) take 1–3 business days to settle. Faster options mean you front the money from a float balance you keep with zerohash.",
-        opts: [["prefunded","When the transfer settles","Simplest; no float needed."],["ondemand","Immediately, for a purchase","The customer's buy happens as soon as the debit is approved."],["instant","Immediately, as a balance","Dollars appear in their balance right away."]], src: "funding-models" },
+        opts: [["prefunded","On settlement","Simplest; no float needed."],["ondemand","Instant buy","The customer's buy happens as soon as the debit is approved."],["instant","Instant balance","Dollars appear in their balance right away."]], src: "funding-models" },
       { id: "va", type: "single", title: "Should each customer get their own account number?", plain: "This is <b>virtual accounts</b>: each customer gets an account and routing number, so anyone can push dollars straight to them. When money lands, zerohash holds it or converts it to a stablecoin.",
-        opts: [["yes","Yes, add virtual accounts","Each customer gets an account and routing number of their own."],["no","No, bank transfers only","Money moves through the accounts you already have."]], src: "virtual-accounts" },
+        opts: [["yes","Yes, add virtual accounts","Each customer gets an account and routing number of their own."],["no","No, skip them","Money moves through the accounts you already have."]], src: "virtual-accounts" },
       { id: "rails", type: "multi", title: "Which ways should money move?", selectAll: true, opts: [["ach","ACH","In and out. 1–3 business days. Low cost."],["rtp","RTP / FedNow","Out only. Arrives in seconds, 24/7."],["wire","Wire","In and out, same day. For larger amounts."]], src: "fiat" },
     ],
     va: [
-      { id: "policy", type: "single", title: "When dollars arrive, what happens?", opts: [["hold","Hold them as a balance","The customer decides later whether to buy crypto or withdraw."],["convert","Convert and send on-chain","Dollars become a stablecoin and go to a wallet you've approved for that customer."]], src: "create-a-virtual-account" },
+      { id: "policy", type: "single", title: "When dollars arrive, what happens?", opts: [["hold","Hold as a balance","The customer decides later whether to buy crypto or withdraw."],["convert","Convert on-chain","Dollars become a stablecoin and go to a wallet you've approved for that customer."]], src: "create-a-virtual-account" },
     ],
     ramps: [
-      { id: "dir", type: "multi", title: "Which way should money go?", opts: [["on","Dollars → crypto (on-ramp)","Customer pays in dollars; crypto lands in their own wallet."],["off","Crypto → dollars (off-ramp)","Customer sends crypto; they get dollars."]], src: "on-off-ramps" },
+      { id: "dir", type: "multi", title: "Which way should money go?", opts: [["on","Dollars → crypto","Customer pays in dollars; crypto lands in their own wallet."],["off","Crypto → dollars","Customer sends crypto; they get dollars."]], src: "on-off-ramps" },
     ],
     staking: [
       { id: "asset", type: "single", title: "Which asset?", opts: [["ETH","Ethereum (ETH)","Available now."],["SOL","Solana (SOL)","Coming Q4 2026."]], src: "staking" },
