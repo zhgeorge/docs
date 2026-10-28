@@ -712,39 +712,73 @@
 
   /* The hero card's cover, drawn in the same line language as the product cards (card-art.js): a
      bookshelf, its row of guides drifting right to left on an endless loop. Every book differs in
-     height, thickness and binding, one leans on its neighbour, a few lie stacked flat, and every
-     sixth upright book lights up and lifts out of the row as it passes the middle of the card.
+     height, thickness and binding, a few lie stacked flat, and every sixth upright book lights up as
+     it passes the middle of the card, showing detail its plain state does not.
 
      The row is one strip drawn twice end to end and slid left by exactly its own width, so the loop
-     has no seam. Each highlighted book has its own lift animation on the strip's period, delayed so
-     the lift happens while that book crosses the centre, whichever copy of it is on screen. The
+     has no seam. Each highlighted book has its own light-up on the strip's period, delayed so it
+     happens while that book crosses the centre, whichever copy of it is on screen. The
      shelf is generated from a fixed seed, so it is the same shelf on every visit. */
   function drawCover(host, reduced) {
-    const W = 380, H = 476, SHELF = 232, SPEED = 26, LIFT = 26, CX = W / 2, WINDOW = 0.2;
+    const W = 380, H = 476, SHELF = 232, SPEED = 26, CX = W / 2, WINDOW = 0.2;
     const n = (v) => Math.round(v * 10) / 10;
     let seed = 7;   // mulberry32
     const rnd = () => { seed |= 0; seed = (seed + 0x6d2b79f5) | 0; let t = Math.imul(seed ^ (seed >>> 15), 1 | seed); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
     const range = (a, b) => a + rnd() * (b - a);
 
-    // one book's lines, standing upright with its bottom-left corner at (x, SHELF)
+    // One book's lines, standing upright with its bottom-left corner at (x, SHELF). Every book gets a
+    // head and tail band and its binding's details; the highlighted copy (ink "hi") draws the same
+    // book with more on it, an inset border, title lettering and an emblem, so lighting up reveals it.
     function upright(x, w, h, style, ink) {
-      const y = SHELF, top = y - h, o = ink === "hi" ? "hi" : "l2", d = ink === "hi" ? "hi" : "l1", dt = ink === "hi" ? "dothi" : "dot";
+      const y = SHELF, top = y - h, hiInk = ink === "hi";
+      const o = hiInk ? "hi" : "l2", d = hiInk ? "hi" : "l1", dt = hiInk ? "dothi" : "dot";
+      const cx = x + w / 2;
+      const line = (x1, y1, x2, y2, c = d) => `<path d="M${n(x1)} ${n(y1)}L${n(x2)} ${n(y2)}" class="${c}"/>`;
+      const band = (yy, c = d) => line(x + 2, yy, x + w - 2, yy, c);
       let out = style === 5
-        ? `<path d="M${n(x)} ${y}V${n(top + 5)}Q${n(x + w / 2)} ${n(top - 3)} ${n(x + w)} ${n(top + 5)}V${y}Z" class="${o}"/>`
+        ? `<path d="M${n(x)} ${y}V${n(top + 5)}Q${n(cx)} ${n(top - 3)} ${n(x + w)} ${n(top + 5)}V${y}Z" class="${o}"/>`
         : `<rect x="${n(x)}" y="${n(top)}" width="${n(w)}" height="${n(h)}" rx="1.5" class="${o}"/>`;
-      const band = (yy) => `<path d="M${n(x + 2)} ${n(yy)}H${n(x + w - 2)}" class="${d}"/>`;
-      if (style === 0) out += band(top + 8) + band(top + 11) + band(y - 11) + band(y - 8);
-      if (style === 1) { const lh = Math.min(18, h * 0.2); out += `<rect x="${n(x + 3)}" y="${n(top + 14)}" width="${n(w - 6)}" height="${n(lh)}" rx="1" class="${d}"/>` + band(top + 18 + lh); }
-      if (style === 2) for (let k = 1; k <= 3; k++) out += band(top + h * (0.3 + k * 0.12));
-      if (style === 3) for (let k = 0; k < 3; k++) out += `<circle cx="${n(x + w / 2)}" cy="${n(top + h * 0.28 + k * 7)}" r="1.1" class="${dt}"/>`;
-      if (style === 4) out += `<path d="M${n(x + 3.5)} ${n(top + 2)}V${n(y - 2)}" class="${d}"/>` + band(top + 9);
-      if (style === 5) out += band(top + 12) + band(y - 10);
+      // head and tail bands, on every book
+      out += band(top + (style === 5 ? 9 : 4)) + band(y - 4);
+      if (style === 0) {        // leather, with raised ribs
+        for (let k = 1; k <= 4; k++) { const yy = top + (h * k) / 5; out += band(yy - 1.5) + band(yy + 1.5); }
+      } else if (style === 1) { // title label and an author line
+        const lh = Math.min(20, h * 0.22), ly = top + 13;
+        out += `<rect x="${n(x + 3)}" y="${n(ly)}" width="${n(w - 6)}" height="${n(lh)}" rx="1" class="${d}"/>`;
+        out += line(x + 5, ly + lh * 0.38, x + w - 5, ly + lh * 0.38) + line(x + 6, ly + lh * 0.68, x + w - 6, ly + lh * 0.68);
+        out += line(x + 4, y - 13, x + w - 4, y - 13);
+      } else if (style === 2) { // a block of stripes under a small square emblem
+        out += `<rect x="${n(cx - 2.5)}" y="${n(top + 12)}" width="5" height="5" rx=".5" class="${d}"/>`;
+        for (let k = 0; k < 4; k++) out += band(top + h * 0.42 + k * 4);
+      } else if (style === 3) { // a column of dots between two rules
+        out += band(top + h * 0.24) + band(top + h * 0.24 + 32);
+        for (let k = 0; k < 3; k++) out += `<circle cx="${n(cx)}" cy="${n(top + h * 0.24 + 9 + k * 7)}" r="1.1" class="${dt}"/>`;
+      } else if (style === 4) { // a folded spine with its title running down it
+        out += line(x + 3.5, top + 2, x + 3.5, y - 2) + band(top + 10);
+        out += line(cx + 1.5, top + h * 0.3, cx + 1.5, top + h * 0.7);
+      } else if (style === 5) { // a rounded spine with a diamond emblem
+        out += band(top + 13) + band(y - 9);
+        out += `<path d="M${n(cx)} ${n(top + h * 0.45 - 4)}L${n(cx + 3.5)} ${n(top + h * 0.45)}L${n(cx)} ${n(top + h * 0.45 + 4)}L${n(cx - 3.5)} ${n(top + h * 0.45)}Z" class="${d}"/>`;
+      } else if (style === 6) { // a framed spine with a centred title rule
+        out += `<rect x="${n(x + 2.5)}" y="${n(top + 8)}" width="${n(w - 5)}" height="${n(h - 16)}" rx="1" class="${d}"/>`;
+        out += line(x + 5, top + h * 0.4, x + w - 5, top + h * 0.4) + line(x + 6, top + h * 0.4 + 4, x + w - 6, top + h * 0.4 + 4);
+      } else {                  // two-tone, divided, with lines in the lower panel
+        const dv = top + h * 0.58;
+        out += band(dv) + band(dv + 3);
+        out += line(x + 4, dv + 10, x + w - 4, dv + 10) + line(x + 5, dv + 15, x + w - 7, dv + 15);
+      }
+      if (hiInk) {              // the detail that only shows while the book is lit
+        if (style !== 5 && style !== 6) out += `<rect x="${n(x + 2)}" y="${n(top + 2)}" width="${n(w - 4)}" height="${n(h - 4)}" rx="1" class="hi"/>`;
+        const ty = top + h * 0.52;
+        for (let k = 0; k < 5; k++) { const half = (w * (k % 2 ? 0.16 : 0.24)); out += line(cx - half, ty + k * 3.2, cx + half, ty + k * 3.2, "hi"); }
+        out += `<circle cx="${n(cx)}" cy="${n(y - 15)}" r="2.6" class="hi"/><circle cx="${n(cx)}" cy="${n(y - 15)}" r="1" class="dothi"/>`;
+      }
       return out;
     }
 
-    // the strip: 24 slots, four of them highlighted, one leaning, one flat stack
-    const slots = ["u","u","u","u","u","H", "u","lean","u","u","u","H", "u","u","flat","u","u","H", "u","u","u","u","u","H"];
-    let x = 0, prev = -1, strip = "", glowing = [];
+    // the strip: 24 slots, four of them highlighted and one a flat stack
+    const slots = ["u","u","u","u","u","H", "u","u","u","u","u","H", "u","u","flat","u","u","H", "u","u","u","u","u","H"];
+    let x = 0, prev = -1, strip = "", glowing = [], litStyles = [];
     for (const kind of slots) {
       if (kind === "flat") {   // two or three books lying on their sides
         const L = range(36, 46);
@@ -758,18 +792,15 @@
         x += L + 3;
         continue;
       }
-      let style; do { style = Math.floor(rnd() * 6); } while (style === prev); prev = style;
-      const w = range(12, 28), h = range(60, 108);
-      if (kind === "lean") {   // tipped onto the next book, pivoting on its bottom-left corner
-        const a = 9 * Math.PI / 180;
-        strip += `<g transform="rotate(9 ${n(x)} ${SHELF})">${upright(x, w, h, style, "l2")}</g>`;
-        x += w * Math.cos(a) + h * Math.sin(a) + 1;
-        continue;
-      }
+      // never the same binding twice running, and each highlighted guide a binding of its own
+      let style; do { style = Math.floor(rnd() * 8); } while (style === prev || (kind === "H" && litStyles.includes(style)));
+      prev = style;
+      if (kind === "H") litStyles.push(style);
+      const w = range(15, 30), h = range(76, 122);   // tall enough for their bindings to show
       if (kind === "H") {
         glowing.push({ cx: x + w / 2 });
         const i = glowing.length - 1;
-        strip += `<g class="pull" data-i="${i}">${upright(x, w, h, style, "l2")}<g class="glow" data-i="${i}">${upright(x, w, h, style, "hi")}</g></g>`;
+        strip += upright(x, w, h, style, "l2") + `<g class="glow" data-i="${i}">${upright(x, w, h, style, "hi")}</g>`;
       } else {
         strip += upright(x, w, h, style, "l2");
       }
@@ -799,16 +830,16 @@
     // left at SPEED, so it reaches the far edge of its lift window at ((cx - start) / SPEED) mod T.
     // A negative delay of that much minus T puts its lift exactly there, for both copies at once.
     const start = CX + (WINDOW * P) / 2;
-    svg.querySelectorAll(".pull, .glow").forEach((el) => {
+    svg.querySelectorAll(".glow").forEach((el) => {
       const g = glowing[+el.dataset.i];
       const t0 = ((((g.cx - start) / SPEED) % T) + T) % T;
       el.style.animationDuration = `${n(T)}s`;
       el.style.animationDelay = `${(t0 - T).toFixed(2)}s`;
       if (reduced) el.style.animation = "none";
     });
-    if (reduced) {   // no motion: one guide pulled out, in the middle of the shelf
+    if (reduced) {   // no motion: the guide nearest the middle of the shelf, lit
       const nearest = glowing.reduce((b, g, i) => (Math.abs(g.cx - CX) < Math.abs(glowing[b].cx - CX) ? i : b), 0);
-      svg.querySelectorAll(`[data-i="${nearest}"]`).forEach((el) => { if (el.classList.contains("pull")) el.setAttribute("transform", `translate(0 ${-LIFT})`); else el.style.opacity = "1"; });
+      svg.querySelectorAll(`.glow[data-i="${nearest}"]`).forEach((el) => { el.style.opacity = "1"; });
       return;
     }
     if ("IntersectionObserver" in window) new IntersectionObserver((es) => es.forEach((e) => host.classList.toggle("is-paused", !e.isIntersecting))).observe(host);
