@@ -658,49 +658,6 @@
         ]
       },
       {
-        "tab": "Recipes",
-        "groups": [
-          {
-            "group": "Overview",
-            "pages": [
-              "recipes/overview"
-            ]
-          },
-          {
-            "group": "REST API",
-            "pages": [
-              "recipes/rest-api-authentication-1",
-              "recipes/liquidity-quote",
-              "recipes/convert-withdraw-quote",
-              "recipes/fund-get-transactions",
-              "recipes/post-trade-settlement-1"
-            ]
-          },
-          {
-            "group": "Realtime and webhooks",
-            "pages": [
-              "recipes/websocket-authentication",
-              "recipes/webhook-signatures"
-            ]
-          },
-          {
-            "group": "SDKs",
-            "pages": [
-              "recipes/web-sdk-integration",
-              "recipes/auth-frontend-sdk",
-              "recipes/ios-sdk-auth"
-            ]
-          },
-          {
-            "group": "Connect",
-            "pages": [
-              "recipes/connect-create-session",
-              "recipes/connect-validate-webhook-signature"
-            ]
-          }
-        ]
-      },
-      {
         "tab": "Changelog",
         "groups": [
           {

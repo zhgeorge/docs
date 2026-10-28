@@ -741,12 +741,12 @@
     if (!reduced && "IntersectionObserver" in window) new IntersectionObserver((es) => es.forEach(e => { if (e.isIntersecting) { if (!raf) raf = requestAnimationFrame(frame); } else if (raf) { cancelAnimationFrame(raf); raf = null; } })).observe(canvas);
   }
 
-  /* The landing page belongs to no tab, but Mintlify still marks the first one current.
-     The underline and weight are dropped in CSS; the colour is copied from a sibling tab so it
-     matches exactly in either theme. Runs on every boot, so a theme switch refreshes it. */
+  /* The landing page and the setup wizard belong to no tab, but Mintlify still marks the first one
+     current. The underline and weight are dropped in CSS; the colour is copied from a sibling tab
+     so it matches exactly in either theme. Runs on every boot, so a theme switch refreshes it. */
   let themeWatch = false;
   function resetTabState() {
-    if (!document.querySelector(".zh-landing")) return;
+    if (!document.querySelector(".zh-landing, #zh-wizard-root")) return;
     const tabs = [...document.querySelectorAll(".nav-tabs-item")];
     const current = tabs.find(t => t.hasAttribute("aria-current"));
     const sibling = tabs.find(t => !t.hasAttribute("aria-current"));

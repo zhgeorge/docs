@@ -724,10 +724,11 @@
   .zh-landing .zh-section { padding: 60px 0 16px; }
 }
 
-/* The homepage sits under no tab, so Mintlify marking Documentation as the current one is
-   misleading. Reset it to the resting treatment while the landing page is what is rendered. */
-body:has(.zh-landing) .nav-tabs-item[aria-current] { text-shadow: none; }
-body:has(.zh-landing) .nav-tabs-item[aria-current] > div { display: none; }
+/* The homepage and the setup wizard sit under no tab, so Mintlify marking Documentation as the
+   current one is misleading (the wizard only lives in Documentation's hidden Tools group). Reset it
+   to the resting treatment while either page is what is rendered. */
+body:has(.zh-landing, #zh-wizard-root) .nav-tabs-item[aria-current] { text-shadow: none; }
+body:has(.zh-landing, #zh-wizard-root) .nav-tabs-item[aria-current] > div { display: none; }
 
 /* ---------- FAQ ---------- */
 
