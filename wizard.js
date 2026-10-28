@@ -756,12 +756,29 @@
       if (style === 7) { const dv = h * 0.58; band(dv); band(dv + 3); out.push(L(4, dv + 10, S - 4, dv + 10, d), L(5, dv + 15, S - 7, dv + 15, d)); }
       return out;
     }
-    // a front cover: a border, a title and an author line, and one of three illustrations
+    // a front cover: a border, a title and an author line, and one of three illustrations of money on the move
     function cover(art, C, h, lit) {
       const o = lit ? "hi" : "l2", d = lit ? "hi" : "l1", dt = lit ? "dothi" : "dot", cx = C / 2, cy = h * 0.54;
       const out = [R(0, 0, C, h, o), R(5, 5, C - 10, h - 10, d), L(13, 17, C - 13, 17, `${o} v`), L(18, 23, C - 18, 23, d), L(C * 0.32, h - 15, C * 0.68, h - 15, d)];
-      if (art === 0) { [0.25, 0.17, 0.09].forEach((r) => out.push(E(cx, cy, C * r, C * r, d))); out.push(E(cx, cy, 1.6, 1.6, dt)); }
-      if (art === 1) { out.push(P([[11, cy + 12], [C * 0.3, cy - 10], [C * 0.46, cy + 2], [C * 0.66, cy - 16], [C - 11, cy + 12]], d, false), L(11, cy + 12, C - 11, cy + 12, d), E(C * 0.74, cy - 22, 4, 4, d)); }
+      // a quadratic curve sampled into points, so it maps through the projection like any edge
+      const quad = (a, c, b) => { const pts = []; for (let i = 0; i <= 10; i++) { const t = i / 10, m = 1 - t; pts.push([m * m * a[0] + 2 * m * t * c[0] + t * t * b[0], m * m * a[1] + 2 * m * t * c[1] + t * t * b[1]]); } return pts; };
+      const head = (tip, from, size = 4) => { const dx = tip[0] - from[0], dy = tip[1] - from[1], l = Math.hypot(dx, dy) || 1, ux = dx / l, uy = dy / l; return P([[tip[0] - ux * size - uy * size * 0.7, tip[1] - uy * size + ux * size * 0.7], tip, [tip[0] - ux * size + uy * size * 0.7, tip[1] - uy * size - ux * size * 0.7]], d, false); };
+      if (art === 0) {   // an exchange: two coins, value arcing across in both directions
+        const r = C * 0.12, lx = C * 0.28, rx = C * 0.72;
+        for (const x of [lx, rx]) out.push(E(x, cy, r, r, d), E(x, cy, r * 0.45, r * 0.45, d));
+        const up = quad([lx + r * 0.6, cy - r - 2], [cx, cy - r * 3.2], [rx - r * 0.6, cy - r - 2]);
+        const down = quad([rx - r * 0.6, cy + r + 2], [cx, cy + r * 3.2], [lx + r * 0.6, cy + r + 2]);
+        out.push(P(up, d, false), head(up[10], up[8]), P(down, d, false), head(down[10], down[8]));
+        out.push(E(cx, cy - r * 2.1, 1.4, 1.4, dt), E(cx, cy + r * 2.1, 1.4, 1.4, dt));
+      }
+      if (art === 1) {   // a chain: three linked blocks climbing, value carried block to block
+        const b = C * 0.17, blocks = [[C * 0.14, cy + 6], [cx - b / 2, cy - 6], [C * 0.86 - b, cy - 18]];
+        blocks.forEach(([x, y]) => out.push(R(x, y, b, b, d), R(x + b * 0.3, y + b * 0.3, b * 0.4, b * 0.4, d)));
+        for (let i = 0; i < 2; i++) { const [x1, y1] = blocks[i], [x2, y2] = blocks[i + 1]; out.push(L(x1 + b, y1 + b / 2, x2, y2 + b / 2, d)); }
+        const [lx, ly] = blocks[2], tip = [lx + b + 4, ly - 6];
+        out.push(L(lx + b, ly, tip[0], tip[1], d), head(tip, [lx + b, ly]));
+        out.push(L(C * 0.14, cy + 6 + b + 7, C * 0.86, cy + 6 + b + 7, d));
+      }
       if (art === 2) { const r = C * 0.24; out.push(P([[cx, cy - r], [cx + r, cy], [cx, cy + r], [cx - r, cy]], d, true), P([[cx, cy - r / 2], [cx + r / 2, cy], [cx, cy + r / 2], [cx - r / 2, cy]], d, true)); [[0, -1], [1, 0], [0, 1], [-1, 0]].forEach(([a, b]) => out.push(L(cx + a * (r + 4), cy + b * (r + 4), cx + a * (r + 8), cy + b * (r + 8), d))); }
       return out;
     }
