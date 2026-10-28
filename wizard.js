@@ -710,95 +710,108 @@
 
   
 
-  /* The hero card's cover, drawn in the same line language as the product cards (card-art.js).
-     A guided route: a blueprint of crosshairs, faint branches for the paths not taken, and one
-     route winding through four waypoints to a destination. A traveller walks it; each waypoint
-     lights as it is reached, the route behind fills in, and the destination answers when it
-     arrives before the journey starts again. Unlike the product cards it runs on its own, using
-     SVG's own animation so the timing of every part can be tied to the traveller's progress. */
+  /* The hero card's cover, drawn in the same line language as the product cards (card-art.js): a
+     bookshelf, its row of guides drifting right to left on an endless loop. Every book differs in
+     height, thickness and binding, one leans on its neighbour, a few lie stacked flat, and every
+     sixth upright book lights up and lifts out of the row as it passes the middle of the card.
+
+     The row is one strip drawn twice end to end and slid left by exactly its own width, so the loop
+     has no seam. Each highlighted book has its own lift animation on the strip's period, delayed so
+     the lift happens while that book crosses the centre, whichever copy of it is on screen. The
+     shelf is generated from a fixed seed, so it is the same shelf on every visit. */
   function drawCover(host, reduced) {
-    const NS = "http://www.w3.org/2000/svg", W = 380, H = 476, DUR = 8, ARRIVE = 0.78;
+    const W = 380, H = 476, SHELF = 232, SPEED = 26, LIFT = 26, CX = W / 2, WINDOW = 0.2;
     const n = (v) => Math.round(v * 10) / 10;
-    const S = [46, 268], WP = [[112, 204], [206, 236], [262, 148], [170, 96]], D = [306, 54];
-    const pts = [S, ...WP, D];
-    // Catmull-Rom through every point, so the route bends smoothly through each waypoint
-    const route = (() => {
-      let d = `M${pts[0][0]} ${pts[0][1]}`;
-      for (let i = 0; i < pts.length - 1; i++) {
-        const p0 = pts[i - 1] || pts[i], p1 = pts[i], p2 = pts[i + 1], p3 = pts[i + 2] || p2;
-        const c1 = [p1[0] + (p2[0] - p0[0]) / 6, p1[1] + (p2[1] - p0[1]) / 6], c2 = [p2[0] - (p3[0] - p1[0]) / 6, p2[1] - (p3[1] - p1[1]) / 6];
-        d += `C${n(c1[0])} ${n(c1[1])} ${n(c2[0])} ${n(c2[1])} ${p2[0]} ${p2[1]}`;
+    let seed = 7;   // mulberry32
+    const rnd = () => { seed |= 0; seed = (seed + 0x6d2b79f5) | 0; let t = Math.imul(seed ^ (seed >>> 15), 1 | seed); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+    const range = (a, b) => a + rnd() * (b - a);
+
+    // one book's lines, standing upright with its bottom-left corner at (x, SHELF)
+    function upright(x, w, h, style, ink) {
+      const y = SHELF, top = y - h, o = ink === "hi" ? "hi" : "l2", d = ink === "hi" ? "hi" : "l1", dt = ink === "hi" ? "dothi" : "dot";
+      let out = style === 5
+        ? `<path d="M${n(x)} ${y}V${n(top + 5)}Q${n(x + w / 2)} ${n(top - 3)} ${n(x + w)} ${n(top + 5)}V${y}Z" class="${o}"/>`
+        : `<rect x="${n(x)}" y="${n(top)}" width="${n(w)}" height="${n(h)}" rx="1.5" class="${o}"/>`;
+      const band = (yy) => `<path d="M${n(x + 2)} ${n(yy)}H${n(x + w - 2)}" class="${d}"/>`;
+      if (style === 0) out += band(top + 8) + band(top + 11) + band(y - 11) + band(y - 8);
+      if (style === 1) { const lh = Math.min(18, h * 0.2); out += `<rect x="${n(x + 3)}" y="${n(top + 14)}" width="${n(w - 6)}" height="${n(lh)}" rx="1" class="${d}"/>` + band(top + 18 + lh); }
+      if (style === 2) for (let k = 1; k <= 3; k++) out += band(top + h * (0.3 + k * 0.12));
+      if (style === 3) for (let k = 0; k < 3; k++) out += `<circle cx="${n(x + w / 2)}" cy="${n(top + h * 0.28 + k * 7)}" r="1.1" class="${dt}"/>`;
+      if (style === 4) out += `<path d="M${n(x + 3.5)} ${n(top + 2)}V${n(y - 2)}" class="${d}"/>` + band(top + 9);
+      if (style === 5) out += band(top + 12) + band(y - 10);
+      return out;
+    }
+
+    // the strip: 24 slots, four of them highlighted, one leaning, one flat stack
+    const slots = ["u","u","u","u","u","H", "u","lean","u","u","u","H", "u","u","flat","u","u","H", "u","u","u","u","u","H"];
+    let x = 0, prev = -1, strip = "", glowing = [];
+    for (const kind of slots) {
+      if (kind === "flat") {   // two or three books lying on their sides
+        const L = range(36, 46);
+        let yy = SHELF;
+        const count = rnd() < 0.5 ? 2 : 3;
+        for (let k = 0; k < count; k++) {
+          const t = range(8, 11), len = L - k * range(2, 6), off = range(0, L - len);
+          strip += `<rect x="${n(x + off)}" y="${n(yy - t)}" width="${n(len)}" height="${n(t)}" rx="1.5" class="l2"/><path d="M${n(x + off + 6)} ${n(yy - t + 2)}V${n(yy - 2)}" class="l1"/>`;
+          yy -= t;
+        }
+        x += L + 3;
+        continue;
       }
-      return d;
-    })();
+      let style; do { style = Math.floor(rnd() * 6); } while (style === prev); prev = style;
+      const w = range(12, 28), h = range(60, 108);
+      if (kind === "lean") {   // tipped onto the next book, pivoting on its bottom-left corner
+        const a = 9 * Math.PI / 180;
+        strip += `<g transform="rotate(9 ${n(x)} ${SHELF})">${upright(x, w, h, style, "l2")}</g>`;
+        x += w * Math.cos(a) + h * Math.sin(a) + 1;
+        continue;
+      }
+      if (kind === "H") {
+        glowing.push({ cx: x + w / 2 });
+        const i = glowing.length - 1;
+        strip += `<g class="pull" data-i="${i}">${upright(x, w, h, style, "l2")}<g class="glow" data-i="${i}">${upright(x, w, h, style, "hi")}</g></g>`;
+      } else {
+        strip += upright(x, w, h, style, "l2");
+      }
+      x += w + range(1.5, 3.5);
+    }
+    const P = x, T = P / SPEED;
 
     let grid = "";
-    for (let y = 19; y < H; y += 38) for (let x = 19; x < W; x += 38) grid += `M${x - 3} ${y}H${x + 3}M${x} ${y - 3}V${y + 3}`;
-    const branches = [`M112 204C150 178 168 172 196 176`, `M206 236C236 256 268 262 300 258`, `M262 148C292 140 318 156 338 182`, `M170 96C140 82 112 82 86 92`];
-    const ticks = WP.map(([x, y], i) => { let d = ""; for (let k = 0; k <= i; k++) d += `M${x + 15 + k * 4} ${y - 17}V${y - 11}`; return d; }).join("");
+    for (let y = 19; y < H; y += 38) for (let gx = 19; gx < W; gx += 38) grid += `M${gx - 3} ${y}H${gx + 3}M${gx} ${y - 3}V${y + 3}`;
+    const shelf = `<path d="M-10 ${SHELF}H${W + 10}" class="l2"/><path d="M-10 ${SHELF + 8}H${W + 10}" class="l1"/>`
+      + [64, 316].map((bx) => `<path d="M${bx} ${SHELF + 8}V${SHELF + 26}L${bx + 16} ${SHELF + 8}" class="l1"/>`).join("");
 
     host.innerHTML = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid slice" focusable="false" aria-hidden="true">
       <path d="${grid}" class="l0"/>
-      ${branches.map((d) => `<path d="${d}" class="l0 dsh"/>`).join("")}
-      ${branches.map((d) => { const m = d.match(/(-?[\d.]+) (-?[\d.]+)$/); return `<circle cx="${m[1]}" cy="${m[2]}" r="1.8" class="dot"/>`; }).join("")}
-      <path d="${route}" class="l1"/>
-      <path d="${route}" class="l2 fl"/>
-      <path d="${route}" class="hi trail"/>
-      <path d="${ticks}" class="l1"/>
-      ${WP.map(([x, y]) => `<circle cx="${x}" cy="${y}" r="10" class="l2"/><circle cx="${x}" cy="${y}" r="2" class="dot"/>`).join("")}
-      ${WP.map(([x, y]) => `<g class="wp"><circle cx="${x}" cy="${y}" r="10" class="hi"/><circle cx="${x}" cy="${y}" r="3" class="dothi"/></g>`).join("")}
-      <path d="M${D[0] - 22} ${D[1]}H${D[0] - 11}M${D[0] + 11} ${D[1]}H${D[0] + 22}M${D[0]} ${D[1] - 22}V${D[1] - 11}M${D[0]} ${D[1] + 11}V${D[1] + 22}" class="l1"/>
-      <rect x="${D[0] - 7}" y="${D[1] - 7}" width="14" height="14" rx="2" class="hi"/>
-      <rect x="${D[0] - 3}" y="${D[1] - 3}" width="6" height="6" rx="1" class="dothi"/>
-      <circle cx="${D[0]}" cy="${D[1]}" r="10" class="hi ping" opacity="0"/>
-      <circle cx="${S[0]}" cy="${S[1]}" r="3" class="dothi"/>
-      <g class="traveller"><circle r="8" class="hi halo"/><circle r="3.5" class="dothi"/></g>
+      ${shelf}
+      <defs>
+        <linearGradient id="zh-shelf-fade" x1="0" x2="1" y1="0" y2="0"><stop offset="0" stop-color="#000"/><stop offset=".14" stop-color="#fff"/><stop offset=".86" stop-color="#fff"/><stop offset="1" stop-color="#000"/></linearGradient>
+        <mask id="zh-shelf-mask" maskUnits="userSpaceOnUse" x="0" y="0" width="${W}" height="${H}"><rect width="${W}" height="${H}" style="fill:url(#zh-shelf-fade)"/></mask>
+      </defs>
+      <g class="books" mask="url(#zh-shelf-mask)"><g class="${reduced ? "" : "sl"}" style="--dx:${n(-P)}px;animation-duration:${n(T)}s">
+        ${strip}<g transform="translate(${n(P)} 0)">${strip}</g>
+      </g></g>
     </svg>`;
-    const svg = host.querySelector("svg"), trail = svg.querySelector(".trail"), traveller = svg.querySelector(".traveller");
-    const len = trail.getTotalLength();
-    // The walk is eased (cubic-bezier .45 0 .3 1), so progress along the route is not proportional to
-    // time. To light a waypoint the moment the traveller reaches it, find how far along the route it
-    // sits, then invert the easing curve to get the time that progress is reached.
-    const EASE = [0.45, 0, 0.3, 1];
-    const bez = (s, a, b) => 3 * a * (1 - s) ** 2 * s + 3 * b * (1 - s) * s ** 2 + s ** 3;
-    const timeAt = (progress) => {
-      let lo = 0, hi = 1;
-      for (let k = 0; k < 40; k++) { const mid = (lo + hi) / 2; if (bez(mid, EASE[1], EASE[3]) < progress) lo = mid; else hi = mid; }
-      return bez((lo + hi) / 2, EASE[0], EASE[2]);
-    };
-    const at = WP.map(([x, y]) => {
-      let best = 0, bestD = Infinity;
-      for (let i = 0; i <= 400; i++) { const p = trail.getPointAtLength((len * i) / 400); const dd = (p.x - x) ** 2 + (p.y - y) ** 2; if (dd < bestD) { bestD = dd; best = i / 400; } }
-      return timeAt(best) * ARRIVE;
-    });
+    const svg = host.querySelector("svg");
 
-    if (reduced) {   // no motion: show the journey finished
-      traveller.setAttribute("transform", `translate(${D[0]} ${D[1]})`);
-      svg.querySelectorAll(".wp").forEach((g) => g.setAttribute("opacity", "1"));
+    // When does each highlighted book cross the middle? It sits at cx on the strip and the strip moves
+    // left at SPEED, so it reaches the far edge of its lift window at ((cx - start) / SPEED) mod T.
+    // A negative delay of that much minus T puts its lift exactly there, for both copies at once.
+    const start = CX + (WINDOW * P) / 2;
+    svg.querySelectorAll(".pull, .glow").forEach((el) => {
+      const g = glowing[+el.dataset.i];
+      const t0 = ((((g.cx - start) / SPEED) % T) + T) % T;
+      el.style.animationDuration = `${n(T)}s`;
+      el.style.animationDelay = `${(t0 - T).toFixed(2)}s`;
+      if (reduced) el.style.animation = "none";
+    });
+    if (reduced) {   // no motion: one guide pulled out, in the middle of the shelf
+      const nearest = glowing.reduce((b, g, i) => (Math.abs(g.cx - CX) < Math.abs(glowing[b].cx - CX) ? i : b), 0);
+      svg.querySelectorAll(`[data-i="${nearest}"]`).forEach((el) => { if (el.classList.contains("pull")) el.setAttribute("transform", `translate(0 ${-LIFT})`); else el.style.opacity = "1"; });
       return;
     }
-    const anim = (el, tag, attrs) => { const a = document.createElementNS(NS, tag); for (const k in attrs) a.setAttribute(k, attrs[k]); a.setAttribute("dur", `${DUR}s`); a.setAttribute("repeatCount", "indefinite"); el.append(a); return a; };
-    const f = (v) => Math.min(0.999, Math.max(0, v)).toFixed(3);
-    // the traveller walks the route, then waits at the destination
-    const motion = anim(traveller, "animateMotion", { path: route, keyPoints: "0;1;1", keyTimes: `0;${ARRIVE};1`, calcMode: "spline", keySplines: `${EASE.join(" ")};0 0 1 1` });
-    motion.setAttribute("rotate", "0");
-    // the route fills in behind it
-    trail.setAttribute("stroke-dasharray", `${n(len)} ${n(len)}`);
-    anim(trail, "animate", { attributeName: "stroke-dashoffset", values: `${n(len)};0;0;${n(len)}`, keyTimes: `0;${ARRIVE};.96;1`, calcMode: "spline", keySplines: `${EASE.join(" ")};0 0 1 1;0 0 1 1` });
-    // each waypoint lights as it is reached, and they all go dark together for the next run
-    svg.querySelectorAll(".wp").forEach((g, i) => {
-      g.setAttribute("opacity", "0");
-      anim(g, "animate", { attributeName: "opacity", values: "0;0;1;1;0", keyTimes: `0;${f(at[i] - 0.01)};${f(at[i] + 0.01)};.96;1` });   // fade centred on the arrival
-    });
-    // the destination answers on arrival
-    const ping = svg.querySelector(".ping");
-    anim(ping, "animate", { attributeName: "r", values: "10;10;26;26", keyTimes: `0;${ARRIVE};.95;1` });
-    anim(ping, "animate", { attributeName: "opacity", values: "0;0;.9;0;0", keyTimes: `0;${ARRIVE};${f(ARRIVE + 0.02)};.95;1` });
-    // pause the whole drawing, and its CSS-driven dashes, while the card is off-screen
-    if ("IntersectionObserver" in window) new IntersectionObserver((es) => es.forEach((e) => {
-      if (e.isIntersecting) { svg.unpauseAnimations(); host.classList.remove("is-paused"); }
-      else { svg.pauseAnimations(); host.classList.add("is-paused"); }
-    })).observe(host);
+    if ("IntersectionObserver" in window) new IntersectionObserver((es) => es.forEach((e) => host.classList.toggle("is-paused", !e.isIntersecting))).observe(host);
   }
 
   /* The landing page and the setup wizard belong to no tab, but Mintlify still marks the first one
