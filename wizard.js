@@ -94,20 +94,18 @@
 
   /* `job` is what the reader wants to do, and it is all the first question shows: someone who has
      never heard of zerohash picks by outcome. `name` is the product, which the rail, the guide's
-     phase titles and the summary pills use once the choice is made. `doc` is where the homepage
-     card sends someone who picks that job: the product's overview, not the page a guide step
-     cites (`src`), which can be a narrower integration guide. */
+     phase titles and the summary pills use once the choice is made. */
   const PRODUCTS = [
-    { id: "fund", name: "Account Funding", tag: "Move money in", doc: "/docs/fund-overview", job: "Let customers deposit crypto", short: "It can land in their balance as dollars or crypto.", plain: "Show a customer an address, they send USDC (or another asset) to it, and their balance updates within minutes, as dollars if you want. A funding method that sits next to cards, wires and ACH.", src: "fund-overview" },
-    { id: "trade", name: "Buy / Sell Crypto", tag: "Trade", doc: "/docs/buysell", job: "Let customers buy and sell crypto", short: "We take care of settlement and liquidity.", plain: "You ask zerohash for a firm price, show it to the customer, and confirm. zerohash handles liquidity, custody and compliance behind the scenes.", src: "buysell" },
-    { id: "payouts", name: "Payouts", tag: "Move money out", doc: "/docs/payouts", job: "Pay out in stablecoins or crypto", short: "Straight to their wallet, any time.", plain: "Contractors, sellers and creators get paid in minutes instead of days, across borders, without bank wires.", src: "payouts" },
-    { id: "payins", name: "Payins", tag: "Get paid", doc: "/docs/payins", job: "Accept crypto payments at checkout", short: "Shoppers pay from their own wallet.", plain: "A shopper pays from their wallet; you get a locked-in dollar amount and a notification when the money lands.", src: "payins-api-integration-guide" },
-    { id: "bank", name: "Bank Rails", tag: "Move money in & out", doc: "/docs/fiat", job: "Connect to bank accounts", short: "Dollars in and out along with virtual accounts.", plain: "Pull dollars in by ACH to buy crypto, and send dollars out by ACH, RTP or FedNow when customers cash out. Bank linking is handled through Plaid.", src: "fiat" },
+    { id: "fund", name: "Account Funding", tag: "Move money in", job: "Let customers deposit crypto", short: "It can land in their balance as dollars or crypto.", plain: "Show a customer an address, they send USDC (or another asset) to it, and their balance updates within minutes, as dollars if you want. A funding method that sits next to cards, wires and ACH.", src: "fund-overview" },
+    { id: "trade", name: "Buy / Sell Crypto", tag: "Trade", job: "Let customers buy and sell crypto", short: "We take care of settlement and liquidity.", plain: "You ask zerohash for a firm price, show it to the customer, and confirm. zerohash handles liquidity, custody and compliance behind the scenes.", src: "buysell" },
+    { id: "payouts", name: "Payouts", tag: "Move money out", job: "Pay out in stablecoins or crypto", short: "Straight to their wallet, any time.", plain: "Contractors, sellers and creators get paid in minutes instead of days, across borders, without bank wires.", src: "payouts" },
+    { id: "payins", name: "Payins", tag: "Get paid", job: "Accept crypto payments at checkout", short: "Shoppers pay from their own wallet.", plain: "A shopper pays from their wallet; you get a locked-in dollar amount and a notification when the money lands.", src: "payins-api-integration-guide" },
+    { id: "bank", name: "Bank Rails", tag: "Move money in & out", job: "Connect to bank accounts", short: "Dollars in and out along with virtual accounts.", plain: "Pull dollars in by ACH to buy crypto, and send dollars out by ACH, RTP or FedNow when customers cash out. Bank linking is handled through Plaid.", src: "fiat" },
     { id: "va", name: "Virtual Accounts", tag: "Move money in", addon: true, job: "Give customers an account number", short: "Anyone can push dollars straight to it.", plain: "Customers (or their employers) push dollars to it like any bank account. When money arrives, zerohash holds it or converts it to a stablecoin.", src: "virtual-accounts" },
-    { id: "ramps", name: "On & Off Ramps", tag: "Convert", doc: "/docs/on-off-ramps", job: "Turn dollars into crypto, and back", short: "A quote, a confirmation, and it moves.", plain: "The simplest conversion product: a quote, a confirmation, and the asset moves. Three endpoints in total.", src: "on-off-ramps" },
-    { id: "staking", name: "Staking", tag: "Earn", doc: "/docs/staking", job: "Let customers earn rewards on crypto", short: "Enable your users to stake their ETH or SOL.", plain: "Customers lock up ETH to help run the network and earn rewards. zerohash runs the validators; you set the fee you keep.", src: "staking" },
+    { id: "ramps", name: "On & Off Ramps", tag: "Convert", job: "Turn dollars into crypto, and back", short: "A quote, a confirmation, and it moves.", plain: "The simplest conversion product: a quote, a confirmation, and the asset moves. Three endpoints in total.", src: "on-off-ramps" },
+    { id: "staking", name: "Staking", tag: "Earn", job: "Let customers earn rewards on crypto", short: "Enable your users to stake their ETH or SOL.", plain: "Customers lock up ETH to help run the network and earn rewards. zerohash runs the validators; you set the fee you keep.", src: "staking" },
     { id: "saas", name: "Settlements as a Service", tag: "Settle", addon: true, job: "Settle trades you matched elsewhere", short: "Nothing moves until both sides deliver.", plain: "You agree the trade (on your venue or over the phone); zerohash moves the money and the crypto only once both sides have delivered.", src: "settlements-as-a-service" },
-    { id: "token", name: "Tokenization Engine", tag: "Issue", doc: "/docs/tokenization-engine", job: "Tokenize assets at scale", short: "On Ethereum-compatible chains or Solana.", plain: "Mint, move and redeem a stablecoin, security or NFT, with compliance controls built in and gas fees handled for you.", src: "tokenization-engine" },
+    { id: "token", name: "Tokenization Engine", tag: "Issue", job: "Tokenize assets at scale", short: "On Ethereum-compatible chains or Solana.", plain: "Mint, move and redeem a stablecoin, security or NFT, with compliance controls built in and gas fees handled for you.", src: "tokenization-engine" },
   ];
   const PRODUCT_IDS = PRODUCTS.map(p => p.id);
   const OFFERED = PRODUCTS.filter(p => !p.addon);          // what the first question asks about
@@ -137,7 +135,23 @@
     staking: '<path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 13l9 5 9-5"/>',
     saas: '<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6l8-3z"/><path d="M9 12l2 2 4-4"/>',
     token: '<path d="M12 3l7.5 4.3v9.4L12 21l-7.5-4.3V7.3L12 3z"/><circle cx="12" cy="12" r="3"/>',
+    auth: '<rect x="4" y="10" width="16" height="11" rx="2.5"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/><path d="M12 14.5v2.5"/>',
+    remit: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/>',
   };
+
+  /* The homepage card's answers. Titles follow the docs' "Common use cases" hub, and each one
+     links to the first guide that use case lists. AUTH's, "How AUTH works", has no page under that
+     title yet, so it goes to the AUTH overview, which opens with how it works. */
+  const USE_CASES = [
+    { icon: "auth", title: "Enable deposits & withdrawals to platform accounts seamlessly with AUTH", doc: "/docs/auth" },
+    { icon: "fund", title: "Enable crypto account funding for your platform", doc: "/docs/fund-integration-guide-sdk" },
+    { icon: "payins", title: "Accept payments in crypto for goods and services", doc: "/docs/merchant-onboarding-guide" },
+    { icon: "payouts", title: "Send crypto payouts from your platform", doc: "/docs/payouts-integration-guide" },
+    { icon: "trade", title: "Let customers buy and sell crypto in your app", doc: "/docs/buysell" },
+    { icon: "ramps", title: "Launch fiat on and off ramps", doc: "/docs/on-ramp-integration-guide" },
+    { icon: "remit", title: "Send cross-border remittances", doc: "/docs/remittance-integration-guide" },
+    { icon: "token", title: "Issue stablecoins and tokens", doc: "/docs/tokenization-engine" },
+  ];
   const productIcon = (id, cls) => `<span class="${cls}" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${ICON_PATHS[id] || ""}</svg></span>`;
 
   /* ---- the essential questions only ---- */
@@ -1151,15 +1165,15 @@
   }
 
   /* ---------------- landing page: the hero card ----------------
-     One question, what the reader wants to do, and each answer is a link straight to that
-     product's overview in the docs. The drawn cover is on the front; hovering, focusing or tapping
+     One question, what the reader wants to do, and each answer is a link to the guide for that
+     use case. The drawn cover is on the front; hovering, focusing or tapping
      flips the card to the question. */
   function mountHeroChat() {
     const box = document.getElementById("zh-hero-chat");
     if (!box || box.dataset.mounted) return;
     box.dataset.mounted = "1";
     const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const option = (p) => `<a class="zh-pcard" href="${p.doc}">${productIcon(p.id, "zh-pcard-ico")}<span class="zh-pcard-txt"><span class="zh-pcard-t">${esc(p.job)}</span><span class="zh-pcard-d">${esc(p.short)}</span></span><span class="zh-pcard-go" aria-hidden="true">→</span></a>`;
+    const option = (u) => `<a class="zh-pcard" href="${u.doc}">${productIcon(u.icon, "zh-pcard-ico")}<span class="zh-pcard-txt"><span class="zh-pcard-t">${esc(u.title)}</span></span><span class="zh-pcard-go" aria-hidden="true">→</span></a>`;
     box.innerHTML = `<div class="zh-flip">
       <div class="zh-face zh-front"><div class="zh-cover zh-cover-art"></div>
         <div class="zh-cover-copy"><p class="zh-cover-kicker">Start here</p><p class="zh-cover-title">Find the docs for what you're building</p><p class="zh-cover-hint">Hover to start <span aria-hidden="true">→</span></p></div>
@@ -1169,7 +1183,7 @@
         <div class="zh-pick">
           <p class="zh-pick-q">What do you want to do?</p>
           <p class="zh-pick-hint">Pick one to go straight to its docs.</p>
-          <div class="zh-pick-list">${OFFERED.map(option).join("")}</div>
+          <div class="zh-pick-list">${USE_CASES.map(option).join("")}</div>
         </div>
       </div>
     </div>`;
