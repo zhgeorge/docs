@@ -1064,6 +1064,20 @@
     return { claude: `claude-cli://open?q=${enc}`, codex: `codex://new?prompt=${enc}`, cursor: `https://cursor.com/link/prompt?text=${enc}` };
   };
 
+  /* Opens Mintlify's assistant by pressing its own header button, the supported way in. The panel
+     only exists on a deployment, so when the button isn't there this returns false and the menu
+     item's href, the documented ?assistant link, is followed instead. Pressing the button while
+     the panel is already open would close it, so an open panel just gets its input focused. */
+  function openDocsAssistant() {
+    const visible = (el) => el && el.offsetParent !== null;
+    const input = [...document.querySelectorAll(".chat-assistant-input")].find(visible);
+    if (input) { input.focus(); return true; }
+    const toggle = [...document.querySelectorAll('button[aria-label="Toggle assistant panel"]')].find(visible);
+    if (!toggle) return false;
+    toggle.click();
+    return true;
+  }
+
   function mountAgentButton() {
     const box = document.getElementById("zh-agent");
     if (!box) return;
@@ -1090,6 +1104,7 @@
     menu.addEventListener("click", (e) => {
       const item = e.target.closest("[data-agent]");
       if (item) { e.preventDefault(); window.location.href = agentLinks(agentPrompt0())[item.dataset.agent]; }
+      if (e.target.closest('[data-action="assistant"]') && openDocsAssistant()) e.preventDefault();
       open(false);
     });
   }
