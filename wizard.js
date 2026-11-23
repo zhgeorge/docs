@@ -139,16 +139,16 @@
     remit: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/>',
   };
 
-  /* The homepage card's answers. Titles follow the docs' "Common use cases" hub, and each one
-     links to the first guide that use case lists. AUTH's, "How AUTH works", has no page under that
+  /* The homepage card's answers, one per use case in the docs' "Common use cases" hub, each
+     linking to the first guide that use case lists. AUTH's, "How AUTH works", has no page under that
      title yet, so it goes to the AUTH overview, which opens with how it works. */
   const USE_CASES = [
-    { icon: "auth", title: "Enable deposits & withdrawals to platform accounts seamlessly with AUTH", doc: "/docs/auth" },
-    { icon: "fund", title: "Enable crypto account funding for your platform", doc: "/docs/fund-integration-guide-sdk" },
+    { icon: "auth", title: "Enable crypto deposits & withdrawals to accounts on your platform", doc: "/docs/auth" },
+    { icon: "fund", title: "Enable users to fund fiat accounts with crypto or withdraw fiat as crypto", doc: "/docs/fund-integration-guide-sdk" },
     { icon: "payins", title: "Accept payments in crypto for goods and services", doc: "/docs/merchant-onboarding-guide" },
-    { icon: "payouts", title: "Send crypto payouts from your platform", doc: "/docs/payouts-integration-guide" },
-    { icon: "trade", title: "Let customers buy and sell crypto in your app", doc: "/docs/buysell" },
-    { icon: "ramps", title: "Launch fiat on and off ramps", doc: "/docs/on-ramp-integration-guide" },
+    { icon: "payouts", title: "Send crypto and stablecoin payouts", doc: "/docs/payouts-integration-guide" },
+    { icon: "trade", title: "Let users buy and sell crypto", doc: "/docs/buysell" },
+    { icon: "ramps", title: "Launch fiat on and offramps", doc: "/docs/on-ramp-integration-guide" },
     { icon: "remit", title: "Send cross-border remittances", doc: "/docs/remittance-integration-guide" },
     { icon: "token", title: "Issue stablecoins and tokens", doc: "/docs/tokenization-engine" },
   ];
