@@ -1069,13 +1069,25 @@
      item's href, the documented ?assistant link, is followed instead. Pressing the button while
      the panel is already open would close it, so an open panel just gets its input focused. */
   function openDocsAssistant() {
-    const visible = (el) => el && el.offsetParent !== null;
+    const visible = (el) => el && el.getClientRects().length > 0;   // offsetParent is null for fixed elements, so it can't tell
     const input = [...document.querySelectorAll(".chat-assistant-input")].find(visible);
     if (input) { input.focus(); return true; }
     const toggle = [...document.querySelectorAll('button[aria-label="Toggle assistant panel"]')].find(visible);
     if (!toggle) return false;
     toggle.click();
     return true;
+  }
+
+  /* Any link marked data-action="assistant" opens the assistant: the agent menu's item and the
+     closing panel's button. It listens in the capture phase because Mintlify's router handles
+     link clicks at the React root, which a bubbling listener would only reach after navigating. */
+  let assistantLinksMounted = false;
+  function mountAssistantLinks() {
+    if (assistantLinksMounted) return;
+    assistantLinksMounted = true;
+    document.addEventListener("click", (e) => {
+      if (e.target.closest('[data-action="assistant"]') && openDocsAssistant()) e.preventDefault();
+    }, true);
   }
 
   function mountAgentButton() {
@@ -1104,7 +1116,6 @@
     menu.addEventListener("click", (e) => {
       const item = e.target.closest("[data-agent]");
       if (item) { e.preventDefault(); window.location.href = agentLinks(agentPrompt0())[item.dataset.agent]; }
-      if (e.target.closest('[data-action="assistant"]') && openDocsAssistant()) e.preventDefault();
       open(false);
     });
   }
@@ -1168,7 +1179,7 @@
     drawCover(box.querySelector(".zh-cover"), reduced);
   }
 
-  const boot = () => { mountWizard(); mountHeroChat(); mountSpotlights(); mountAgentButton(); mountFaq(); mountProductFilter(); resetTabState(); };
+  const boot = () => { mountWizard(); mountHeroChat(); mountSpotlights(); mountAgentButton(); mountAssistantLinks(); mountFaq(); mountProductFilter(); resetTabState(); };
   boot();
   new MutationObserver(boot).observe(document.documentElement, { childList: true, subtree: true });
 })();
