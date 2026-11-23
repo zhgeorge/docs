@@ -635,7 +635,7 @@
 
 /* ---------- build paths ---------- */
 
-.zh-landing .zh-paths-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.zh-landing .zh-paths-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
 /* the gap under the copy matches the gap between the label and the heading */
 .zh-landing .zh-paths .zh-section-head + .zh-paths-grid { margin-top: 14px; }
 
@@ -743,8 +743,9 @@ body:has(.zh-landing, #zh-wizard-root) .nav-tabs-item[aria-current] > div { disp
 .zh-landing .zh-faq-a { padding: 0 60px 20px 2px; }
 .zh-landing .zh-faq-a p { margin: 0 0 12px; font-size: 15px; line-height: 1.6; color: var(--zh-muted); }
 .zh-landing .zh-faq-a p:last-child { margin-bottom: 0; }
-.zh-landing .zh-faq-a code { font-size: 13.5px; padding: 1px 5px; border-radius: 5px; background: var(--zh-surface-2, #f0f1ec); color: var(--zh-ink); }
-.dark .zh-landing .zh-faq-a code { background: #1b1d1b; }
+.zh-landing :is(.zh-faq-a, .zh-path-list) code { font-size: 13.5px; padding: 1px 5px; border-radius: 5px; background: var(--zh-surface-2, #f0f1ec); color: var(--zh-ink); }
+.dark .zh-landing :is(.zh-faq-a, .zh-path-list) code { background: #1b1d1b; }
+.zh-landing .zh-path:hover .zh-path-list code { background: rgba(255, 255, 255, 0.16); color: #ffffff; }
 .zh-landing .zh-faq-src a { font-size: 14px; font-weight: 500; color: var(--zh-ink); text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
 .zh-landing .zh-faq-src a:hover { color: var(--zh-green); }
 

@@ -45,6 +45,47 @@ mode: "custom"
     </div>
   </section>
 
+  <section className="zh-section zh-paths">
+    <div className="zh-container">
+      <div className="zh-section-head">
+        <div>
+          <p className="zh-label">Quickstart</p>
+          <h2 className="zh-h2">Get started with ease</h2>
+          <p className="zh-section-sub">Get access to the platform, then choose how you build: drop in our SDK for ready-made screens, or call the API directly and design every screen yourself.</p>
+        </div>
+      </div>
+      <div className="zh-paths-grid">
+        <a className="zh-path" href="/docs/get-platform-access">
+          <span className="zh-path-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="10" width="16" height="11" rx="2.5" /><path d="M8 10V7a4 4 0 0 1 8 0v3" /><path d="M12 14.5v2.5" /></svg></span>
+          <h3>Get platform access<span className="zh-go" aria-hidden="true">→</span></h3>
+          <ul className="zh-path-list">
+            <li>Our team sets up your Cert platform, where you build with test funds.</li>
+            <li>Confirm your email, set up 2FA and sign in to the client portal.</li>
+            <li>Generate API keys, allowlist your IPs, and apply for Prod when you're ready.</li>
+          </ul>
+        </a>
+        <a className="zh-path" href="/docs/sdk">
+          <span className="zh-path-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2.5" /><path d="M3 8.5h18" /><path d="M8 13h8" /><path d="M8 16.5h5" /></svg></span>
+          <h3>Install and initialize SDK<span className="zh-go" aria-hidden="true">→</span></h3>
+          <ul className="zh-path-list">
+            <li>Add the <code>zh-web-sdk</code> package from npm.</li>
+            <li>Request a token for your customer from <code>POST /client_auth_token</code>.</li>
+            <li>Open a module with that token, and zerohash runs the screens from there.</li>
+          </ul>
+        </a>
+        <a className="zh-path" href="/docs/submit-first-api-call">
+          <span className="zh-path-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M7 8l-4 4 4 4" /><path d="M17 8l4 4-4 4" /><path d="M14 5l-4 14" /></svg></span>
+          <h3>Submit first API call<span className="zh-go" aria-hidden="true">→</span></h3>
+          <ul className="zh-path-list">
+            <li>Call <code>GET /time</code>, the one endpoint that needs no authentication.</li>
+            <li>A 200 with the current time confirms you're connected.</li>
+            <li>Then sign every other request with your four <code>X-SCX</code> headers.</li>
+          </ul>
+        </a>
+      </div>
+    </div>
+  </section>
+
   <section className="zh-logos">
     <div className="zh-container">
       <div className="zh-logo-marquee">
@@ -168,39 +209,6 @@ mode: "custom"
           <span className="zh-card-art" data-art="tax" aria-hidden="true" />
           <h3>Crypto Taxes<span className="zh-go" aria-hidden="true">→</span></h3>
           <p>Tax forms and reporting for your customers, handled as a service.</p>
-        </a>
-      </div>
-    </div>
-  </section>
-
-
-  <section className="zh-section zh-paths">
-    <div className="zh-container">
-      <div className="zh-section-head">
-        <div>
-          <p className="zh-label">Build paths</p>
-          <h2 className="zh-h2">Two ways to integrate, both with full AI support</h2>
-          <p className="zh-section-sub">Pick the one that fits your team. They share the same platform, so you can start with one and add another later.</p>
-        </div>
-      </div>
-      <div className="zh-paths-grid">
-        <a className="zh-path" href="/docs/sdk-index">
-          <span className="zh-path-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2.5" /><path d="M3 8.5h18" /><path d="M8 13h8" /><path d="M8 16.5h5" /></svg></span>
-          <h3>Conversion-optimized SDKs<span className="zh-go" aria-hidden="true">→</span></h3>
-          <ul className="zh-path-list">
-            <li>Drop-in screens with designs optimized on all platforms.</li>
-            <li>Compliance, regulatory, and legal disclosures and agreements all handled.</li>
-            <li>Faster rollout to market and automatic coverage of latest chains and assets.</li>
-          </ul>
-        </a>
-        <a className="zh-path" href="/api-reference/authentication">
-          <span className="zh-path-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M7 8l-4 4 4 4" /><path d="M17 8l4 4-4 4" /><path d="M14 5l-4 14" /></svg></span>
-          <h3>API only<span className="zh-go" aria-hidden="true">→</span></h3>
-          <ul className="zh-path-list">
-            <li>Sign each request and call the REST API endpoints yourself.</li>
-            <li>180 endpoints across every product, with full schemas in the reference.</li>
-            <li>Every screen is yours, with webhooks for anything that happens later.</li>
-          </ul>
         </a>
       </div>
     </div>
